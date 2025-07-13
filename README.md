@@ -1,13 +1,13 @@
-<p align="center">
-  <img src="web/public/logo_tau.png" width="180" alt="tauBayesW logo"/>
-</p>
-
 # tauBayesW
 
 **tauBayesW** is an R package for **Bayesian directional quantile regression**, tailored for multivariate responses projected along custom directions.
 
 The package provides algorithms based on **Expectation-Maximization (EM)** and **Markov Chain Monte Carlo (MCMC)**, to compute posterior distributions of quantile regression parameters.  
 It is the result of translating original R scripts — developed for academic research — into **high-performance C++** via Rcpp and Eigen.
+
+<p align="center">
+  <img src="web/public/logo_tau.png" width="180" alt="tauBayesW logo"/>
+</p>
 
 ---
 
