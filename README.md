@@ -13,8 +13,6 @@ It is the result of translating original R scripts — developed for academic re
 - EM and MCMC algorithms with Bayesian regularization  
 - Custom weights and prior specification  
 - Fast and scalable C++ backend  
-- Ideal for geostatistical and directional data analysis  
-
 ---
 
 ## 🚀 Performance Benchmark
