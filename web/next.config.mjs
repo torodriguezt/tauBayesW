@@ -1,10 +1,11 @@
 /** @type {import('next').NextConfig} */
-const repo = 'tauBayesW';       // ← use lower-case t  (exact repo slug)
+const repo = 'tauBayesW';
+const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig = {
   output: 'export',
-  basePath: `/${repo}`,
-  assetPrefix: `/${repo}/`,
+  basePath: isProd ? `/${repo}` : '',
+  assetPrefix: isProd ? `/${repo}/` : '',
   trailingSlash: true,
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
