@@ -2,38 +2,38 @@ name: Deploy Next.js static site to GitHub Pages
 
 on:
   push:
-    branches: [main]          # triggers on every push to main
+    branches: [main]
+
+# --- NUEVO: da permiso de escritura al token automático ---
+permissions:
+  contents: write        # ← habilita push a gh-pages
+# ----------------------------------------------------------
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Check out repo – sub-modules disabled to avoid Eigen error
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: 'false'         # <-- ignore any sub-module entries
+          submodules: 'false'
 
-      # 2) Set up Node.js
-      - name: Set up Node.js 20
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
 
-      # 3) Install dependencies (inside /web)
       - name: Install dependencies
         run: npm ci
         working-directory: web
 
-      # 4) Build static site (Next.js with output: 'export' creates /web/out)
       - name: Build static site
         run: npm run build
         working-directory: web
 
-      # 5) Deploy /web/out to the gh-pages branch
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}   # ← sin cambios
           publish_dir: web/out
