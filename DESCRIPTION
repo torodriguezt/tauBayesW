@@ -1,0 +1,30 @@
+Package: tauBayesW
+Title: Bayesian Weighted Quantile Regression with EM and MCMC Algorithm
+Version: 0.0.0.9000
+Authors@R: 
+    c(
+        person("Marcus L.", "Nascimiento", email = "marcus.lavagnole@fgv.br", role = "aut"),
+        person("Kelly Cristina", "Mota Gonçalves",  email = "kelly@dme.ufrj.br",  role = "aut"),
+        person("Johntan", "Cardona Jiménez", email = "jcardonj@unal.edu.co", role = "aut"),
+        person("Tomás", "Rodríguez Taborda", email = "torodriguezt@unal.edu.co", role = c("aut", "cre"))
+    )
+Description: Implements a Bayesian quantile regression approach using the Expectation-Maximization (EM) algorithm 
+    and several MCMC methods with observation weights. Includes fast C++ implementations using Rcpp, RcppEigen, 
+    and RcppArmadillo for linear algebra, and Boost (via the BH package) for special functions such as Bessel. 
+    The package also calls 'GIGrvg' for sampling from Generalized Inverse Gaussian distributions.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+LinkingTo:
+    Rcpp,
+    RcppArmadillo,
+    RcppEigen,
+    BH,
+    GIGrvg
+Imports:
+    Rcpp,
+    RcppArmadillo,
+    RcppEigen,
+    GIGrvg,
+    BH
