@@ -21,7 +21,7 @@ It is the result of translating original R scripts — developed for academic re
 
 The following benchmark compares the R and C++ versions of the main EM algorithm on a large simulated dataset with 100,000 observations and 10 predictors.
 
-| Algorithm            | R Time (min) | C++ Time (min) | R RAM  | C++ RAM | Speedup Factor | Memory Saving |
+| Algorithm            | R Time (seg) | C++ Time (seg) | R RAM  | C++ RAM | Speedup Factor | Memory Saving |
 |----------------------|--------------|----------------|--------|---------|----------------|----------------|
 | EM_BWQR_AL_MO| 2.44         | 0.0032         | 2.3 GB | 190 MB  | ×769           | ~12×           |
 |  MCMC_BWQR_AL| 12.3     | 0.01       | 2.0 GB | 50 MB   | ×1100       | ~40×       |
