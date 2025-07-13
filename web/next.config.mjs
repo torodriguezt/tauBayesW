@@ -1,11 +1,11 @@
 /** @type {import('next').NextConfig} */
-const repo = 'TauBayesW';          // ← GitHub repository name
+const repo = 'tauBayesW';       // ← use lower-case t  (exact repo slug)
 
 const nextConfig = {
   output: 'export',
-  basePath: `/${repo}`,            // 👈 add these two lines
+  basePath: `/${repo}`,
   assetPrefix: `/${repo}/`,
-  trailingSlash: true,             // nice-to-have for static hosting
+  trailingSlash: true,
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
   images: { unoptimized: true },
