@@ -1,4 +1,4 @@
-name: Deploy Next.js site to GitHub Pages
+name: Deploy Next.js static site to GitHub Pages
 
 on:
   push:
@@ -8,30 +8,27 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: ./web
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      # 1) checkout repo
+      - uses: actions/checkout@v3
 
-      - name: Install Node.js
-        uses: actions/setup-node@v3
+      # 2) set Node
+      - uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: 20
 
+      # 3) install & build  (note the working-directory)
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+        working-directory: web
 
       - name: Build static site
-        run: npm run build
+        run: npm run build          # ← creates  web/out/
+        working-directory: web
 
-      - name: Export static site
-        run: npm run export
-
+      # 4) publish /web/out to gh-pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./web/out
+          publish_dir: web/out
