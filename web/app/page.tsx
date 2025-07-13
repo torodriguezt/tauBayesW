@@ -41,6 +41,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+// Helper para obtener la ruta correcta de las imágenes
+const getImagePath = (path: string) => {
+  const basePath = process.env.NODE_ENV === 'production' ? '/tauBayesW' : '';
+  return `${basePath}${path}`;
+};
+
 export default function RDocumentation() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -66,7 +72,7 @@ export default function RDocumentation() {
           <div className="mr-4 hidden md:flex">
             <div className="mr-6 flex items-center space-x-2">
               <Image
-                src="/logo_tau.png"
+                src={getImagePath("/logo_tau.png")}
                 alt="tauBayesW Logo"
                 width={24}
                 height={24}
@@ -182,7 +188,7 @@ export default function RDocumentation() {
               <div className="text-center mb-8">
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <Image
-                    src="/logo_tau.png"
+                    src={getImagePath("/logo_tau.png")}
                     alt="tauBayesW Logo"
                     width={48}
                     height={48}
