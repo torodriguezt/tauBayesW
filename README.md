@@ -25,10 +25,9 @@ The following benchmark compares the R and C++ versions of the main EM algorithm
 |----------------------|--------------|----------------|--------|---------|----------------|----------------|
 | EM_BWQR_AL_MO| 2.44         | 0.0032         | 2.3 GB | 190 MB  | ×769           | ~12×           |
 |  MCMC_BWQR_AL| 12.3     | 0.01       | 2.0 GB | 50 MB   | ×1100       | ~40×       |
-| MCMC Gibbs 1         | 28.5         | 1.1            | 6.8 GB | 0.9 GB  | ×26            | ~7.5×          |
+| MCMC_BWQR_AP         | 21.78         | 2.81            | ? GB | ? GB  | ×7.8            | ?          |
 | MCMC Gibbs 2         | 32.0         | 1.3            | 7.2 GB | 1.0 GB  | ×24.6          | ~7.2×          |
 | Adaptive EM          | 21.7         | 0.9            | 5.4 GB | 0.7 GB  | ×24.1          | ~7.7×          |
-| MCMC HMC             | 39.0         | 1.8            | 8.2 GB | 1.1 GB  | ×21.7          | ~7.5×          |
 
 
 > Test environment: R 4.4.2, Windows 11, Intel i5 13600-K, 32 GB RAM
