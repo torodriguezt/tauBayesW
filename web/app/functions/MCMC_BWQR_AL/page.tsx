@@ -95,7 +95,7 @@ export default function MCMCBWQRALPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p>Advanced Gibbs sampler with robust numerical stabilization and adaptive regularization techniques.</p>
+                  <p>Advanced Gibbs sampler with robust numerical stabilization.</p>
                 </CardContent>
               </Card>
 
@@ -108,18 +108,6 @@ export default function MCMCBWQRALPage() {
                 </CardHeader>
                 <CardContent>
                   <p>Efficient sampling from Generalized Inverse-Gaussian distribution using optimized algorithms.</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-orange-500" />
-                    Numerical Stability
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>Advanced handling of near-singular matrices with adaptive ridge regularization and fallback methods.</p>
                 </CardContent>
               </Card>
 

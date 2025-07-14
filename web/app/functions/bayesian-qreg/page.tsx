@@ -5,6 +5,9 @@ import { ArrowLeft, Code, Copy, Check, FileText } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { getImageSrc } from "@/lib/image-utils"
+import { useApp } from "@/contexts/AppContext"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { LanguageSelector } from "@/components/language-selector"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -18,6 +21,7 @@ import { Badge } from "@/components/ui/badge"
 
 export default function MCMCBWQRSLPage() {
   const [copied, setCopied] = useState(false)
+  const { t } = useApp()
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -75,18 +79,7 @@ print("Posterior means:")
 print(beta_mean)
 print("95% Credible intervals:")
 print(beta_ci)
-
-# Convergence diagnostics
-library(coda)
-mcmc_obj <- mcmc(beta_samples)
-print("Effective sample sizes:")
-print(effectiveSize(mcmc_obj))
-
-# Compare with classical quantile regression
-library(quantreg)
-rq_fit <- rq(y ~ X - 1, tau = 0.75, weights = w)
-print("Classical QR vs Bayesian:")
-print(cbind(Classical = coef(rq_fit), Bayesian = beta_mean))`
+`
 
   return (
     <div className="min-h-screen bg-background">
@@ -157,10 +150,7 @@ print(cbind(Classical = coef(rq_fit), Bayesian = beta_mean))`
             <CardContent>
               <p className="text-muted-foreground leading-relaxed">
                 The <code className="bg-muted px-2 py-1 rounded text-sm">MCMC_BWQR_SL()</code> function implements 
-                a Metropolis-Hastings MCMC sampler for Bayesian Weighted Quantile Regression using the 
-                Skewed-Laplace likelihood. This approach features adaptive proposal scaling with Robbins-Monro 
-                optimization, targeting 23.4% acceptance rate for efficient posterior exploration with robust 
-                handling of asymmetric distributions.
+                an adaptive Metropolis-Hastings algorithm using score-based pseudo-likelihood for BWQR.
               </p>
             </CardContent>
           </Card>
@@ -170,17 +160,6 @@ print(cbind(Classical = coef(rq_fit), Bayesian = beta_mean))`
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-6">Key Features</h2>
           <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-orange-500" />
-                  Skewed-Laplace Likelihood
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>Advanced likelihood formulation with asymmetric loss function for robust quantile regression.</p>
-              </CardContent>
-            </Card>
 
             <Card>
               <CardHeader>
@@ -190,7 +169,7 @@ print(cbind(Classical = coef(rq_fit), Bayesian = beta_mean))`
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p>Self-tuning MCMC with Robbins-Monro optimization targeting optimal acceptance rates.</p>
+                <p>Self-tuning MCMC.</p>
               </CardContent>
             </Card>
 
@@ -202,7 +181,7 @@ print(cbind(Classical = coef(rq_fit), Bayesian = beta_mean))`
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p>Incorporates observation weights for heteroscedastic data and precision modeling.</p>
+                <p>Incorporates observation weights for precision modeling.</p>
               </CardContent>
             </Card>
 
@@ -321,62 +300,6 @@ print(cbind(Classical = coef(rq_fit), Bayesian = beta_mean))`
               </div>
             </CardContent>
           </Card>
-        </section>
-
-        {/* Algorithm Details */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">Algorithm Details</h2>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Skewed-Laplace Posterior</CardTitle>
-                <CardDescription>
-                  Log-posterior computation with weights
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm">Weighted Score Function</h4>
-                    <p className="text-sm text-muted-foreground">s_τ = X&apos;(w_uf · w_i · (τ - I(res_i &lt; 0)))</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm">Quadratic Form</h4>
-                    <p className="text-sm text-muted-foreground">Efficient computation using weighted covariance matrix</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm">Prior Integration</h4>
-                    <p className="text-sm text-muted-foreground">Normal prior with mean b₀ and covariance B₀</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Adaptive MCMC</CardTitle>
-                <CardDescription>
-                  Robbins-Monro proposal adaptation
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm">Proposal Covariance</h4>
-                    <p className="text-sm text-muted-foreground">Σ_prop = (τ(1-τ)/n)(X'W²X)⁻¹</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm">Adaptive Scaling</h4>
-                    <p className="text-sm text-muted-foreground">ct updated with step size (k+1)^(-0.8)</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm">Target Rate</h4>
-                    <p className="text-sm text-muted-foreground">23.4% acceptance rate for optimal efficiency</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </section>
 
         {/* Examples */}

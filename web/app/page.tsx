@@ -858,13 +858,9 @@ export default function RDocumentation() {
                     <div className="text-sm bg-slate-900 dark:bg-slate-800 text-green-400 p-4 rounded-lg border">
                       <div className="space-y-2 font-mono">
                         <div className="text-gray-400"># Function help</div>
-                        <div>?EM_BWQR_AL_MO</div>
+                        <div>?MCMC_BWQR_AL</div>
                         <div className="mt-2 text-gray-400"># Package help</div>
                         <div>help(package="tauBayesW")</div>
-                        <div className="mt-2 text-gray-400"># Available vignettes</div>
-                        <div>vignette("tauBayesW")</div>
-                        <div className="mt-2 text-gray-400"># Function examples</div>
-                        <div>example(MCMC_BWQR_AL)</div>
                       </div>
                     </div>
                   </CardContent>

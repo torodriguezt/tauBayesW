@@ -138,10 +138,8 @@ print(beta_ci)`
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground leading-relaxed">
-                The <code className="bg-muted px-2 py-1 rounded text-sm">MCMC_BWQR_AP()</code> function implements 
-                an advanced Adaptive-Proposal Metropolis-Hastings sampler for Bayesian Weighted Quantile Regression. 
-                This sophisticated algorithm features automatic proposal covariance adaptation using Robbins-Monro 
-                stochastic approximation, targeting optimal acceptance rates (≈23.4%) for efficient posterior exploration.
+                The <code className="bg-muted px-2 py-1 rounded text-sm">MCMC_BWQR_AP()</code> implements an 
+                adaptive Metropolis-Hastings algorithm using empirical pseudo-likelihood for BWQR.
               </p>
             </CardContent>
           </Card>
@@ -159,7 +157,7 @@ print(beta_ci)`
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p>Automatic tuning of proposal covariance using Robbins-Monro algorithm for optimal efficiency.</p>
+                <p></p>
               </CardContent>
             </Card>
 
@@ -172,18 +170,6 @@ print(beta_ci)`
               </CardHeader>
               <CardContent>
                 <p>Robust MCMC sampling with acceptance-rejection mechanism for complex posterior distributions.</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Copy className="h-5 w-5 text-blue-500" />
-                  Check-Loss Function
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>Uses weighted asymmetric check-loss function based on Wang & He (2007) formulation.</p>
               </CardContent>
             </Card>
 

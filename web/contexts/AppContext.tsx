@@ -60,17 +60,17 @@ const translations = {
     clickToView: "Click to view details",
     
     // Function descriptions
-    emDesc: "EM Algorithm for Bayesian Weighted Quantile Regression with Asymmetric Laplace distribution.",
-    mcmcALDesc: "MCMC for Bayesian Weighted Quantile Regression with full uncertainty quantification and posterior sampling.",
-    mcmcAPDesc: "Smart automatic data visualization with multiple plot types: distributions, boxplots, Q-Q plots, and histograms.",
-    mcmcSLDesc: "Bayesian quantile regression using advanced EM and MCMC algorithms for robust statistical modeling.",
-    nonCrossingDesc: "Advanced model comparison using WAIC and DIC criteria for optimal model selection in Bayesian analysis.",
+    emDesc: "Weighted Bayesian quantile regression for directional data using the EM algorithm and an asymmetric Laplace representation.",
+    mcmcALDesc: "Gibbs sampler for BWQR using the Asymmetric Laplace distribution.",
+    mcmcAPDesc: "Adaptive Metropolis-Hastings algorithm using empirical pseudo-likelihood for BWQR.",
+    mcmcSLDesc: "Adaptive Metropolis-Hastings algorithm using score-based pseudo-likelihood for BWQR.",
+    nonCrossingDesc: "EM algorithm for BWQR  with constraints for quantile crossing.",
     
     // Comparison
     comparisonTitle: "Comparison between R code and C++ code",
     comparisonDesc: "Performance comparison between R and C++ implementations of the main algorithms in tauBayesW.",
     perfBenchmarks: "Performance Benchmarks",
-    perfBenchmarksDesc: "Execution time and memory usage comparison across different dataset sizes",
+    perfBenchmarksDesc: "Execution time and memory usage comparison",
     perfMetrics: "Performance metrics measured on R 4.4.2, Windows 11, Intel i5 13600-K with 32GB RAM",
     algorithm: "Algorithm",
     rTime: "R Time (sec)",
@@ -85,13 +85,13 @@ const translations = {
     acrossMeasured: "Across measured algorithms",
     keyBenefits: "Key Benefits of C++ Implementation",
     extremeSpeed: "Extreme Speed:",
-    extremeSpeedDesc: "Up to 1100× faster execution than R implementations",
+    extremeSpeedDesc: "Faster execution than R implementations",
     massiveMemory: "Massive Memory Savings:",
     massiveMemoryDesc: "Reduce memory usage from GB to MB (up to 40× reduction)",
     highPerfComputing: "High-Performance Computing:",
     highPerfComputingDesc: "Optimized algorithms enable analysis of large datasets",
-    prodReady: "Production Ready:",
-    prodReadyDesc: "Tested on modern hardware (Intel i5 13600-K, 32GB RAM)",
+    prodReady: "Test environment",
+    prodReadyDesc: "Tested on Intel i5 13600-K, 32GB RAM",
     
     // Authors
     authorsTitle: "Authors",

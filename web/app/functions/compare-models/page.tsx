@@ -1,10 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, Download, Copy, Check } from "lucide-react"
+import { ArrowLeft, Copy, Check, Package } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { getImageSrc } from "@/lib/image-utils"
+import { useApp } from "@/contexts/AppContext"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { LanguageSelector } from "@/components/language-selector"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -16,8 +19,9 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-export default function NonCrossingBWQRALPage() {
+export default function MCMCBWQRAPPage() {
   const [copied, setCopied] = useState(false)
+  const { t } = useApp()
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -34,42 +38,65 @@ export default function NonCrossingBWQRALPage() {
   }
 
   const exampleCode = `library(tauBayesW)
-library(GIGrvg)  # Required for GIG sampling
+
+# Generate sample data with outliers
 set.seed(123)
 n <- 200
 p <- 3
 X <- matrix(rnorm(n * p), n, p)
-beta_true <- c(1.2, -0.6, 0.9)
-y <- X %*% beta_true + rnorm(n, 0, 0.4)
+beta_true <- c(1.5, -0.8, 0.6)
+y <- X %*% beta_true + rnorm(n, 0, 0.5)
 
-w <- 1 / (1 + 0.2 * abs(X[,2]))
+# Add some outliers
+outlier_idx <- sample(1:n, 10)
+y[outlier_idx] <- y[outlier_idx] + rnorm(10, 0, 2)
 
-# Run Non-Crossing BWQR
-nc_result <- NonCrossingBWQR_AL(
+# Create weights for robustness
+weights <- rep(1, n)
+weights[outlier_idx] <- 0.1
+
+# Basic MCMC_BWQR_AP estimation
+result <- MCMC_BWQR_AP(
   y = y,
   X = X,
-  w = w,
-  n_mcmc = 15000,
-  burnin_mcmc = 3000,
-  thin_mcmc = 5,
-  tau = 0.5
+  tau = 0.5,
+  weights = weights,
+  iter = 1000,
+  burn = 500
 )
 
-# Extract results
-beta_samples <- nc_result$beta
-sigma_samples <- nc_result$sigma
+# Multiple quantiles with adaptive priors
+quantiles <- c(0.25, 0.5, 0.75)
+multi_result <- MCMC_BWQR_AP(
+  y = y,
+  X = X,
+  tau = quantiles,
+  weights = weights,
+  iter = 2000,
+  burn = 1000,
+  adaptive = TRUE
+)
 
-# Posterior summaries
-beta_mean <- apply(beta_samples, 2, mean)
-beta_ci <- apply(beta_samples, 2, quantile, c(0.025, 0.975))
-sigma_mean <- mean(sigma_samples)
+# Custom settings for robust estimation
+robust_result <- MCMC_BWQR_AP(
+  y = y,
+  X = X,
+  tau = 0.9,
+  weights = weights,
+  iter = 3000,
+  burn = 1500,
+  adaptive = TRUE,
+  prior = list(
+    sigma_beta = 2,
+    nu = 3
+  ),
+  thin = 2
+)
 
-# Print results
-print("Posterior means for beta:")
-print(beta_mean)
-print("95% Credible intervals for beta:")
-print(beta_ci)
-print(paste("Posterior mean for sigma:", round(sigma_mean, 4)))`
+# Analyze results
+summary(result)
+plot(result)
+print(result$beta_posterior[1:10, ])`
 
   return (
     <div className="min-h-screen bg-background">
@@ -81,7 +108,7 @@ print(paste("Posterior mean for sigma:", round(sigma_mean, 4)))`
             className="flex items-center space-x-2 mr-6 hover:text-blue-600 transition-colors cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="font-medium">Back to Documentation</span>
+            <span className="font-medium">{t("help")}</span>
           </button>
           <div className="flex items-center space-x-2">
             <Image
@@ -91,7 +118,6 @@ print(paste("Posterior mean for sigma:", round(sigma_mean, 4)))`
               height={24}
               className="rounded"
               onError={(e) => {
-                // Fallback al logo por defecto si no se puede cargar
                 const target = e.target as HTMLElement
                 target.style.display = 'none'
                 const fallback = target.nextElementSibling as HTMLElement
@@ -103,33 +129,35 @@ print(paste("Posterior mean for sigma:", round(sigma_mean, 4)))`
             </div>
             <span className="font-bold">tauBayesW</span>
           </div>
+          <div className="ml-auto flex items-center space-x-2">
+            <ThemeToggle />
+            <LanguageSelector />
+          </div>
         </div>
       </header>
 
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
-        <div className="max-w-4xl mx-auto">{/* Contenido centrado pero responsive */}
+        <div className="max-w-4xl mx-auto">
         {/* Function Header */}
-        <section className="mb-8">
+        <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-red-100 dark:bg-red-900 flex items-center justify-center">
-              <Download className="h-6 w-6 text-red-600 dark:text-red-400" />
+            <div className="h-12 w-12 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+              <Package className="h-6 w-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">NonCrossingBWQR_AL()</h1>
+              <h1 className="text-3xl font-bold tracking-tight">MCMC_BWQR_AP()</h1>
               <p className="text-xl text-muted-foreground">
-                Non-Crossing Bayesian Weighted Quantile Regression with Asymmetric Laplace
+                {t("mcmcAPDesc")}
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2">
             <Badge variant="secondary">Bayesian</Badge>
-            <Badge variant="secondary">Gibbs Sampling</Badge>
-            <Badge variant="secondary">Non-Crossing</Badge>
-            <Badge variant="secondary">Asymmetric Laplace</Badge>
-            <Badge variant="secondary">GIG Sampling</Badge>
-            <Badge variant="secondary">C++</Badge>
+            <Badge variant="outline">Quantile Regression</Badge>
+            <Badge variant="outline">MCMC</Badge>
+            <Badge variant="outline">Adaptive Priors</Badge>
           </div>
-        </section>
+        </div>
 
         {/* Description */}
         <section className="mb-8">
@@ -138,69 +166,14 @@ print(paste("Posterior mean for sigma:", round(sigma_mean, 4)))`
               <CardTitle>Description</CardTitle>
             </CardHeader>
             <CardContent>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                The <code>MCMC_BWQR_AP()</code> function implements a Markov Chain Monte Carlo (MCMC) algorithm for Bayesian Weighted Quantile Regression with Adaptive Priors. This advanced approach provides robust estimation by automatically adjusting prior distributions based on the data.
+              </p>
               <p className="text-muted-foreground leading-relaxed">
-                The <code className="bg-muted px-2 py-1 rounded text-sm">NonCrossingBWQR_AL()</code> function implements 
-                a sophisticated Gibbs sampler for Bayesian Weighted Quantile Regression using the Asymmetric Laplace 
-                distribution. This algorithm ensures non-crossing quantile estimates through proper Bayesian 
-                modeling and features optimized sampling from Generalized Inverse-Gaussian distributions 
-                using the GIGrvg package.
+                The adaptive mechanism makes the method particularly suitable for challenging datasets with outliers, non-standard distributions, or when prior information is limited. The algorithm combines Metropolis-Hastings sampling with adaptive prior updating.
               </p>
             </CardContent>
           </Card>
-        </section>
-
-        {/* Key Features */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">Key Features</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Download className="h-5 w-5 text-red-500" />
-                  Non-Crossing Quantiles
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>Ensures monotonic quantile estimates through proper Bayesian hierarchical modeling structure.</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Check className="h-5 w-5 text-green-500" />
-                  Complete Gibbs Sampler
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>Full conditional sampling for β, σ, and v parameters with optimal convergence properties.</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Copy className="h-5 w-5 text-blue-500" />
-                  GIG Sampling
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>Optimized Generalized Inverse-Gaussian sampling using GIGrvg for efficient v parameter updates.</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ArrowLeft className="h-5 w-5 text-purple-500" />
-                  Numerical Stability
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>Robust matrix operations with fallback methods for near-singular covariance matrices.</p>
-              </CardContent>
-            </Card>
-          </div>
         </section>
 
         {/* Syntax */}
@@ -211,15 +184,14 @@ print(paste("Posterior mean for sigma:", round(sigma_mean, 4)))`
             </CardHeader>
             <CardContent>
               <div className="relative">
-                <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
-                  <code>{`NonCrossingBWQR_AL(y, X, w, n_mcmc, burnin_mcmc, 
-                      thin_mcmc, tau = 0.5)`}</code>
+                <pre className="bg-muted p-4 rounded-lg text-sm" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  <code>{`MCMC_BWQR_AP(y, X, tau = 0.5, weights = NULL, iter = 1000, burn = 500, adaptive = TRUE, prior = NULL, thin = 1)`}</code>
                 </pre>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="absolute top-2 right-2"
-                  onClick={() => copyToClipboard("NonCrossingBWQR_AL(y, X, w, n_mcmc, burnin_mcmc, thin_mcmc, tau = 0.5)")}
+                  onClick={() => copyToClipboard("MCMC_BWQR_AP(y, X, tau = 0.5, weights = NULL, iter = 1000, burn = 500, adaptive = TRUE, prior = NULL, thin = 1)")}
                 >
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
@@ -236,73 +208,103 @@ print(paste("Posterior mean for sigma:", round(sigma_mean, 4)))`
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">y</code>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">y</code>
+                      <Badge variant="destructive" className="text-xs">Required</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Numeric vector of response variables (n × 1).
+                      Numeric vector of response variable values.
                     </p>
-                    <Badge variant="destructive" className="text-xs">Required</Badge>
                   </div>
-                  <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">X</code>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">X</code>
+                      <Badge variant="destructive" className="text-xs">Required</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Design matrix of covariates (n × p).
+                      Design matrix of covariates (n x p matrix).
                     </p>
-                    <Badge variant="destructive" className="text-xs">Required</Badge>
                   </div>
-                  <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">w</code>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">tau</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Vector of observation weights (n × 1).
+                      Quantile level(s) to estimate. Can be a single value or vector (default: 0.5).
                     </p>
-                    <Badge variant="destructive" className="text-xs">Required</Badge>
                   </div>
-                  <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">n_mcmc</code>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">weights</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Total number of MCMC iterations.
+                      Observation weights for handling informative sampling (default: NULL).
                     </p>
-                    <Badge variant="destructive" className="text-xs">Required</Badge>
                   </div>
-                  <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">burnin_mcmc</code>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">iter</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Number of burn-in iterations to discard.
+                      Number of MCMC iterations (default: 1000).
                     </p>
-                    <Badge variant="destructive" className="text-xs">Required</Badge>
                   </div>
-                  <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">thin_mcmc</code>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">burn</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Thinning interval for output.
+                      Number of burn-in iterations to discard (default: 500).
                     </p>
-                    <Badge variant="destructive" className="text-xs">Required</Badge>
                   </div>
-                  <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">tau</code>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">adaptive</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Quantile level (default: 0.5).
+                      Logical indicating whether to use adaptive priors (default: TRUE).
                     </p>
-                    <Badge variant="secondary" className="text-xs">Optional</Badge>
+                  </div>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">prior</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      List containing prior hyperparameters (default: NULL for adaptive priors).
+                    </p>
+                  </div>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">thin</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Thinning interval for MCMC chain (default: 1).
+                    </p>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </section>
+
         {/* Examples */}
         <section className="mb-8">
           <Card>
             <CardHeader>
-              <CardTitle>Example</CardTitle>
-              <CardDescription>
-                Non-crossing quantile regression with GIG sampling
-              </CardDescription>
+              <CardTitle>Examples</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="relative">
-                <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
+                <pre className="bg-muted p-4 rounded-lg text-sm" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   <code>{exampleCode}</code>
                 </pre>
                 <Button
@@ -325,44 +327,52 @@ print(paste("Posterior mean for sigma:", round(sigma_mean, 4)))`
               <CardTitle>Return Value</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="mb-4">The function returns a list containing:</p>
-              <div className="grid gap-3">
-                <div className="flex items-start gap-3">
-                  <code className="bg-muted px-2 py-1 rounded text-sm mt-1">beta</code>
-                  <span>Matrix of posterior samples for regression coefficients (rows = samples, cols = coefficients)</span>
+              <div className="space-y-3">
+                <div className="p-3 border rounded-lg">
+                  <h4 className="font-medium text-sm">beta_posterior</h4>
+                  <p className="text-xs text-muted-foreground">Matrix of posterior samples for regression coefficients with adaptive updates.</p>
                 </div>
-                <div className="flex items-start gap-3">
-                  <code className="bg-muted px-2 py-1 rounded text-sm mt-1">sigma</code>
-                  <span>Vector of posterior samples for the scale parameter σ</span>
+                <div className="p-3 border rounded-lg">
+                  <h4 className="font-medium text-sm">tau_posterior</h4>
+                  <p className="text-xs text-muted-foreground">Matrix of posterior samples for scale parameters with adaptation.</p>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <h4 className="font-medium text-sm">sigma_posterior</h4>
+                  <p className="text-xs text-muted-foreground">Vector of posterior samples for error variance with adaptive priors.</p>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <h4 className="font-medium text-sm">adaptation_info</h4>
+                  <p className="text-xs text-muted-foreground">List containing information about prior adaptation and convergence.</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </section>
 
-        {/* Dependencies */}
-        <section className="mb-8">
+        {/* See Also */}
+        <section>
           <Card>
             <CardHeader>
-              <CardTitle>Dependencies</CardTitle>
+              <CardTitle>See Also</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="p-4 border-l-4 border-orange-500 bg-orange-50 dark:bg-orange-950">
-                  <h4 className="font-medium text-orange-800 dark:text-orange-200">Required Package</h4>
-                  <p className="text-sm text-orange-700 dark:text-orange-300">
-                    This function requires the <code className="bg-muted px-1 rounded">GIGrvg</code> package 
-                    for efficient Generalized Inverse-Gaussian sampling. Install with: 
-                    <code className="bg-muted px-1 rounded ml-1">install.packages("GIGrvg")</code>
-                  </p>
-                </div>
-                <div className="p-4 border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-950">
-                  <h4 className="font-medium text-blue-800 dark:text-blue-200">C++ Implementation</h4>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    Uses optimized RcppArmadillo for fast matrix operations with robust fallback methods 
-                    for numerical stability.
-                  </p>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Link href="/functions/advanced-normality-test">
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="p-4">
+                      <h4 className="font-medium mb-1">MCMC_BWQR_AL()</h4>
+                      <p className="text-sm text-muted-foreground">Bayesian quantile regression with asymmetric Laplace</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+                <Link href="/functions/bayesian-qreg">
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="p-4">
+                      <h4 className="font-medium mb-1">MCMC_BWQR_SL()</h4>
+                      <p className="text-sm text-muted-foreground">Bayesian quantile regression with skewed Laplace</p>
+                    </CardContent>
+                  </Card>
+                </Link>
               </div>
             </CardContent>
           </Card>

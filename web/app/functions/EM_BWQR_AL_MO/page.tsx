@@ -76,8 +76,7 @@ export default function EMBWQRALMOPage() {
                 <p className="text-lg leading-relaxed">
                   The <code className="bg-muted px-2 py-1 rounded text-sm">EM_BWQR_AL_MO()</code> function implements an 
                   Expectation-Maximization (EM) algorithm for Bayesian Weighted Quantile Regression using the Asymmetric 
-                  Laplace distribution. This function is particularly useful for modeling conditional quantiles when 
-                  observations have different weights or when dealing with heteroscedastic data.
+                  Laplace distribution.
                 </p>
               </CardContent>
             </Card>

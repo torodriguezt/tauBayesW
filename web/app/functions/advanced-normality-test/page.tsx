@@ -15,9 +15,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useApp } from "@/contexts/AppContext"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { LanguageSelector } from "@/components/language-selector"
 
-export default function AdvancedNormalityTestPage() {
+export default function MCMCBWQRALPage() {
   const [copied, setCopied] = useState(false)
+  const { t } = useApp()
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -33,21 +37,59 @@ export default function AdvancedNormalityTestPage() {
     }
   }
 
-  const exampleCode = `# Basic usage
-data <- rnorm(100)
-result <- advanced_normality_test(data)
-print(result)
+  const exampleCode = `library(tauBayesW)
 
-# With custom parameters
-result <- advanced_normality_test(
-  x = data,
-  alpha = 0.01,
-  methods = c("shapiro", "anderson", "ks")
+# Generate sample data
+set.seed(123)
+n <- 200
+p <- 3
+X <- matrix(rnorm(n * p), n, p)
+beta_true <- c(1.5, -0.8, 0.6)
+y <- X %*% beta_true + rnorm(n, 0, 0.5)
+
+# Add weights for informative sampling
+weights <- runif(n, 0.5, 2)
+
+# Basic MCMC_BWQR_AL estimation
+result <- MCMC_BWQR_AL(
+  y = y,
+  X = X,
+  tau = 0.5,
+  weights = weights,
+  iter = 1000,
+  burn = 500
 )
 
-# All available methods
-result <- advanced_normality_test(data, methods = "all")
-summary(result)`
+# Multiple quantiles
+quantiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+multi_result <- MCMC_BWQR_AL(
+  y = y,
+  X = X,
+  tau = quantiles,
+  weights = weights,
+  iter = 2000,
+  burn = 1000
+)
+
+# Custom prior specifications
+custom_result <- MCMC_BWQR_AL(
+  y = y,
+  X = X,
+  tau = 0.75,
+  weights = weights,
+  iter = 3000,
+  burn = 1500,
+  prior = list(
+    sigma_beta = 5,
+    sigma_tau = 0.5
+  ),
+  thin = 2
+)
+
+# View results
+summary(result)
+plot(result)
+print(result$beta_samples[1:10, ])`
 
   return (
     <div className="min-h-screen bg-background">
@@ -59,7 +101,7 @@ summary(result)`
             className="flex items-center space-x-2 mr-6 hover:text-blue-600 transition-colors cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="font-medium">Back to Documentation</span>
+            <span className="font-medium">{t("help")}</span>
           </button>
           <div className="flex items-center space-x-2">
             <Image
@@ -69,7 +111,6 @@ summary(result)`
               height={24}
               className="rounded"
               onError={(e) => {
-                // Fallback al logo por defecto si no se puede cargar
                 const target = e.target as HTMLElement
                 target.style.display = 'none'
                 const fallback = target.nextElementSibling as HTMLElement
@@ -81,28 +122,33 @@ summary(result)`
             </div>
             <span className="font-bold">tauBayesW</span>
           </div>
+          <div className="ml-auto flex items-center space-x-2">
+            <ThemeToggle />
+            <LanguageSelector />
+          </div>
         </div>
       </header>
 
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
-        <div className="max-w-4xl mx-auto">{/* Contenido centrado pero responsive */}
+        <div className="max-w-4xl mx-auto">
         {/* Function Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
-              <Package className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <div className="h-12 w-12 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+              <Package className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">advanced_normality_test()</h1>
+              <h1 className="text-3xl font-bold tracking-tight">MCMC_BWQR_AL()</h1>
               <p className="text-xl text-muted-foreground">
-                Comprehensive battery of normality tests
+                {t("mcmcALDesc")}
               </p>
             </div>
           </div>
           <div className="flex gap-2">
-            <Badge variant="secondary">Testing</Badge>
-            <Badge variant="outline">Normality</Badge>
-            <Badge variant="outline">Statistical Tests</Badge>
+            <Badge variant="secondary">Bayesian</Badge>
+            <Badge variant="outline">Quantile Regression</Badge>
+            <Badge variant="outline">MCMC</Badge>
+            <Badge variant="outline">Asymmetric Laplace</Badge>
           </div>
         </div>
 
@@ -113,10 +159,11 @@ summary(result)`
               <CardTitle>Description</CardTitle>
             </CardHeader>
             <CardContent>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                The <code>MCMC_BWQR_AL()</code> function implements a Markov Chain Monte Carlo (MCMC) algorithm for Bayesian Weighted Quantile Regression using the Asymmetric Laplace distribution. This function provides full Bayesian inference with uncertainty quantification and posterior sampling.
+              </p>
               <p className="text-muted-foreground leading-relaxed">
-                The <code>advanced_normality_test()</code> function provides a comprehensive suite of 
-                normality tests to assess whether your data follows a normal distribution. It includes 
-                multiple statistical tests and provides detailed results with interpretation guidelines.
+                The algorithm uses Gibbs sampling to estimate regression coefficients at specified quantile levels, accounting for weighted observations and providing complete posterior distributions for all parameters.
               </p>
             </CardContent>
           </Card>
@@ -130,54 +177,17 @@ summary(result)`
             </CardHeader>
             <CardContent>
               <div className="relative">
-                <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
-                  <code>{`advanced_normality_test(x, alpha = 0.05, methods = "all")`}</code>
+                <pre className="bg-muted p-4 rounded-lg text-sm" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  <code>{`MCMC_BWQR_AL(y, X, tau = 0.5, weights = NULL, iter = 1000, burn = 500, prior = NULL, thin = 1)`}</code>
                 </pre>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="absolute top-2 right-2"
-                  onClick={() => copyToClipboard("advanced_normality_test(x, alpha = 0.05, methods = \"all\")")}
+                  onClick={() => copyToClipboard("MCMC_BWQR_AL(y, X, tau = 0.5, weights = NULL, iter = 1000, burn = 500, prior = NULL, thin = 1)")}
                 >
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Available Methods */}
-        <section className="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Available Test Methods</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="p-3 border rounded-lg">
-                    <h4 className="font-medium text-sm">Shapiro-Wilk Test</h4>
-                    <p className="text-xs text-muted-foreground">Most powerful test for small samples (&lt; 5000)</p>
-                    <code className="text-xs bg-muted px-1 rounded">shapiro</code>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <h4 className="font-medium text-sm">Anderson-Darling Test</h4>
-                    <p className="text-xs text-muted-foreground">Sensitive to deviations in the tails</p>
-                    <code className="text-xs bg-muted px-1 rounded">anderson</code>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="p-3 border rounded-lg">
-                    <h4 className="font-medium text-sm">Kolmogorov-Smirnov Test</h4>
-                    <p className="text-xs text-muted-foreground">Good for larger sample sizes</p>
-                    <code className="text-xs bg-muted px-1 rounded">ks</code>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <h4 className="font-medium text-sm">Jarque-Bera Test</h4>
-                    <p className="text-xs text-muted-foreground">Based on skewness and kurtosis</p>
-                    <code className="text-xs bg-muted px-1 rounded">jarque</code>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -191,27 +201,78 @@ summary(result)`
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">x</code>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">y</code>
+                      <Badge variant="destructive" className="text-xs">Required</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Numeric vector containing the data to test for normality.
+                      Numeric vector of response variable values.
                     </p>
-                    <Badge variant="destructive" className="text-xs">Required</Badge>
                   </div>
-                  <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">alpha</code>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">X</code>
+                      <Badge variant="destructive" className="text-xs">Required</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Significance level for the tests (default: 0.05).
+                      Design matrix of covariates (n x p matrix).
                     </p>
-                    <Badge variant="secondary" className="text-xs">Optional</Badge>
                   </div>
-                  <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">methods</code>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">tau</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Vector of test methods to use, or "all" for all available tests.
+                      Quantile level(s) to estimate. Can be a single value or vector (default: 0.5).
                     </p>
-                    <Badge variant="secondary" className="text-xs">Optional</Badge>
+                  </div>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">weights</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Observation weights for handling informative sampling (default: NULL).
+                    </p>
+                  </div>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">iter</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Number of MCMC iterations (default: 1000).
+                    </p>
+                  </div>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">burn</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Number of burn-in iterations to discard (default: 500).
+                    </p>
+                  </div>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">prior</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      List containing prior hyperparameters (default: NULL for uninformative priors).
+                    </p>
+                  </div>
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm font-medium">thin</code>
+                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Thinning interval for MCMC chain (default: 1).
+                    </p>
                   </div>
                 </div>
               </div>
@@ -227,7 +288,7 @@ summary(result)`
             </CardHeader>
             <CardContent>
               <div className="relative">
-                <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
+                <pre className="bg-muted p-4 rounded-lg text-sm" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   <code>{exampleCode}</code>
                 </pre>
                 <Button
@@ -243,25 +304,29 @@ summary(result)`
           </Card>
         </section>
 
-        {/* Interpretation */}
+        {/* Return Value */}
         <section className="mb-8">
           <Card>
             <CardHeader>
-              <CardTitle>Interpretation Guidelines</CardTitle>
+              <CardTitle>Return Value</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="p-4 border-l-4 border-green-500 bg-green-50 dark:bg-green-950">
-                  <h4 className="font-medium text-green-800 dark:text-green-200">P-value &gt; α (e.g., 0.05)</h4>
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    Fail to reject null hypothesis. Data appears to be normally distributed.
-                  </p>
+              <div className="space-y-3">
+                <div className="p-3 border rounded-lg">
+                  <h4 className="font-medium text-sm">beta_samples</h4>
+                  <p className="text-xs text-muted-foreground">Matrix of posterior samples for regression coefficients.</p>
                 </div>
-                <div className="p-4 border-l-4 border-red-500 bg-red-50 dark:bg-red-950">
-                  <h4 className="font-medium text-red-800 dark:text-red-200">P-value ≤ α (e.g., 0.05)</h4>
-                  <p className="text-sm text-red-700 dark:text-red-300">
-                    Reject null hypothesis. Data does not appear to be normally distributed.
-                  </p>
+                <div className="p-3 border rounded-lg">
+                  <h4 className="font-medium text-sm">tau_samples</h4>
+                  <p className="text-xs text-muted-foreground">Matrix of posterior samples for scale parameters.</p>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <h4 className="font-medium text-sm">sigma_samples</h4>
+                  <p className="text-xs text-muted-foreground">Vector of posterior samples for error variance.</p>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <h4 className="font-medium text-sm">convergence</h4>
+                  <p className="text-xs text-muted-foreground">List containing convergence diagnostics and chain statistics.</p>
                 </div>
               </div>
             </CardContent>
@@ -276,19 +341,19 @@ summary(result)`
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Link href="/functions/robust-describe">
+                <Link href="/functions/compare-models">
                   <Card className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardContent className="p-4">
-                      <h4 className="font-medium mb-1">robust_describe()</h4>
-                      <p className="text-sm text-muted-foreground">Robust descriptive statistics</p>
+                      <h4 className="font-medium mb-1">MCMC_BWQR_AP()</h4>
+                      <p className="text-sm text-muted-foreground">Bayesian quantile regression with adaptive priors</p>
                     </CardContent>
                   </Card>
                 </Link>
-                <Link href="/functions/auto-plot">
+                <Link href="/functions/bayesian-qreg">
                   <Card className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardContent className="p-4">
-                      <h4 className="font-medium mb-1">auto_plot()</h4>
-                      <p className="text-sm text-muted-foreground">Visualize normality</p>
+                      <h4 className="font-medium mb-1">MCMC_BWQR_SL()</h4>
+                      <p className="text-sm text-muted-foreground">Bayesian quantile regression with skewed Laplace</p>
                     </CardContent>
                   </Card>
                 </Link>
