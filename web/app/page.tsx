@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { getImageSrc } from "@/lib/image-utils"
 import {
   BookOpen,
   Code,
@@ -66,7 +67,7 @@ export default function RDocumentation() {
           <div className="mr-4 hidden md:flex">
             <div className="mr-6 flex items-center space-x-2">
               <Image
-                src="/logo_tau.png"
+                src={getImageSrc("/logo_tau.png")}
                 alt="tauBayesW Logo"
                 width={24}
                 height={24}
@@ -182,7 +183,7 @@ export default function RDocumentation() {
               <div className="text-center mb-8">
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <Image
-                    src="/logo_tau.png"
+                    src={getImageSrc("/logo_tau.png")}
                     alt="tauBayesW Logo"
                     width={48}
                     height={48}

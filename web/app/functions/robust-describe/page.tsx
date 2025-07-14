@@ -4,6 +4,7 @@ import { useState } from "react"
 import { ArrowLeft, Code, Copy, Check } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { getImageSrc } from "@/lib/image-utils"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -63,7 +64,7 @@ result$confidence_interval`
           </button>
           <div className="flex items-center space-x-2">
             <Image
-              src="/logo_tau.png"
+              src={getImageSrc("/logo_tau.png")}
               alt="tauBayesW Logo"
               width={24}
               height={24}

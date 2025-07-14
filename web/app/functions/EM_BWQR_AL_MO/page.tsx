@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Code, Zap, FileText, BarChart, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { getImageSrc } from "@/lib/image-utils"
 
 export default function EMBWQRALMOPage() {
   const handleBack = () => {
@@ -27,7 +28,7 @@ export default function EMBWQRALMOPage() {
           </button>
           <div className="flex items-center space-x-2">
             <Image
-              src="/logo_tau.png"
+              src={getImageSrc("/logo_tau.png")}
               alt="tauBayesW Logo"
               width={24}
               height={24}
