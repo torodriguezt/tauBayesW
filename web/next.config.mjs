@@ -5,7 +5,7 @@ const isProd = process.env.NODE_ENV === 'production';
 const nextConfig = {
   output: 'export',
   basePath: isProd ? `/${repo}` : '',
-  assetPrefix: isProd ? `/${repo}` : '',
+  assetPrefix: isProd ? `/${repo}/` : '', // Añadido trailing slash
   trailingSlash: true,
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
