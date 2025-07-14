@@ -885,41 +885,41 @@ example(MCMC_BWQR_AL)`}
                 </Card>
 
                 {/* External Resources */}
-                <Card className="border-2 hover:border-green-200 dark:hover:border-green-800 transition-all duration-300">
+                <Card className="border-2 hover:border-purple-200 dark:hover:border-purple-800 transition-all duration-300">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                        <Github className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                        <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <CardTitle className="text-lg">External Resources</CardTitle>
+                      <CardTitle className="text-lg">Research Paper</CardTitle>
                     </div>
-                    <CardDescription>Links to repositories and documentation</CardDescription>
+                    <CardDescription>Published research and methodology</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
-                    >
-                      <Github className="mr-2 h-4 w-4" />
-                      GitHub Repository
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                    >
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      Package Documentation
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Research Papers
-                    </Button>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 border rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-200 dark:border-purple-800">
+                      <h4 className="font-semibold text-sm mb-2 text-purple-800 dark:text-purple-200">
+                        Journal of Survey Statistics and Methodology
+                      </h4>
+                      <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+                        The complete methodology and theoretical foundation behind the algorithms implemented in this package.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-center hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors border-purple-300 dark:border-purple-700 mb-3"
+                        asChild
+                      >
+                        <a href="https://academic.oup.com/jssam/article-abstract/12/4/1105/7642687" target="_blank" rel="noopener noreferrer">
+                          <FileText className="mr-2 h-4 w-4" />
+                          Read Full Paper
+                        </a>
+                      </Button>
+                      <div className="pt-2 border-t border-purple-200 dark:border-purple-700">
+                        <p className="text-xs text-muted-foreground text-center">
+                          <span className="font-medium">Authors:</span> Marcus L. Nascimento & Kelly Cristina Mota Gonçalves
+                        </p>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -953,6 +953,36 @@ example(MCMC_BWQR_AL)`}
                         <code className="bg-muted px-1 rounded text-xs">packageVersion("tauBayesW")</code> to check your version.
                       </p>
                     </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+
+            {/* GitHub Repository Section */}
+            <section className="mb-16">
+              <div className="text-center">
+                <Card className="max-w-md mx-auto border-2 hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-300">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-center gap-3 mb-2">
+                      <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                        <Github className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <CardTitle className="text-xl">Source Code</CardTitle>
+                    </div>
+                    <CardDescription>View the complete source code and contribute</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      variant="default"
+                      size="lg"
+                      className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
+                      asChild
+                    >
+                      <a href="https://github.com/torodriguezt/tauBayesW" target="_blank" rel="noopener noreferrer">
+                        <Github className="mr-2 h-4 w-4" />
+                        Visit GitHub Repository
+                      </a>
+                    </Button>
                   </CardContent>
                 </Card>
               </div>
