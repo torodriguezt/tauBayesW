@@ -64,3 +64,4 @@ library(tauBayesW)
   Professor, Department of Statistics, Universidad Nacional de Colombia (UNAL)
 
 - **Tomás Rodríguez Taborda**  
+  Student, Department of Statistics and Department of Computer and Decision Sciences, Universidad Nacional de Colombia (UNAL)
