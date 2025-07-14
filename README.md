@@ -14,8 +14,8 @@ It is the result of translating original R scripts — developed for academic re
 ## ⚙️ Features
 
 - Directional quantile estimation for bivariate responses  
-- EM and MCMC algorithms with Bayesian regularization  
-- Custom weights and prior specification  
+- EM and MCMC algorithms 
+- Custom weights 
 - Fast and scalable C++ backend  
 
 ---
