@@ -52,3 +52,15 @@ library(tauBayesW)
 ```
 ---
 
+## 👥 Authors
+
+- **Marcus L. Nascimento**  
+  Postdoctoral Researcher, School of Applied Mathematics, Fundação Getulio Vargas (FGV EMAp)
+
+- **Kelly Christina Mota Gonçalves**  
+  Professor, Department of Statistics, Federal University of Rio de Janeiro (UFRJ)
+
+- **Johntan Cardona Jiménez**  
+  Professor, Department of Statistics, Universidad Nacional de Colombia (UNAL)
+
+- **Tomás Rodríguez Taborda**  
