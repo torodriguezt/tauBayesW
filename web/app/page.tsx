@@ -225,6 +225,7 @@ export default function RDocumentation() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground leading-relaxed">
+                      Corrects bias from informative sampling and captures effects across the distribution.
                     </p>
                   </CardContent>
                 </Card>
@@ -241,7 +242,7 @@ export default function RDocumentation() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-      
+                      Enable efficient estimation and full Bayesian inference in complex and large-sample models.
                     </p>
                   </CardContent>
                 </Card>
@@ -256,6 +257,7 @@ export default function RDocumentation() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground leading-relaxed">
+                      Implementation using C++ to have a much faster execution compared to R.
                     </p>
                   </CardContent>
                 </Card>
