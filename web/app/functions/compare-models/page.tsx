@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { ArrowLeft, Download, Copy, Check } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-export default function CompareModelsPage() {
+export default function NonCrossingBWQRALPage() {
   const [copied, setCopied] = useState(false)
 
   const copyToClipboard = (text: string) => {
@@ -23,42 +24,80 @@ export default function CompareModelsPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const exampleCode = `# Fit multiple models
-x <- rnorm(100)
-y <- 2 + 3*x + rnorm(100)
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      window.history.back()
+    } else {
+      window.location.href = '/'
+    }
+  }
 
-model1 <- bayesian_qreg(x, y, tau = 0.5, method = "em")
-model2 <- bayesian_qreg(x, y, tau = 0.25, method = "em")
-model3 <- bayesian_qreg(x, y, tau = 0.75, method = "mcmc")
+  const exampleCode = `library(tauBayesW)
+library(GIGrvg)  # Required for GIG sampling
+set.seed(123)
+n <- 200
+p <- 3
+X <- matrix(rnorm(n * p), n, p)
+beta_true <- c(1.2, -0.6, 0.9)
+y <- X %*% beta_true + rnorm(n, 0, 0.4)
 
-# Compare using WAIC
-models <- list(
-  "Median" = model1,
-  "Q25" = model2,
-  "Q75" = model3
+w <- 1 / (1 + 0.2 * abs(X[,2]))
+
+# Run Non-Crossing BWQR
+nc_result <- NonCrossingBWQR_AL(
+  y = y,
+  X = X,
+  w = w,
+  n_mcmc = 15000,
+  burnin_mcmc = 3000,
+  thin_mcmc = 5,
+  tau = 0.5
 )
 
-comparison <- compare_models(models, criterion = "WAIC")
-print(comparison)
+# Extract results
+beta_samples <- nc_result$beta
+sigma_samples <- nc_result$sigma
 
-# Compare using DIC
-comparison_dic <- compare_models(models, criterion = "DIC")
+# Posterior summaries
+beta_mean <- apply(beta_samples, 2, mean)
+beta_ci <- apply(beta_samples, 2, quantile, c(0.025, 0.975))
+sigma_mean <- mean(sigma_samples)
 
-# Plot comparison
-plot(comparison)
-summary(comparison)`
+# Print results
+print("Posterior means for beta:")
+print(beta_mean)
+print("95% Credible intervals for beta:")
+print(beta_ci)
+print(paste("Posterior mean for sigma:", round(sigma_mean, 4)))`
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 flex h-14 items-center">
-          <Link href="/" className="flex items-center space-x-2 mr-6">
+          <button 
+            onClick={handleBack}
+            className="flex items-center space-x-2 mr-6 hover:text-blue-600 transition-colors cursor-pointer"
+          >
             <ArrowLeft className="h-4 w-4" />
             <span className="font-medium">Back to Documentation</span>
-          </Link>
+          </button>
           <div className="flex items-center space-x-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-blue-600 text-white text-xs font-bold">
+            <Image
+              src="/logo_tau.png"
+              alt="tauBayesW Logo"
+              width={24}
+              height={24}
+              className="rounded"
+              onError={(e) => {
+                // Fallback al logo por defecto si no se puede cargar
+                const target = e.target as HTMLElement
+                target.style.display = 'none'
+                const fallback = target.nextElementSibling as HTMLElement
+                if (fallback) fallback.style.display = 'flex'
+              }}
+            />
+            <div className="h-6 w-6 items-center justify-center rounded bg-blue-600 text-white text-xs font-bold hidden">
               R
             </div>
             <span className="font-bold">tauBayesW</span>
@@ -69,25 +108,27 @@ summary(comparison)`
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
         <div className="max-w-4xl mx-auto">{/* Contenido centrado pero responsive */}
         {/* Function Header */}
-        <div className="mb-8">
+        <section className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-12 w-12 rounded-lg bg-red-100 dark:bg-red-900 flex items-center justify-center">
               <Download className="h-6 w-6 text-red-600 dark:text-red-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">compare_models()</h1>
+              <h1 className="text-3xl font-bold tracking-tight">NonCrossingBWQR_AL()</h1>
               <p className="text-xl text-muted-foreground">
-                Advanced model comparison using WAIC and DIC criteria
+                Non-Crossing Bayesian Weighted Quantile Regression with Asymmetric Laplace
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Badge variant="secondary">Model Selection</Badge>
-            <Badge variant="outline">WAIC</Badge>
-            <Badge variant="outline">DIC</Badge>
-            <Badge variant="outline">Bayesian</Badge>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">Bayesian</Badge>
+            <Badge variant="secondary">Gibbs Sampling</Badge>
+            <Badge variant="secondary">Non-Crossing</Badge>
+            <Badge variant="secondary">Asymmetric Laplace</Badge>
+            <Badge variant="secondary">GIG Sampling</Badge>
+            <Badge variant="secondary">C++</Badge>
           </div>
-        </div>
+        </section>
 
         {/* Description */}
         <section className="mb-8">
@@ -97,13 +138,68 @@ summary(comparison)`
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground leading-relaxed">
-                The <code>compare_models()</code> function provides comprehensive model comparison 
-                for Bayesian quantile regression models using information criteria. It implements 
-                both WAIC (Widely Applicable Information Criterion) and DIC (Deviance Information Criterion) 
-                to help you select the best model for your data.
+                The <code className="bg-muted px-2 py-1 rounded text-sm">NonCrossingBWQR_AL()</code> function implements 
+                a sophisticated Gibbs sampler for Bayesian Weighted Quantile Regression using the Asymmetric Laplace 
+                distribution. This algorithm ensures non-crossing quantile estimates through proper Bayesian 
+                modeling and features optimized sampling from Generalized Inverse-Gaussian distributions 
+                using the GIGrvg package.
               </p>
             </CardContent>
           </Card>
+        </section>
+
+        {/* Key Features */}
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-6">Key Features</h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Download className="h-5 w-5 text-red-500" />
+                  Non-Crossing Quantiles
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Ensures monotonic quantile estimates through proper Bayesian hierarchical modeling structure.</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-green-500" />
+                  Complete Gibbs Sampler
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Full conditional sampling for β, σ, and v parameters with optimal convergence properties.</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Copy className="h-5 w-5 text-blue-500" />
+                  GIG Sampling
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Optimized Generalized Inverse-Gaussian sampling using GIGrvg for efficient v parameter updates.</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowLeft className="h-5 w-5 text-purple-500" />
+                  Numerical Stability
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Robust matrix operations with fallback methods for near-singular covariance matrices.</p>
+              </CardContent>
+            </Card>
+          </div>
         </section>
 
         {/* Syntax */}
@@ -115,59 +211,17 @@ summary(comparison)`
             <CardContent>
               <div className="relative">
                 <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
-                  <code>{`compare_models(models, criterion = "WAIC", ...)`}</code>
+                  <code>{`NonCrossingBWQR_AL(y, X, w, n_mcmc, burnin_mcmc, 
+                      thin_mcmc, tau = 0.5)`}</code>
                 </pre>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="absolute top-2 right-2"
-                  onClick={() => copyToClipboard("compare_models(models, criterion = \"WAIC\", ...)")}
+                  onClick={() => copyToClipboard("NonCrossingBWQR_AL(y, X, w, n_mcmc, burnin_mcmc, thin_mcmc, tau = 0.5)")}
                 >
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Criteria Comparison */}
-        <section className="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Information Criteria Comparison</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
-                    <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">WAIC</h4>
-                    <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                      Widely Applicable Information Criterion
-                    </p>
-                    <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                      <li>• More general and robust</li>
-                      <li>• Works with complex posteriors</li>
-                      <li>• Better for hierarchical models</li>
-                      <li>• Asymptotically equivalent to LOO-CV</li>
-                      <li>• Recommended for most cases</li>
-                    </ul>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950">
-                    <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">DIC</h4>
-                    <p className="text-sm text-green-700 dark:text-green-300 mb-3">
-                      Deviance Information Criterion
-                    </p>
-                    <ul className="text-sm text-green-700 dark:text-green-300 space-y-1">
-                      <li>• Classical Bayesian criterion</li>
-                      <li>• Based on deviance and complexity</li>
-                      <li>• Computationally simpler</li>
-                      <li>• Good for simple models</li>
-                      <li>• May be unstable for some models</li>
-                    </ul>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -181,32 +235,53 @@ summary(comparison)`
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">models</code>
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">y</code>
                     <p className="text-sm text-muted-foreground">
-                      List of fitted bayesian_qreg models to compare. Each model should have a name.
+                      Numeric vector of response variables (n × 1).
                     </p>
                     <Badge variant="destructive" className="text-xs">Required</Badge>
                   </div>
                   <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">criterion</code>
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">X</code>
                     <p className="text-sm text-muted-foreground">
-                      Information criterion to use: "WAIC" (default) or "DIC".
+                      Design matrix of covariates (n × p).
                     </p>
-                    <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    <Badge variant="destructive" className="text-xs">Required</Badge>
                   </div>
                   <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">sort</code>
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">w</code>
                     <p className="text-sm text-muted-foreground">
-                      Logical value indicating whether to sort results by criterion value.
+                      Vector of observation weights (n × 1).
                     </p>
-                    <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    <Badge variant="destructive" className="text-xs">Required</Badge>
                   </div>
                   <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">delta</code>
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">n_mcmc</code>
                     <p className="text-sm text-muted-foreground">
-                      Logical value indicating whether to calculate differences from best model.
+                      Total number of MCMC iterations.
+                    </p>
+                    <Badge variant="destructive" className="text-xs">Required</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">burnin_mcmc</code>
+                    <p className="text-sm text-muted-foreground">
+                      Number of burn-in iterations to discard.
+                    </p>
+                    <Badge variant="destructive" className="text-xs">Required</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">thin_mcmc</code>
+                    <p className="text-sm text-muted-foreground">
+                      Thinning interval for output.
+                    </p>
+                    <Badge variant="destructive" className="text-xs">Required</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">tau</code>
+                    <p className="text-sm text-muted-foreground">
+                      Quantile level (default: 0.5).
                     </p>
                     <Badge variant="secondary" className="text-xs">Optional</Badge>
                   </div>
@@ -215,12 +290,14 @@ summary(comparison)`
             </CardContent>
           </Card>
         </section>
-
         {/* Examples */}
         <section className="mb-8">
           <Card>
             <CardHeader>
-              <CardTitle>Examples</CardTitle>
+              <CardTitle>Example</CardTitle>
+              <CardDescription>
+                Non-crossing quantile regression with GIG sampling
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="relative">
@@ -247,138 +324,44 @@ summary(comparison)`
               <CardTitle>Return Value</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Returns an object of class "model_comparison" containing:
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">criterion</Badge>
-                    <span className="text-sm">Information criterion values for each model</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">se</Badge>
-                    <span className="text-sm">Standard errors of criterion values</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">delta</Badge>
-                    <span className="text-sm">Differences from the best model</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">weights</Badge>
-                    <span className="text-sm">Model weights (relative probabilities)</span>
-                  </li>
-                </ul>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">best</Badge>
-                    <span className="text-sm">Name of the best model</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">n_models</Badge>
-                    <span className="text-sm">Number of models compared</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">criterion_used</Badge>
-                    <span className="text-sm">Which criterion was used</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">call</Badge>
-                    <span className="text-sm">Original function call</span>
-                  </li>
-                </ul>
+              <p className="mb-4">The function returns a list containing:</p>
+              <div className="grid gap-3">
+                <div className="flex items-start gap-3">
+                  <code className="bg-muted px-2 py-1 rounded text-sm mt-1">beta</code>
+                  <span>Matrix of posterior samples for regression coefficients (rows = samples, cols = coefficients)</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <code className="bg-muted px-2 py-1 rounded text-sm mt-1">sigma</code>
+                  <span>Vector of posterior samples for the scale parameter σ</span>
+                </div>
               </div>
             </CardContent>
           </Card>
         </section>
 
-        {/* Interpretation */}
+        {/* Dependencies */}
         <section className="mb-8">
           <Card>
             <CardHeader>
-              <CardTitle>Interpretation Guidelines</CardTitle>
+              <CardTitle>Dependencies</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="p-4 border-l-4 border-green-500 bg-green-50 dark:bg-green-950">
-                  <h4 className="font-medium text-green-800 dark:text-green-200">Lower values are better</h4>
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    Both WAIC and DIC favor models with lower values. The model with the lowest 
-                    criterion value is considered the best.
+                <div className="p-4 border-l-4 border-orange-500 bg-orange-50 dark:bg-orange-950">
+                  <h4 className="font-medium text-orange-800 dark:text-orange-200">Required Package</h4>
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
+                    This function requires the <code className="bg-muted px-1 rounded">GIGrvg</code> package 
+                    for efficient Generalized Inverse-Gaussian sampling. Install with: 
+                    <code className="bg-muted px-1 rounded ml-1">install.packages("GIGrvg")</code>
                   </p>
                 </div>
                 <div className="p-4 border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-950">
-                  <h4 className="font-medium text-blue-800 dark:text-blue-200">Model weights</h4>
+                  <h4 className="font-medium text-blue-800 dark:text-blue-200">C++ Implementation</h4>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
-                    Weights represent the relative probability that each model is the best. 
-                    Higher weights indicate stronger support for the model.
+                    Uses optimized RcppArmadillo for fast matrix operations with robust fallback methods 
+                    for numerical stability.
                   </p>
                 </div>
-                <div className="p-4 border-l-4 border-orange-500 bg-orange-50 dark:bg-orange-950">
-                  <h4 className="font-medium text-orange-800 dark:text-orange-200">Delta values</h4>
-                  <p className="text-sm text-orange-700 dark:text-orange-300">
-                    Differences ≤ 2 suggest substantial support; 4-7 indicate less support; 
-                    &gt; 10 suggest essentially no support for the model.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Available Methods */}
-        <section className="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Available Methods</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium">S3 Methods</h4>
-                  <ul className="text-sm space-y-1">
-                    <li><code className="bg-muted px-1 rounded text-xs">print()</code> - Display results</li>
-                    <li><code className="bg-muted px-1 rounded text-xs">summary()</code> - Detailed summary</li>
-                    <li><code className="bg-muted px-1 rounded text-xs">plot()</code> - Visualization</li>
-                  </ul>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-medium">Utility Functions</h4>
-                  <ul className="text-sm space-y-1">
-                    <li><code className="bg-muted px-1 rounded text-xs">best_model()</code> - Extract best model</li>
-                    <li><code className="bg-muted px-1 rounded text-xs">model_weights()</code> - Get weights</li>
-                    <li><code className="bg-muted px-1 rounded text-xs">delta_criterion()</code> - Get deltas</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* See Also */}
-        <section>
-          <Card>
-            <CardHeader>
-              <CardTitle>See Also</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Link href="/functions/bayesian-qreg">
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-1">bayesian_qreg()</h4>
-                      <p className="text-sm text-muted-foreground">Fit models to compare</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-                <Link href="/functions/auto-plot">
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-1">auto_plot()</h4>
-                      <p className="text-sm text-muted-foreground">Visualize model results</p>
-                    </CardContent>
-                  </Card>
-                </Link>
               </div>
             </CardContent>
           </Card>

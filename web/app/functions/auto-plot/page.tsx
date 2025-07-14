@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { ArrowLeft, BookOpen, Copy, Check } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-export default function AutoPlotPage() {
+export default function MCMCBWQRAPPage() {
   const [copied, setCopied] = useState(false)
 
   const copyToClipboard = (text: string) => {
@@ -23,35 +24,79 @@ export default function AutoPlotPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const exampleCode = `# Basic usage
-data <- rnorm(100)
-auto_plot(data)
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      window.history.back()
+    } else {
+      window.location.href = '/'
+    }
+  }
 
-# Specify plot type
-auto_plot(data, type = "histogram")
-auto_plot(data, type = "boxplot")
-auto_plot(data, type = "qq")
+  const exampleCode = `library(tauBayesW)
 
-# Customize theme and save
-auto_plot(
-  x = data,
-  type = "distribution",
-  theme = "classic",
-  save = TRUE,
-  filename = "my_plot.png"
-)`
+set.seed(123)
+n <- 150
+p <- 4
+X <- matrix(rnorm(n * p), n, p)
+beta_true <- c(2.0, -1.2, 0.8, -0.5)
+y <- X %*% beta_true + (1 + 0.5 * X[,1]^2) * rnorm(n, 0, 0.3)
+
+w <- 1 / (1 + 0.5 * X[,1]^2)
+
+# Run MCMC for 75th percentile regression
+mcmc_result <- MCMC_BWQR_AP(
+  y = y,
+  X = X,
+  w = w,
+  n_mcmc = 20000,
+  burnin = 5000,
+  thin = 5,
+  tau = 0.75,
+  w_scale = 2.0
+)
+
+beta_samples <- mcmc_result$beta
+accept_rate <- mcmc_result$accept_rate
+
+# Posterior summaries
+beta_mean <- apply(beta_samples, 2, mean)
+beta_ci <- apply(beta_samples, 2, quantile, c(0.025, 0.975))
+
+# Print results
+print(paste("Acceptance rate:", round(accept_rate, 3)))
+print("Posterior means:")
+print(beta_mean)
+print("95% Credible intervals:")
+print(beta_ci)`
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 flex h-14 items-center">
-          <Link href="/" className="flex items-center space-x-2 mr-6">
+          <button 
+            onClick={handleBack}
+            className="flex items-center space-x-2 mr-6 hover:text-blue-600 transition-colors cursor-pointer"
+          >
             <ArrowLeft className="h-4 w-4" />
             <span className="font-medium">Back to Documentation</span>
-          </Link>
+          </button>
           <div className="flex items-center space-x-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-blue-600 text-white text-xs font-bold">
+            <Image
+              src="/logo_tau.png"
+              alt="tauBayesW Logo"
+              width={24}
+              height={24}
+              className="rounded"
+              onError={(e) => {
+                // Fallback al logo por defecto si no se puede cargar
+                const target = e.target as HTMLElement
+                target.style.display = 'none'
+                const fallback = target.nextElementSibling as HTMLElement
+                if (fallback) fallback.style.display = 'flex'
+              }}
+            />
+            <div className="h-6 w-6 items-center justify-center rounded bg-blue-600 text-white text-xs font-bold hidden">
               R
             </div>
             <span className="font-bold">tauBayesW</span>
@@ -60,26 +105,29 @@ auto_plot(
       </header>
 
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
-        <div className="max-w-4xl mx-auto">{/* Contenido centrado pero responsive */}
+        <div className="max-w-4xl mx-auto">
         {/* Function Header */}
-        <div className="mb-8">
+        <section className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-12 w-12 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
               <BookOpen className="h-6 w-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">auto_plot()</h1>
+              <h1 className="text-3xl font-bold tracking-tight">MCMC_BWQR_AP()</h1>
               <p className="text-xl text-muted-foreground">
-                Smart automatic data visualization
+                Adaptive-Proposal Metropolis-Hastings for Bayesian Weighted Quantile Regression
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Badge variant="secondary">Visualization</Badge>
-            <Badge variant="outline">ggplot2</Badge>
-            <Badge variant="outline">Automatic</Badge>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">Bayesian</Badge>
+            <Badge variant="secondary">MCMC</Badge>
+            <Badge variant="secondary">Metropolis-Hastings</Badge>
+            <Badge variant="secondary">Adaptive Proposal</Badge>
+            <Badge variant="secondary">Quantile Regression</Badge>
+            <Badge variant="secondary">C++</Badge>
           </div>
-        </div>
+        </section>
 
         {/* Description */}
         <section className="mb-8">
@@ -89,12 +137,67 @@ auto_plot(
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground leading-relaxed">
-                The <code>auto_plot()</code> function provides intelligent, automatic data visualization 
-                with minimal user input. It analyzes your data and creates appropriate plots with 
-                professional styling using ggplot2. Perfect for exploratory data analysis and quick insights.
+                The <code className="bg-muted px-2 py-1 rounded text-sm">MCMC_BWQR_AP()</code> function implements 
+                an advanced Adaptive-Proposal Metropolis-Hastings sampler for Bayesian Weighted Quantile Regression. 
+                This sophisticated algorithm features automatic proposal covariance adaptation using Robbins-Monro 
+                stochastic approximation, targeting optimal acceptance rates (≈23.4%) for efficient posterior exploration.
               </p>
             </CardContent>
           </Card>
+        </section>
+
+        {/* Key Features */}
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-6">Key Features</h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-purple-500" />
+                  Adaptive Proposal
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Automatic tuning of proposal covariance using Robbins-Monro algorithm for optimal efficiency.</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-green-500" />
+                  Metropolis-Hastings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Robust MCMC sampling with acceptance-rejection mechanism for complex posterior distributions.</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Copy className="h-5 w-5 text-blue-500" />
+                  Check-Loss Function
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Uses weighted asymmetric check-loss function based on Wang & He (2007) formulation.</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowLeft className="h-5 w-5 text-orange-500" />
+                  High Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Optimized C++ implementation with RcppArmadillo for efficient matrix operations.</p>
+              </CardContent>
+            </Card>
+          </div>
         </section>
 
         {/* Syntax */}
@@ -106,87 +209,17 @@ auto_plot(
             <CardContent>
               <div className="relative">
                 <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
-                  <code>{`auto_plot(x, type = "auto", theme = "minimal", save = FALSE, ...)`}</code>
+                  <code>{`MCMC_BWQR_AP(y, X, w, n_mcmc, burnin, thin, 
+             tau = 0.5, w_scale = 2.0, b0 = NULL, B0 = NULL)`}</code>
                 </pre>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="absolute top-2 right-2"
-                  onClick={() => copyToClipboard("auto_plot(x, type = \"auto\", theme = \"minimal\", save = FALSE, ...)")}
+                  onClick={() => copyToClipboard("MCMC_BWQR_AP(y, X, w, n_mcmc, burnin, thin, tau = 0.5, w_scale = 2.0, b0 = NULL, B0 = NULL)")}
                 >
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Plot Types */}
-        <section className="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Available Plot Types</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-xs">auto</Badge>
-                      <h4 className="font-medium text-sm">Automatic Selection</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Intelligently chooses the best plot type based on data characteristics
-                    </p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-xs">histogram</Badge>
-                      <h4 className="font-medium text-sm">Histogram</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Distribution visualization with optimal bin width
-                    </p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-xs">boxplot</Badge>
-                      <h4 className="font-medium text-sm">Box Plot</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Summary statistics and outlier detection
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-xs">qq</Badge>
-                      <h4 className="font-medium text-sm">Q-Q Plot</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Normality assessment against theoretical quantiles
-                    </p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-xs">density</Badge>
-                      <h4 className="font-medium text-sm">Density Plot</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Smooth density estimation curve
-                    </p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-xs">scatter</Badge>
-                      <h4 className="font-medium text-sm">Scatter Plot</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      For bivariate data relationships
-                    </p>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -200,32 +233,67 @@ auto_plot(
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">x</code>
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">y</code>
                     <p className="text-sm text-muted-foreground">
-                      Numeric vector, data frame, or matrix to be plotted.
+                      Numeric vector of response variables (n × 1).
                     </p>
                     <Badge variant="destructive" className="text-xs">Required</Badge>
                   </div>
                   <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">type</code>
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">X</code>
                     <p className="text-sm text-muted-foreground">
-                      Plot type: "auto", "histogram", "boxplot", "qq", "density", "scatter".
+                      Design matrix of covariates (n × p).
+                    </p>
+                    <Badge variant="destructive" className="text-xs">Required</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">w</code>
+                    <p className="text-sm text-muted-foreground">
+                      Vector of observation weights (n × 1).
+                    </p>
+                    <Badge variant="destructive" className="text-xs">Required</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">n_mcmc</code>
+                    <p className="text-sm text-muted-foreground">
+                      Total number of MCMC iterations.
+                    </p>
+                    <Badge variant="destructive" className="text-xs">Required</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">burnin</code>
+                    <p className="text-sm text-muted-foreground">
+                      Number of burn-in iterations to discard.
+                    </p>
+                    <Badge variant="destructive" className="text-xs">Required</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">thin</code>
+                    <p className="text-sm text-muted-foreground">
+                      Thinning interval for output.
+                    </p>
+                    <Badge variant="destructive" className="text-xs">Required</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">tau</code>
+                    <p className="text-sm text-muted-foreground">
+                      Quantile level (default: 0.5).
                     </p>
                     <Badge variant="secondary" className="text-xs">Optional</Badge>
                   </div>
                   <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">theme</code>
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">w_scale</code>
                     <p className="text-sm text-muted-foreground">
-                      ggplot2 theme: "minimal", "classic", "void", "dark".
+                      Weight scaling factor (default: 2.0).
                     </p>
                     <Badge variant="secondary" className="text-xs">Optional</Badge>
                   </div>
                   <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">save</code>
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">b0, B0</code>
                     <p className="text-sm text-muted-foreground">
-                      Logical value indicating whether to save the plot.
+                      Prior mean and covariance matrix.
                     </p>
                     <Badge variant="secondary" className="text-xs">Optional</Badge>
                   </div>
@@ -239,7 +307,10 @@ auto_plot(
         <section className="mb-8">
           <Card>
             <CardHeader>
-              <CardTitle>Examples</CardTitle>
+              <CardTitle>Example</CardTitle>
+              <CardDescription>
+                Advanced example with heteroscedastic data and adaptive MCMC
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="relative">
@@ -259,71 +330,39 @@ auto_plot(
           </Card>
         </section>
 
-        {/* Features */}
+        {/* Return Value */}
         <section className="mb-8">
           <Card>
             <CardHeader>
-              <CardTitle>Key Features</CardTitle>
+              <CardTitle>Return Value</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">Smart</Badge>
-                    <span className="text-sm">Automatic plot type selection</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">Fast</Badge>
-                    <span className="text-sm">Optimized rendering for large datasets</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">Flexible</Badge>
-                    <span className="text-sm">Multiple customization options</span>
-                  </li>
-                </ul>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">Professional</Badge>
-                    <span className="text-sm">Publication-ready styling</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">Interactive</Badge>
-                    <span className="text-sm">Works with plotly for interactivity</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs mt-0.5">Export</Badge>
-                    <span className="text-sm">Multiple output formats supported</span>
-                  </li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* See Also */}
-        <section>
-          <Card>
-            <CardHeader>
-              <CardTitle>See Also</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Link href="/functions/robust-describe">
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-1">robust_describe()</h4>
-                      <p className="text-sm text-muted-foreground">Get statistics before plotting</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-                <Link href="/functions/advanced-normality-test">
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-1">advanced_normality_test()</h4>
-                      <p className="text-sm text-muted-foreground">Test normality before Q-Q plots</p>
-                    </CardContent>
-                  </Card>
-                </Link>
+              <p className="mb-4">The function returns a list containing:</p>
+              <div className="grid gap-3">
+                <div className="flex items-start gap-3">
+                  <code className="bg-muted px-2 py-1 rounded text-sm mt-1">beta</code>
+                  <span>Matrix of posterior samples for regression coefficients</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <code className="bg-muted px-2 py-1 rounded text-sm mt-1">accept_rate</code>
+                  <span>Overall acceptance rate for the MCMC sampler</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <code className="bg-muted px-2 py-1 rounded text-sm mt-1">n_mcmc</code>
+                  <span>Total number of MCMC iterations performed</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <code className="bg-muted px-2 py-1 rounded text-sm mt-1">burnin</code>
+                  <span>Number of burn-in iterations used</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <code className="bg-muted px-2 py-1 rounded text-sm mt-1">thin</code>
+                  <span>Thinning interval applied</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <code className="bg-muted px-2 py-1 rounded text-sm mt-1">n_samples</code>
+                  <span>Number of posterior samples returned</span>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -207,7 +207,6 @@ export default function RDocumentation() {
                   Bayesian weighted quantile regression.
                 </p>
                 <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-                  Robust statistical modeling with advanced computational methods for research and industry applications.
                 </p>
               </div>
 
@@ -225,8 +224,6 @@ export default function RDocumentation() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Implements robust statistical methods for datasets with
-                      outliers and heteroscedastic errors.
                     </p>
                   </CardContent>
                 </Card>
@@ -243,8 +240,7 @@ export default function RDocumentation() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Advanced algorithms with convergence diagnostics and
-                      visualization tools for model validation.
+      
                     </p>
                   </CardContent>
                 </Card>
@@ -259,8 +255,6 @@ export default function RDocumentation() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Optimized C++ backend for fast execution on large datasets
-                      with memory-efficient algorithms.
                     </p>
                   </CardContent>
                 </Card>
@@ -382,7 +376,7 @@ library(tauBayesW)`}
                 {/* Fila superior: 2 cajas */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
                   {/* Card 1 - Clickeable */}
-                  <Link href="/functions/robust-describe">
+                  <Link href="/functions/EM_BWQR_AL_MO">
                     <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-blue-300 border-2">
                       <CardHeader className="pb-6 pt-8">
                         <div className="flex items-center gap-3 mb-3">
@@ -394,7 +388,7 @@ library(tauBayesW)`}
                           </CardTitle>
                         </div>
                         <CardDescription className="text-base leading-relaxed">
-                          Robust descriptive statistics for data with outliers. Provides trimmed means, confidence intervals, and outlier detection.
+                          EM Algorithm for Bayesian Weighted Quantile Regression with Asymmetric Laplace distribution.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0">
@@ -407,7 +401,7 @@ library(tauBayesW)`}
                   </Link>
 
                   {/* Card 2 - Clickeable */}
-                  <Link href="/functions/advanced-normality-test">
+                  <Link href="/functions/MCMC_BWQR_AL">
                     <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-green-300 border-2">
                       <CardHeader className="pb-6 pt-8">
                         <div className="flex items-center gap-3 mb-3">
@@ -419,7 +413,7 @@ library(tauBayesW)`}
                           </CardTitle>
                         </div>
                         <CardDescription className="text-base leading-relaxed">
-                          Comprehensive battery of normality tests including Shapiro-Wilk, Anderson-Darling, and Kolmogorov-Smirnov tests.
+                          MCMC for Bayesian Weighted Quantile Regression with full uncertainty quantification and posterior sampling.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0">

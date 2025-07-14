@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { ArrowLeft, Code, Copy, Check } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,6 +23,14 @@ export default function RobustDescribePage() {
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      window.history.back()
+    } else {
+      window.location.href = '/'
+    }
   }
 
   const exampleCode = `# Basic usage
@@ -45,12 +54,29 @@ result$confidence_interval`
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 flex h-14 items-center">
-          <Link href="/" className="flex items-center space-x-2 mr-6">
+          <button 
+            onClick={handleBack}
+            className="flex items-center space-x-2 mr-6 hover:text-blue-600 transition-colors cursor-pointer"
+          >
             <ArrowLeft className="h-4 w-4" />
             <span className="font-medium">Back to Documentation</span>
-          </Link>
+          </button>
           <div className="flex items-center space-x-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-blue-600 text-white text-xs font-bold">
+            <Image
+              src="/logo_tau.png"
+              alt="tauBayesW Logo"
+              width={24}
+              height={24}
+              className="rounded"
+              onError={(e) => {
+                // Fallback al logo por defecto si no se puede cargar
+                const target = e.target as HTMLElement
+                target.style.display = 'none'
+                const fallback = target.nextElementSibling as HTMLElement
+                if (fallback) fallback.style.display = 'flex'
+              }}
+            />
+            <div className="h-6 w-6 items-center justify-center rounded bg-blue-600 text-white text-xs font-bold hidden">
               R
             </div>
             <span className="font-bold">tauBayesW</span>
