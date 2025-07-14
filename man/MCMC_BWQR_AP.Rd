@@ -8,10 +8,10 @@ MCMC_BWQR_AP(
   y,
   X,
   w,
+  n_mcmc,
+  burnin,
+  thin,
   tau = 0.5,
-  n_mcmc = 20000L,
-  burnin = 5000L,
-  thin = 100L,
   w_scale = 2,
   b0_ = NULL,
   B0_ = NULL
@@ -24,13 +24,13 @@ MCMC_BWQR_AP(
 
 \item{w}{Vector of observation weights (numeric).}
 
-\item{tau}{Quantile level (default is 0.5 for median regression).}
-
 \item{n_mcmc}{Total number of MCMC iterations.}
 
 \item{burnin}{Number of burn-in iterations.}
 
 \item{thin}{Thinning interval.}
+
+\item{tau}{Quantile level (default is 0.5 for median regression).}
 
 \item{w_scale}{Scaling factor for the weights (default: 2.0).}
 

@@ -1,5 +1,3 @@
-## usethis namespace: start
-#' @useDynLib TauBayesW, .registration = TRUE
+#' @useDynLib tauBayesW, .registration = TRUE
 #' @importFrom Rcpp sourceCpp
-## usethis namespace: end
 NULL

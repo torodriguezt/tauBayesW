@@ -44,7 +44,7 @@ result$confidence_interval`
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 flex h-14 items-center">
           <Link href="/" className="flex items-center space-x-2 mr-6">
             <ArrowLeft className="h-4 w-4" />
             <span className="font-medium">Back to Documentation</span>
@@ -58,7 +58,8 @@ result$confidence_interval`
         </div>
       </header>
 
-      <div className="container py-8 max-w-4xl">
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
+        <div className="max-w-4xl mx-auto">{/* Contenido centrado pero responsive */}
         {/* Function Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
@@ -251,6 +252,7 @@ result$confidence_interval`
             </CardContent>
           </Card>
         </section>
+        </div>
       </div>
     </div>
   )

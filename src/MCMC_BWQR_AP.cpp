@@ -3,8 +3,10 @@
 
 /* ------------------------------------------------------------------
  *  MCMC_BWQR_AP.cpp  ―  Adaptive‐proposal Metropolis–Hastings sampler
- *  para regresión cuantílica bayesiana ponderada (p = 3).
- *  Exporta  MCMC_BWQR_AP()  para su uso directo desde R via Rcpp.
+ *  para regresión cuantílica bayesiana ponderada con **p covariables
+ *  arbitrarias**.  En esta versión los parámetros **n_mcmc**, **burnin**
+ *  y **thin** son OBLIGATORIOS (sin valores por defecto) para replicar
+ *  exactamente la llamada de la función R.
  * ------------------------------------------------------------------ */
 
 #include <RcppArmadillo.h>
@@ -17,13 +19,13 @@ constexpr double PI = 3.14159265358979323846;
 /* 1. Utilidades                                                      */
 /* ================================================================== */
 
-// muestreo normal multivariante N(m, Σ)  —  requiere L = chol(Σ, "lower")
+// Muestreo normal multivariante N(m, Σ) — requiere L = chol(Σ, "lower")
 inline arma::vec rmvnorm(const arma::vec& m, const arma::mat& L)
 {
   return m + L * randn<vec>(m.n_elem);
 }
 
-// log-posterior no normalizado (hasta constante aditiva)
+// Log-posterior no normalizado (idéntico a la referencia R)
 static double log_post(const arma::vec& beta,
                        const arma::vec& b0,
                        const arma::mat& B_inv,
@@ -37,119 +39,123 @@ static double log_post(const arma::vec& beta,
                        arma::mat& wcA,
                        arma::mat& wc)
 {
-  // Prior gaussiano ~ N(b0, B0)   ⇒   −½ (β−b0)^T B⁻¹ (β−b0)
   arma::vec diff = beta - b0;
-  double lp = -0.5 * dot(diff, B_inv * diff);
-
-  // Verosimilitud tipo check-loss ponderada (Wang & He 2007)
+  double lp = -0.5 * dot(diff, B_inv * diff);      // prior
+  
+  // Verosimilitud "check-loss" ponderada (Wang & He, 2007)
   double wuf = mean(w) * w_scale;
   arma::vec res = y - X * beta;
-  arma::vec ind = tau - conv_to<vec>::from(res < 0);   // τ − 𝟙(res<0)
-
-  arma::vec tmp = wuf * w % ind;                       // wuf·w·ind
-  arma::vec s_tau = X.t() * tmp;                       // Σ wuf w_i ind_i x_i
-
-  // Construir S = diag(w_i ind_i) X (vectorizado)
-  S.each_col() = w % ind;   // n×p
-  S %= X;                   // elemento a elemento
-
+  arma::vec ind = tau - conv_to<vec>::from(res < 0);
+  
+  arma::vec tmp = wuf * w % ind;                   // wuf·w·ind
+  arma::vec s_tau = X.t() * tmp;                   // Σ wuf w_i ind_i x_i
+  
+  // S = diag(w_i ind_i) X (vectorizado)
+  S.each_col() = w % ind;
+  S %= X;
+  
   arma::vec invw = 1.0 / (wuf * w);
   arma::vec fac  = (1.0 - invw) / square(invw);
-  wcA = (S.each_col() % fac).t() * S;                  // Σ fac_i x_i x_iᵀ
-
+  wcA = (S.each_col() % fac).t() * S;              // Σ fac_i x_i x_iᵀ
+  
   bool ok = inv_sympd(wc, wcA);
-  if(!ok) wc = pinv(wcA, 1e-12);
-
+  if (!ok) wc = pinv(wcA, 1e-12);
+  
   double quad = dot(s_tau, wc * s_tau);
   double ld   = log_det(wcA).real();
-  lp += -0.5 * quad - 0.5 * (std::log(2.0*PI) + ld);
+  lp += -0.5 * quad - 0.5 * (std::log(2.0 * PI) + ld);
   return lp;
 }
 
 /* ================================================================== */
-/* 2. Adaptive Proposal Metropolis–Hastings (AP)                      */
+/* 2. Adaptive–proposal Metropolis–Hastings (parámetros obligatorios) */
 /* ================================================================== */
 
 // [[Rcpp::export]]
-Rcpp::List MCMC_BWQR_AP(const arma::vec& y,
-                        const arma::mat& X,
-                        const arma::vec& w,
-                        double tau = 0.5,
-                        int n_mcmc = 20000,
-                        int burnin = 5000,
-                        int thin   = 100,
-                        double w_scale = 2.0,
+Rcpp::List MCMC_BWQR_AP(const arma::vec& y,           // respuesta (n)
+                        const arma::mat& X,           // diseño (n×p)
+                        const arma::vec& w,           // pesos (n)
+                        int n_mcmc,                   // iteraciones totales
+                        int burnin,                   // descarte inicial
+                        int thin,                     // thinning
+                        double tau = 0.5,             // cuantil objetivo
+                        double w_scale = 2.0,         // escala-weights
                         Rcpp::Nullable<Rcpp::NumericVector> b0_ = R_NilValue,
                         Rcpp::Nullable<Rcpp::NumericMatrix> B0_ = R_NilValue)
 {
   if (y.n_elem != X.n_rows || w.n_elem != y.n_elem)
     stop("Las dimensiones de y, X y w deben coincidir.");
-  if (X.n_cols != 3)
-    stop("Esta versión admite exactamente 3 covariables (p = 3).");
-  if (burnin >= n_mcmc) stop("burnin debe ser < n_mcmc");
-  if (thin <= 0)        stop("thin debe ser positivo");
-
-  // --- Procesar b0 y B0 (opcional) --------------------------------
-  arma::vec b0;
-  if (b0_.isNotNull()) {
-    b0 = Rcpp::as<arma::vec>(b0_);
-    if (b0.n_elem != 3) stop("b0 debe tener longitud 3");
-  } else {
-    b0 = arma::zeros<vec>(3);
-  }
-
-  arma::mat B0;
-  if (B0_.isNotNull()) {
-    B0 = Rcpp::as<arma::mat>(B0_);
-    if (B0.n_rows != 3 || B0.n_cols != 3) stop("B0 debe ser 3×3");
-  } else {
-    B0 = 100.0 * arma::eye<mat>(3,3);
-  }
+  if (n_mcmc <= 0)  stop("n_mcmc debe ser positivo");
+  if (burnin < 0)   stop("burnin debe ser no negativo");
+  if (thin   <= 0)  stop("thin debe ser positivo");
+  if (burnin >= n_mcmc)
+    stop("burnin debe ser menor que n_mcmc");
+  
+  const int p = X.n_cols;
+  const int n = y.n_elem;
+  
+  /* --- Prior ----------------------------------------------------- */
+  arma::vec b0 = b0_.isNotNull() ? Rcpp::as<arma::vec>(b0_) : arma::zeros<vec>(p);
+  if (b0.n_elem != p)
+    stop("b0 debe tener longitud igual a ncol(X)");
+  
+  arma::mat B0 = B0_.isNotNull() ? Rcpp::as<arma::mat>(B0_) : 100.0 * eye<mat>(p, p);
+  if (B0.n_rows != p || B0.n_cols != p)
+    stop("B0 debe ser una matriz %dx%d", p, p);
   arma::mat B_inv = inv_sympd(B0);
-
-  // --- Varianza propuesta de referencia ---------------------------
+  
+  /* --- Propuesta base Σ_prop ≈ (τ(1−τ)/n)(Xᵀ W² X)⁻¹ ----------- */
   arma::mat XtWX = X.t() * (X.each_col() % square(w));
-  arma::mat Sigma_prop = (tau * (1.0 - tau) / y.n_elem) * inv_sympd(XtWX);
+  arma::mat Sigma_prop = (tau * (1.0 - tau) / n) * inv_sympd(XtWX);
   arma::mat L_prop = chol(Sigma_prop, "lower");
-
-  // Buffers
-  arma::mat S(X.n_rows, 3, fill::zeros);
-  arma::mat wcA(3,3), wc(3,3);
-
-  // Salida
+  
+  /* --- Buffers --------------------------------------------------- */
+  arma::mat S(n, p, fill::zeros);
+  arma::mat wcA(p, p), wc(p, p);
+  
+  /* --- Salida ---------------------------------------------------- */
   const int n_keep = (n_mcmc - burnin) / thin;
-  arma::mat beta_out(n_keep, 3, fill::none);
+  arma::mat beta_out(n_keep, p, fill::none);
   int accept = 0;
-
-  // Inicialización (OLS)
-  arma::vec beta_curr = solve(X, y);
-  double ct = 2.38;   // escala adaptativa inicial
+  
+  /* --- Inicialización ------------------------------------------- */
+  arma::vec beta_curr = solve(X, y);   // OLS como punto de arranque
+  double ct = 2.38;                    // escala adaptativa inicial
   int k_out = 0;
-
+  
+  /* --- MCMC ------------------------------------------------------ */
   for (int k = 0; k < n_mcmc; ++k) {
-    // Propuesta
+    // Propuesta β* = β + √ct·L·z
     arma::vec beta_prop = rmvnorm(beta_curr, std::sqrt(ct) * L_prop);
-
-    double logp_prop = log_post(beta_prop, b0, B_inv, y, X, w, tau, w_scale, S, wcA, wc);
-    double logp_curr = log_post(beta_curr, b0, B_inv, y, X, w, tau, w_scale, S, wcA, wc);
-
+    
+    double logp_prop = log_post(beta_prop, b0, B_inv, y, X, w, tau, w_scale,
+                                S, wcA, wc);
+    double logp_curr = log_post(beta_curr, b0, B_inv, y, X, w, tau, w_scale,
+                                S, wcA, wc);
+    
     double log_acc = std::min(0.0, logp_prop - logp_curr);
-    if (R::runif(0.0, 1.0) < std::exp(log_acc)) {
+    double acc_prob = std::exp(log_acc);
+    
+    if (R::runif(0.0, 1.0) < acc_prob) {
       beta_curr = beta_prop;
       ++accept;
     }
-
-    // Adaptar ct
-    ct = std::exp(std::log(ct) + std::pow(k + 1.0, -0.8) * (std::exp(log_acc) - 0.234));
-
-    // Guardar
+    
+    // Adaptación Robbins–Monro para ct
+    ct = std::exp(std::log(ct) + std::pow(k + 1.0, -0.8) * (acc_prob - 0.234));
+    
+    // Almacenar muestra si corresponde
     if (k >= burnin && ((k - burnin) % thin == 0))
       beta_out.row(k_out++) = beta_curr.t();
   }
-
+  
+  /* --- Empaquetar resultados ------------------------------------ */
   return List::create(
     _["beta"]        = beta_out,
     _["accept_rate"] = double(accept) / n_mcmc,
-    _["call"]        = "MCMC_BWQR_AP"
-  );
+    _["n_mcmc"]      = n_mcmc,
+    _["burnin"]      = burnin,
+    _["thin"]        = thin,
+    _["n_samples"]   = n_keep,
+    _["call"]        = "MCMC_BWQR_AP") ;
 }

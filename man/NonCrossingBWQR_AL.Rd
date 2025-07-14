@@ -9,9 +9,9 @@ NonCrossingBWQR_AL(
   X,
   w,
   tau = 0.5,
-  n_mcmc = 50000,
-  burnin_mcmc = 10000,
-  thin_mcmc = 10
+  n_mcmc = 50000L,
+  burnin_mcmc = 10000L,
+  thin_mcmc = 10L
 )
 }
 \arguments{

@@ -9,8 +9,8 @@ MCMC_BWQR_AL <- function(y, X, w, tau = 0.5, n_mcmc = 50000L, burnin = 10000L, t
     .Call(`_tauBayesW_MCMC_BWQR_AL`, y, X, w, tau, n_mcmc, burnin, thin)
 }
 
-MCMC_BWQR_AP <- function(y, X, w, tau = 0.5, n_mcmc = 20000L, burnin = 5000L, thin = 100L, w_scale = 2.0, b0_ = NULL, B0_ = NULL) {
-    .Call(`_tauBayesW_MCMC_BWQR_AP`, y, X, w, tau, n_mcmc, burnin, thin, w_scale, b0_, B0_)
+MCMC_BWQR_AP <- function(y, X, w, n_mcmc, burnin, thin, tau = 0.5, w_scale = 2.0, b0_ = NULL, B0_ = NULL) {
+    .Call(`_tauBayesW_MCMC_BWQR_AP`, y, X, w, n_mcmc, burnin, thin, tau, w_scale, b0_, B0_)
 }
 
 MCMC_BWQR_SL <- function(y, X, w, tau = 0.5, n_mcmc = 10000L, burnin = 2000L, thin = 10L, b0_ = NULL, B0_ = NULL) {
@@ -29,7 +29,7 @@ atualizarSIGMA <- function(c0, C0, X, w, beta, tau2, theta, v, y, n) {
     .Call(`_tauBayesW_atualizarSIGMA`, c0, C0, X, w, beta, tau2, theta, v, y, n)
 }
 
-bayesQRWeighted <- function(y, X, w, tau = 0.5, n_mcmc = 50000L, burnin_mcmc = 10000L, thin_mcmc = 10L) {
-    .Call(`_tauBayesW_bayesQRWeighted`, y, X, w, tau, n_mcmc, burnin_mcmc, thin_mcmc)
+NonCrossingBWQR_AL <- function(y, X, w, n_mcmc, burnin_mcmc, thin_mcmc, tau = 0.5) {
+    .Call(`_tauBayesW_NonCrossingBWQR_AL`, y, X, w, n_mcmc, burnin_mcmc, thin_mcmc, tau)
 }
 

@@ -9,7 +9,11 @@ const nextConfig = {
   trailingSlash: true,
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
-  images: { unoptimized: true },
+  images: { 
+    unoptimized: true,
+    remotePatterns: [],
+    domains: [],
+  },
 };
 
 export default nextConfig;

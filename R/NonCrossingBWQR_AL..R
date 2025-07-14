@@ -62,10 +62,11 @@ atualizarSIGMA <- function(c0, C0, X, w, beta, tau2, theta, v, y, n) {
 #'
 #' @return A list with posterior samples of \code{beta} and \code{sigma}.
 #' @export
+#' @export
 NonCrossingBWQR_AL <- function(y, X, w, tau = 0.5,
                                n_mcmc = 50000,
                                burnin_mcmc = 10000,
                                thin_mcmc = 10) {
-  .Call(`_tauBayesW_bayesQRWeighted`, y, X, w, tau,
+  .Call(`_tauBayesW_NonCrossingBWQR_AL`, y, X, w, tau,
         n_mcmc, burnin_mcmc, thin_mcmc)
 }

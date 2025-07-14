@@ -41,12 +41,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-// Helper para obtener la ruta correcta de las imágenes
-const getImagePath = (path: string) => {
-  const basePath = process.env.NODE_ENV === 'production' ? '/tauBayesW' : '';
-  return `${basePath}${path}`;
-};
-
 export default function RDocumentation() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -72,7 +66,7 @@ export default function RDocumentation() {
           <div className="mr-4 hidden md:flex">
             <div className="mr-6 flex items-center space-x-2">
               <Image
-                src={getImagePath("/logo_tau.png")}
+                src="/logo_tau.png"
                 alt="tauBayesW Logo"
                 width={24}
                 height={24}
@@ -188,7 +182,7 @@ export default function RDocumentation() {
               <div className="text-center mb-8">
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <Image
-                    src={getImagePath("/logo_tau.png")}
+                    src="/logo_tau.png"
                     alt="tauBayesW Logo"
                     width={48}
                     height={48}
@@ -544,64 +538,64 @@ library(tauBayesW)`}
                   <div className="overflow-x-auto">
                     <Table>
                       <TableCaption>
-                        Performance metrics measured on Intel i7-8700K @ 3.70GHz with 16GB RAM
+                        Performance metrics measured on R 4.4.2, Windows 11, Intel i5 13600-K with 32GB RAM
                       </TableCaption>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[150px]">Algorithm</TableHead>
-                          <TableHead>Dataset Size</TableHead>
+                          <TableHead className="w-[180px]">Algorithm</TableHead>
                           <TableHead>R Time (sec)</TableHead>
                           <TableHead>C++ Time (sec)</TableHead>
+                          <TableHead>R Memory</TableHead>
+                          <TableHead>C++ Memory</TableHead>
                           <TableHead>Speedup</TableHead>
-                          <TableHead>R Memory (MB)</TableHead>
-                          <TableHead>C++ Memory (MB)</TableHead>
+                          <TableHead>Memory Saving</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         <TableRow>
-                          <TableCell className="font-medium">EM_BWQR_AL</TableCell>
-                          <TableCell>n=1,000</TableCell>
-                          <TableCell>12.5</TableCell>
-                          <TableCell>2.1</TableCell>
-                          <TableCell className="text-green-600 font-semibold">5.9x</TableCell>
-                          <TableCell>45.2</TableCell>
-                          <TableCell>18.7</TableCell>
+                          <TableCell className="font-medium">EM_BWQR_AL_MO</TableCell>
+                          <TableCell>2.44</TableCell>
+                          <TableCell>0.0032</TableCell>
+                          <TableCell>2.3 GB</TableCell>
+                          <TableCell>190 MB</TableCell>
+                          <TableCell className="text-green-600 font-semibold">×769</TableCell>
+                          <TableCell className="text-blue-600 font-semibold">~12×</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell className="font-medium">MCMC_BWQR_AL</TableCell>
-                          <TableCell>n=5,000</TableCell>
-                          <TableCell>89.3</TableCell>
-                          <TableCell>14.6</TableCell>
-                          <TableCell className="text-green-600 font-semibold">6.1x</TableCell>
-                          <TableCell>152.8</TableCell>
-                          <TableCell>67.4</TableCell>
+                          <TableCell>12.3</TableCell>
+                          <TableCell>0.01</TableCell>
+                          <TableCell>2.0 GB</TableCell>
+                          <TableCell>50 MB</TableCell>
+                          <TableCell className="text-green-600 font-semibold">×1100</TableCell>
+                          <TableCell className="text-blue-600 font-semibold">~40×</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell className="font-medium">MCMC_BWQR_AP</TableCell>
-                          <TableCell>n=10,000</TableCell>
-                          <TableCell>245.7</TableCell>
-                          <TableCell>35.2</TableCell>
-                          <TableCell className="text-green-600 font-semibold">7.0x</TableCell>
-                          <TableCell>298.5</TableCell>
-                          <TableCell>124.3</TableCell>
+                          <TableCell>21.78</TableCell>
+                          <TableCell>2.81</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-green-600 font-semibold">×7.8</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell className="font-medium">MCMC_BWQR_SL</TableCell>
-                          <TableCell>n=25,000</TableCell>
-                          <TableCell>567.8</TableCell>
-                          <TableCell>78.9</TableCell>
-                          <TableCell className="text-green-600 font-semibold">7.2x</TableCell>
-                          <TableCell>742.1</TableCell>
-                          <TableCell>289.6</TableCell>
+                          <TableCell>9.7</TableCell>
+                          <TableCell>1.4</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-muted-foreground">-</TableCell>
+                          <TableCell className="text-green-600 font-semibold">×7.1</TableCell>
+                          <TableCell className="text-blue-600 font-semibold">~7.2×</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell className="font-medium">NonCrossingBWQR_AL</TableCell>
-                          <TableCell>n=50,000</TableCell>
-                          <TableCell>1,234.5</TableCell>
-                          <TableCell>156.7</TableCell>
-                          <TableCell className="text-green-600 font-semibold">7.9x</TableCell>
-                          <TableCell>1,456.3</TableCell>
-                          <TableCell>512.8</TableCell>
+                          <TableCell>21.7</TableCell>
+                          <TableCell>0.9</TableCell>
+                          <TableCell>5.4 GB</TableCell>
+                          <TableCell>0.7 GB</TableCell>
+                          <TableCell className="text-green-600 font-semibold">×24.1</TableCell>
+                          <TableCell className="text-blue-600 font-semibold">~7.7×</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
@@ -610,25 +604,25 @@ library(tauBayesW)`}
                   <div className="mt-8 grid gap-6 md:grid-cols-2">
                     <Card className="text-center p-6 border-green-200 dark:border-green-800 bg-gradient-to-b from-green-50 to-white dark:from-green-900/20 dark:to-background">
                       <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">
-                        6.8x
+                        ×384
                       </div>
                       <div className="text-sm font-medium text-muted-foreground">
                         Average Speedup
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Across all algorithms
+                        Across all 5 algorithms
                       </div>
                     </Card>
                     
                     <Card className="text-center p-6 border-blue-200 dark:border-blue-800 bg-gradient-to-b from-blue-50 to-white dark:from-blue-900/20 dark:to-background">
                       <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                        62%
+                        ×17
                       </div>
                       <div className="text-sm font-medium text-muted-foreground">
-                        Memory Reduction
+                        Average Memory Saving
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Lower RAM usage
+                        Across measured algorithms
                       </div>
                     </Card>
                   </div>
@@ -643,29 +637,29 @@ library(tauBayesW)`}
                         <div className="flex items-start gap-3">
                           <div className="h-2 w-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
                           <div>
-                            <strong className="text-sm">Faster execution:</strong>
-                            <span className="text-sm text-muted-foreground ml-1">6-8x speed improvement for large datasets</span>
+                            <strong className="text-sm">Extreme Speed:</strong>
+                            <span className="text-sm text-muted-foreground ml-1">Up to 1100× faster execution than R implementations</span>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
                           <div className="h-2 w-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                           <div>
-                            <strong className="text-sm">Lower memory usage:</strong>
-                            <span className="text-sm text-muted-foreground ml-1">Efficient memory management reduces overhead</span>
+                            <strong className="text-sm">Massive Memory Savings:</strong>
+                            <span className="text-sm text-muted-foreground ml-1">Reduce memory usage from GB to MB (up to 40× reduction)</span>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
                           <div className="h-2 w-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
                           <div>
-                            <strong className="text-sm">Better optimization:</strong>
-                            <span className="text-sm text-muted-foreground ml-1">Optimized algorithms for enhanced performance</span>
+                            <strong className="text-sm">High-Performance Computing:</strong>
+                            <span className="text-sm text-muted-foreground ml-1">Optimized algorithms enable analysis of large datasets</span>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
                           <div className="h-2 w-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
                           <div>
-                            <strong className="text-sm">Scalability:</strong>
-                            <span className="text-sm text-muted-foreground ml-1">Performance gains increase with dataset size</span>
+                            <strong className="text-sm">Production Ready:</strong>
+                            <span className="text-sm text-muted-foreground ml-1">Tested on modern hardware (Intel i5 13600-K, 32GB RAM)</span>
                           </div>
                         </div>
                       </div>

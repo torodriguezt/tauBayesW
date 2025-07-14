@@ -50,22 +50,22 @@ BEGIN_RCPP
 END_RCPP
 }
 // MCMC_BWQR_AP
-Rcpp::List MCMC_BWQR_AP(const arma::vec& y, const arma::mat& X, const arma::vec& w, double tau, int n_mcmc, int burnin, int thin, double w_scale, Rcpp::Nullable<Rcpp::NumericVector> b0_, Rcpp::Nullable<Rcpp::NumericMatrix> B0_);
-RcppExport SEXP _tauBayesW_MCMC_BWQR_AP(SEXP ySEXP, SEXP XSEXP, SEXP wSEXP, SEXP tauSEXP, SEXP n_mcmcSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP w_scaleSEXP, SEXP b0_SEXP, SEXP B0_SEXP) {
+Rcpp::List MCMC_BWQR_AP(const arma::vec& y, const arma::mat& X, const arma::vec& w, int n_mcmc, int burnin, int thin, double tau, double w_scale, Rcpp::Nullable<Rcpp::NumericVector> b0_, Rcpp::Nullable<Rcpp::NumericMatrix> B0_);
+RcppExport SEXP _tauBayesW_MCMC_BWQR_AP(SEXP ySEXP, SEXP XSEXP, SEXP wSEXP, SEXP n_mcmcSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP tauSEXP, SEXP w_scaleSEXP, SEXP b0_SEXP, SEXP B0_SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec& >::type y(ySEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type w(wSEXP);
-    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
     Rcpp::traits::input_parameter< int >::type n_mcmc(n_mcmcSEXP);
     Rcpp::traits::input_parameter< int >::type burnin(burninSEXP);
     Rcpp::traits::input_parameter< int >::type thin(thinSEXP);
+    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
     Rcpp::traits::input_parameter< double >::type w_scale(w_scaleSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type b0_(b0_SEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericMatrix> >::type B0_(B0_SEXP);
-    rcpp_result_gen = Rcpp::wrap(MCMC_BWQR_AP(y, X, w, tau, n_mcmc, burnin, thin, w_scale, b0_, B0_));
+    rcpp_result_gen = Rcpp::wrap(MCMC_BWQR_AP(y, X, w, n_mcmc, burnin, thin, tau, w_scale, b0_, B0_));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -145,20 +145,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// bayesQRWeighted
-Rcpp::List bayesQRWeighted(const arma::vec& y, const arma::mat& X, const arma::vec& w, double tau, int n_mcmc, int burnin_mcmc, int thin_mcmc);
-RcppExport SEXP _tauBayesW_bayesQRWeighted(SEXP ySEXP, SEXP XSEXP, SEXP wSEXP, SEXP tauSEXP, SEXP n_mcmcSEXP, SEXP burnin_mcmcSEXP, SEXP thin_mcmcSEXP) {
+// NonCrossingBWQR_AL
+Rcpp::List NonCrossingBWQR_AL(const arma::vec& y, const arma::mat& X, const arma::vec& w, int n_mcmc, int burnin_mcmc, int thin_mcmc, double tau);
+RcppExport SEXP _tauBayesW_NonCrossingBWQR_AL(SEXP ySEXP, SEXP XSEXP, SEXP wSEXP, SEXP n_mcmcSEXP, SEXP burnin_mcmcSEXP, SEXP thin_mcmcSEXP, SEXP tauSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec& >::type y(ySEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type w(wSEXP);
-    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
     Rcpp::traits::input_parameter< int >::type n_mcmc(n_mcmcSEXP);
     Rcpp::traits::input_parameter< int >::type burnin_mcmc(burnin_mcmcSEXP);
     Rcpp::traits::input_parameter< int >::type thin_mcmc(thin_mcmcSEXP);
-    rcpp_result_gen = Rcpp::wrap(bayesQRWeighted(y, X, w, tau, n_mcmc, burnin_mcmc, thin_mcmc));
+    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
+    rcpp_result_gen = Rcpp::wrap(NonCrossingBWQR_AL(y, X, w, n_mcmc, burnin_mcmc, thin_mcmc, tau));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -171,7 +171,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_tauBayesW_atualizarV_GIG", (DL_FUNC) &_tauBayesW_atualizarV_GIG, 8},
     {"_tauBayesW_atualizarBETA", (DL_FUNC) &_tauBayesW_atualizarBETA, 9},
     {"_tauBayesW_atualizarSIGMA", (DL_FUNC) &_tauBayesW_atualizarSIGMA, 10},
-    {"_tauBayesW_bayesQRWeighted", (DL_FUNC) &_tauBayesW_bayesQRWeighted, 7},
+    {"_tauBayesW_NonCrossingBWQR_AL", (DL_FUNC) &_tauBayesW_NonCrossingBWQR_AL, 7},
     {NULL, NULL, 0}
 };
 

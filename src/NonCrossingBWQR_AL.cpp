@@ -157,16 +157,16 @@ double atualizarSIGMA(double c0, double C0,
 }
 
 /* ============================================================= *
- * 6.  Gibbs completo                                             *
+ *  Gibbs completo  –  PARÁMETROS MCMC **OBLIGATORIOS**          *
  * ============================================================= */
 // [[Rcpp::export]]
-Rcpp::List bayesQRWeighted(const arma::vec& y,
-                           const arma::mat& X,
-                           const arma::vec& w,
-                           double tau           = 0.5,
-                           int    n_mcmc        = 50000,
-                           int    burnin_mcmc   = 10000,
-                           int    thin_mcmc     = 10)
+Rcpp::List NonCrossingBWQR_AL(const arma::vec& y,
+                              const arma::mat& X,
+                              const arma::vec& w,
+                              int    n_mcmc,
+                              int    burnin_mcmc,
+                              int    thin_mcmc,
+                              double tau = 0.5)
 {
   if (y.n_elem != X.n_rows || y.n_elem != w.n_elem)
     stop("Dimensiones de y, X y w no coinciden.");
@@ -174,50 +174,48 @@ Rcpp::List bayesQRWeighted(const arma::vec& y,
     stop("burnin_mcmc < n_mcmc");
   if (thin_mcmc <= 0)
     stop("thin_mcmc debe ser positivo");
-
-  int n = y.n_elem, p = X.n_cols;
-
-  arma::mat beta_chain(n_mcmc, p, arma::fill::zeros);
-  arma::vec sigma_chain(n_mcmc, arma::fill::zeros);
-
-  beta_chain.row(0) = arma::solve(X, y).t();   // arranque OLS
+  
+  const int n = y.n_elem, p = X.n_cols;
+  
+  arma::mat beta_chain(n_mcmc, p, fill::zeros);
+  arma::vec sigma_chain(n_mcmc,        fill::zeros);
+  
+  beta_chain.row(0) = solve(X, y).t();          // OLS inicial
   sigma_chain[0]    = 1.0;
-  arma::vec v       = arma::randg<arma::vec>(n,
-                                             arma::distr_param(2.0, 1.0));
-
-  double delta2 = 2.0 / (tau * (1.0 - tau));
-  double theta  = (1.0 - 2.0 * tau) / (tau * (1.0 - tau));
-  double c0 = 0.001, C0 = 0.001, tau2 = delta2;
-
-  arma::mat B  = 1000.0 * arma::eye<arma::mat>(p, p);  // N(0,1000 I)
-  arma::vec b0 = arma::zeros<arma::vec>(p);
-
-  // ----------------- Gibbs loop -----------------
+  arma::vec v       = randg<vec>(n, distr_param(2.0, 1.0));
+  
+  const double delta2 = 2.0 / (tau * (1.0 - tau));
+  const double theta  = (1.0 - 2.0 * tau) / (tau * (1.0 - tau));
+  const double c0 = 0.001, C0 = 0.001, tau2 = delta2;
+  
+  arma::mat B  = 1000.0 * eye<mat>(p, p);       // N(0, 1000 I)
+  arma::vec b0 = zeros<vec>(p);
+  
+  /* ---------- Gibbs loop ---------- */
   for (int k = 1; k < n_mcmc; ++k) {
-    beta_chain.row(k) = atualizarBETA(b0, B, X, w, sigma_chain[k - 1],
-                   delta2, theta, v, y).t();
-
+    beta_chain.row(k) =
+      atualizarBETA(b0, B, X, w, sigma_chain[k-1],
+                    delta2, theta, v, y).t();
+    
     v = atualizarV_GIG(y, X, w, beta_chain.row(k).t(),
                        delta2, theta, 1.0, n);
-
+    
     sigma_chain[k] = atualizarSIGMA(c0, C0, X, w,
                                     beta_chain.row(k).t(),
                                     tau2, theta, v, y, n);
   }
-
-  // ----------- Guardar muestras -------------
-  arma::uvec keep = arma::regspace<arma::uvec>(burnin_mcmc,
-                                               thin_mcmc,
-                                               n_mcmc - 1);
-  int M = keep.n_elem;
-
+  
+  /* ---------- sub-muestreo ---------- */
+  arma::uvec keep = regspace<uvec>(burnin_mcmc, thin_mcmc, n_mcmc-1);
+  const int M = keep.n_elem;
+  
   arma::mat beta_out(M, p);
   arma::vec sigma_out(M);
   for (int i = 0; i < M; ++i) {
     beta_out.row(i) = beta_chain.row(keep[i]);
     sigma_out[i]    = sigma_chain[keep[i]];
   }
-
+  
   return List::create(_["beta"]  = beta_out,
                       _["sigma"] = sigma_out);
 }
