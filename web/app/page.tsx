@@ -4,6 +4,9 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { getImageSrc } from "@/lib/image-utils"
+import { useApp } from "@/contexts/AppContext"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { LanguageSelector } from "@/components/language-selector"
 import {
   BookOpen,
   Code,
@@ -12,12 +15,11 @@ import {
   FileText,
   Github,
   Menu,
-  Search,
   X,
   User,
-  GraduationCap,
   Award,
   Users,
+  Languages,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -31,7 +33,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -44,14 +45,15 @@ import {
 
 export default function RDocumentation() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { t } = useApp()
 
   const navigationItems = [
-    { id: "introduction", title: "Introduction", icon: BookOpen },
-    { id: "installation", title: "Installation", icon: Download },
-    { id: "functions", title: "Functions", icon: Code },
-    { id: "api", title: "Authors", icon: Package },
-    { id: "comparison", title: "R vs C++ Comparison", icon: Users },
-    { id: "help", title: "Help", icon: FileText },
+    { id: "introduction", title: t("introduction"), icon: BookOpen },
+    { id: "installation", title: t("installation"), icon: Download },
+    { id: "functions", title: t("functions"), icon: Code },
+    { id: "api", title: t("authors"), icon: Package },
+    { id: "comparison", title: t("comparison"), icon: Users },
+    { id: "help", title: t("help"), icon: FileText },
   ]
 
   const scrollToSection = (id: string) => {
@@ -82,7 +84,7 @@ export default function RDocumentation() {
               <div className="hidden h-6 w-6 items-center justify-center rounded bg-blue-600 text-white text-xs font-bold">
                 R
               </div>
-              <span className="hidden font-bold sm:inline-block">tauBayesW</span>
+              <span className="hidden font-bold sm:inline-block">{t("tauBayesW")}</span>
             </div>
           </div>
 
@@ -96,23 +98,11 @@ export default function RDocumentation() {
             <span className="sr-only">Toggle Menu</span>
           </Button>
 
-          {/* search + github on the right */}
-          <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-            <div className="w-full flex-1 md:w-auto md:flex-none">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search..."
-                  className="pl-8 md:w-[300px] lg:w-[400px] ultrawide:w-[500px] superwide:w-[600px]"
-                />
-              </div>
-            </div>
+          {/* Theme toggle and language selector on the right */}
+          <div className="flex flex-1 items-center justify-end space-x-2">
             <nav className="flex items-center space-x-1">
-              <Button variant="ghost" size="sm">
-                <Github className="h-4 w-4" />
-                <span className="sr-only">GitHub</span>
-              </Button>
+              <LanguageSelector />
+              <ThemeToggle />
             </nav>
           </div>
         </div>
@@ -199,13 +189,12 @@ export default function RDocumentation() {
                     R
                   </div>
                   <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    tauBayesW
+                    {t("tauBayesW")}
                   </h1>
                   <Badge variant="secondary" className="text-sm px-3 py-1">v1.0.0</Badge>
                 </div>
                 <p className="text-xl text-muted-foreground mb-2 max-w-3xl mx-auto leading-relaxed">
-                  An R package for implementing MCMC and EM algorithms for the
-                  Bayesian weighted quantile regression.
+                  {t("subtitle")}
                 </p>
                 <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
                 </p>
@@ -219,13 +208,13 @@ export default function RDocumentation() {
                         <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
                       <CardTitle className="text-base">
-                        Bayesian Quantile Regression with Weights
+                        {t("bayesianQR")}
                       </CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Corrects bias from informative sampling and captures effects across the distribution.
+                      {t("bayesianQRDesc")}
                     </p>
                   </CardContent>
                 </Card>
@@ -236,13 +225,13 @@ export default function RDocumentation() {
                         <Code className="h-4 w-4 text-green-600 dark:text-green-400" />
                       </div>
                       <CardTitle className="text-base">
-                        MCMC and EM Algorithms
+                        {t("mcmcEM")}
                       </CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Enable efficient estimation and full Bayesian inference in complex and large-sample models.
+                      {t("mcmcEMDesc")}
                     </p>
                   </CardContent>
                 </Card>
@@ -252,12 +241,12 @@ export default function RDocumentation() {
                       <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
                         <Award className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <CardTitle className="text-base">High Performance</CardTitle>
+                      <CardTitle className="text-base">{t("highPerf")}</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Implementation using C++ to have a much faster execution compared to R.
+                      {t("highPerfDesc")}
                     </p>
                   </CardContent>
                 </Card>
@@ -270,15 +259,14 @@ export default function RDocumentation() {
             <section id="installation" className="mb-16">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold tracking-tight mb-4">
-                  Installation
+                  {t("installationTitle")}
                 </h2>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Install <code className="bg-muted px-2 py-1 rounded text-sm">tauBayesW</code> from GitHub to obtain the latest
-                  stable version with all features and documentation.
+                  {t("installationDesc")}
                 </p>
               </div>
 
-              <div className="max-w-4xl mx-auto">
+              <div className="max-w-5xl mx-auto">
                 <div className="grid gap-8 md:grid-cols-2">
                   {/* Installation from GitHub */}
                   <Card className="border-2 hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-300">
@@ -287,23 +275,23 @@ export default function RDocumentation() {
                         <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                           <Github className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <CardTitle className="text-lg">From GitHub</CardTitle>
+                        <CardTitle className="text-lg">{t("fromGithub")}</CardTitle>
                       </div>
                       <CardDescription>
-                        Latest development version with newest features
+                        {t("fromGithubDesc")}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <pre className="text-sm bg-slate-900 dark:bg-slate-800 text-green-400 p-4 rounded-lg overflow-x-auto border">
-{`# Install devtools if needed
-install.packages("devtools")
-
-# Install from GitHub
-devtools::install_github("torodriguezt/tauBayesW")
-
-# Load the package
-library(tauBayesW)`}
-                      </pre>
+                      <div className="text-sm bg-slate-900 dark:bg-slate-800 text-green-400 p-4 rounded-lg border">
+                        <div className="space-y-2 font-mono">
+                          <div className="text-gray-400"># Install devtools if needed</div>
+                          <div>install.packages("devtools")</div>
+                          <div className="mt-2 text-gray-400"># Install from GitHub</div>
+                          <div className="break-words">devtools::install_github("torodriguezt/tauBayesW")</div>
+                          <div className="mt-2 text-gray-400"># Load the package</div>
+                          <div>library(tauBayesW)</div>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
 
@@ -314,19 +302,19 @@ library(tauBayesW)`}
                         <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
                           <Package className="h-4 w-4 text-green-600 dark:text-green-400" />
                         </div>
-                        <CardTitle className="text-lg">Requirements</CardTitle>
+                        <CardTitle className="text-lg">{t("requirements")}</CardTitle>
                       </div>
                       <CardDescription>
-                        System dependencies and R version requirements
+                        {t("requirementsDesc")}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div>
-                        <h4 className="font-semibold text-sm mb-2">R Version</h4>
+                        <h4 className="font-semibold text-sm mb-2">{t("rVersion")}</h4>
                         <p className="text-sm text-muted-foreground">R ≥ 4.0.0</p>
                       </div>
                       <div>
-                        <h4 className="font-semibold text-sm mb-2">Dependencies</h4>
+                        <h4 className="font-semibold text-sm mb-2">{t("dependencies")}</h4>
                         <ul className="text-sm text-muted-foreground space-y-1">
                           <li>• Rcpp (≥ 1.0.0)</li>
                           <li>• RcppEigen</li>
@@ -335,8 +323,8 @@ library(tauBayesW)`}
                         </ul>
                       </div>
                       <div>
-                        <h4 className="font-semibold text-sm mb-2">Compiler</h4>
-                        <p className="text-sm text-muted-foreground">C++11 compatible compiler</p>
+                        <h4 className="font-semibold text-sm mb-2">{t("compiler")}</h4>
+                        <p className="text-sm text-muted-foreground">{t("compilerReq")}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -350,10 +338,9 @@ library(tauBayesW)`}
                         <span className="text-white text-xs font-bold">i</span>
                       </div>
                       <div>
-                        <h4 className="font-semibold text-sm mb-1">Quick Start</h4>
+                        <h4 className="font-semibold text-sm mb-1">{t("quickStart")}</h4>
                         <p className="text-sm text-muted-foreground">
-                          After installation, check out our function examples below or visit the 
-                          <span className="font-medium"> Help</span> section for detailed documentation and tutorials.
+                          {t("quickStartDesc")}
                         </p>
                       </div>
                     </div>
@@ -367,11 +354,10 @@ library(tauBayesW)`}
             {/* 3 ───────────────────────── Functions ───────────────────────── */}
             <section id="functions" className="mb-12">
               <h2 className="text-2xl font-bold tracking-tight mb-4">
-                Main Functions
+                {t("functionsTitle")}
               </h2>
               <p className="text-muted-foreground mb-6">
-                Complete reference of the most important functions in
-                <code> tauBayesW</code>.
+                {t("functionsDesc")}
               </p>
 
               {/* Layout estético: 2-2-1 con cajas más grandes y clickeables */}
@@ -391,12 +377,12 @@ library(tauBayesW)`}
                           </CardTitle>
                         </div>
                         <CardDescription className="text-base leading-relaxed">
-                          EM Algorithm for Bayesian Weighted Quantile Regression with Asymmetric Laplace distribution.
+                          {t("emDesc")}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0">
                         <div className="flex items-center text-sm text-muted-foreground group-hover:text-blue-600 transition-colors">
-                          <span>Click to view details</span>
+                          <span>{t("clickToView")}</span>
                           <span className="ml-auto">→</span>
                         </div>
                       </CardContent>
@@ -416,12 +402,12 @@ library(tauBayesW)`}
                           </CardTitle>
                         </div>
                         <CardDescription className="text-base leading-relaxed">
-                          MCMC for Bayesian Weighted Quantile Regression with full uncertainty quantification and posterior sampling.
+                          {t("mcmcALDesc")}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0">
                         <div className="flex items-center text-sm text-muted-foreground group-hover:text-green-600 transition-colors">
-                          <span>Click to view details</span>
+                          <span>{t("clickToView")}</span>
                           <span className="ml-auto">→</span>
                         </div>
                       </CardContent>
@@ -444,12 +430,12 @@ library(tauBayesW)`}
                           </CardTitle>
                         </div>
                         <CardDescription className="text-base leading-relaxed">
-                          Smart automatic data visualization with multiple plot types: distributions, boxplots, Q-Q plots, and histograms.
+                          {t("mcmcAPDesc")}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0">
                         <div className="flex items-center text-sm text-muted-foreground group-hover:text-purple-600 transition-colors">
-                          <span>Click to view details</span>
+                          <span>{t("clickToView")}</span>
                           <span className="ml-auto">→</span>
                         </div>
                       </CardContent>
@@ -469,12 +455,12 @@ library(tauBayesW)`}
                           </CardTitle>
                         </div>
                         <CardDescription className="text-base leading-relaxed">
-                          Bayesian quantile regression using advanced EM and MCMC algorithms for robust statistical modeling.
+                          {t("mcmcSLDesc")}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0">
                         <div className="flex items-center text-sm text-muted-foreground group-hover:text-orange-600 transition-colors">
-                          <span>Click to view details</span>
+                          <span>{t("clickToView")}</span>
                           <span className="ml-auto">→</span>
                         </div>
                       </CardContent>
@@ -497,12 +483,12 @@ library(tauBayesW)`}
                             NonCrossingBWQR_AL()
                           </CardTitle>
                           <CardDescription className="text-base leading-relaxed mt-3">
-                            Advanced model comparison using WAIC and DIC criteria for optimal model selection in Bayesian analysis.
+                            {t("nonCrossingDesc")}
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-0 text-center">
                           <div className="flex items-center justify-center text-sm text-muted-foreground group-hover:text-red-600 transition-colors">
-                            <span>Click to view details</span>
+                            <span>{t("clickToView")}</span>
                             <span className="ml-2">→</span>
                           </div>
                         </CardContent>
@@ -518,34 +504,34 @@ library(tauBayesW)`}
             {/* 4 ────────────────────── R vs C++ Comparison ─────────────────── */}
             <section id="comparison" className="mb-12">
               <h2 className="text-2xl font-bold tracking-tight mb-4">
-                Comparison between R code and C++ code
+                {t("comparisonTitle")}
               </h2>
               <p className="text-muted-foreground mb-6">
-                Performance comparison between R and C++ implementations of the main algorithms in <code>tauBayesW</code>.
+                {t("comparisonDesc")}
               </p>
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Performance Benchmarks</CardTitle>
+                  <CardTitle className="text-lg">{t("perfBenchmarks")}</CardTitle>
                   <CardDescription>
-                    Execution time and memory usage comparison across different dataset sizes
+                    {t("perfBenchmarksDesc")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
                     <Table>
                       <TableCaption>
-                        Performance metrics measured on R 4.4.2, Windows 11, Intel i5 13600-K with 32GB RAM
+                        {t("perfMetrics")}
                       </TableCaption>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[180px]">Algorithm</TableHead>
-                          <TableHead>R Time (sec)</TableHead>
-                          <TableHead>C++ Time (sec)</TableHead>
-                          <TableHead>R Memory</TableHead>
-                          <TableHead>C++ Memory</TableHead>
-                          <TableHead>Speedup</TableHead>
-                          <TableHead>Memory Saving</TableHead>
+                          <TableHead className="w-[180px]">{t("algorithm")}</TableHead>
+                          <TableHead>{t("rTime")}</TableHead>
+                          <TableHead>{t("cppTime")}</TableHead>
+                          <TableHead>{t("rMemory")}</TableHead>
+                          <TableHead>{t("cppMemory")}</TableHead>
+                          <TableHead>{t("speedup")}</TableHead>
+                          <TableHead>{t("memorySaving")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -604,10 +590,10 @@ library(tauBayesW)`}
                         ×384
                       </div>
                       <div className="text-sm font-medium text-muted-foreground">
-                        Average Speedup
+                        {t("avgSpeedup")}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Across all 5 algorithms
+                        {t("acrossAlgorithms")}
                       </div>
                     </Card>
                     
@@ -616,10 +602,10 @@ library(tauBayesW)`}
                         ×17
                       </div>
                       <div className="text-sm font-medium text-muted-foreground">
-                        Average Memory Saving
+                        {t("avgMemorySaving")}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Across measured algorithms
+                        {t("acrossMeasured")}
                       </div>
                     </Card>
                   </div>
@@ -628,35 +614,35 @@ library(tauBayesW)`}
                     <CardContent className="p-6">
                       <h4 className="font-semibold mb-4 text-base flex items-center gap-2">
                         <Code className="h-4 w-4 text-blue-600" />
-                        Key Benefits of C++ Implementation
+                        {t("keyBenefits")}
                       </h4>
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="flex items-start gap-3">
                           <div className="h-2 w-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
                           <div>
-                            <strong className="text-sm">Extreme Speed:</strong>
-                            <span className="text-sm text-muted-foreground ml-1">Up to 1100× faster execution than R implementations</span>
+                            <strong className="text-sm">{t("extremeSpeed")}</strong>
+                            <span className="text-sm text-muted-foreground ml-1">{t("extremeSpeedDesc")}</span>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
                           <div className="h-2 w-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                           <div>
-                            <strong className="text-sm">Massive Memory Savings:</strong>
-                            <span className="text-sm text-muted-foreground ml-1">Reduce memory usage from GB to MB (up to 40× reduction)</span>
+                            <strong className="text-sm">{t("massiveMemory")}</strong>
+                            <span className="text-sm text-muted-foreground ml-1">{t("massiveMemoryDesc")}</span>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
                           <div className="h-2 w-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
                           <div>
-                            <strong className="text-sm">High-Performance Computing:</strong>
-                            <span className="text-sm text-muted-foreground ml-1">Optimized algorithms enable analysis of large datasets</span>
+                            <strong className="text-sm">{t("highPerfComputing")}</strong>
+                            <span className="text-sm text-muted-foreground ml-1">{t("highPerfComputingDesc")}</span>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
                           <div className="h-2 w-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
                           <div>
-                            <strong className="text-sm">Production Ready:</strong>
-                            <span className="text-sm text-muted-foreground ml-1">Tested on modern hardware (Intel i5 13600-K, 32GB RAM)</span>
+                            <strong className="text-sm">{t("prodReady")}</strong>
+                            <span className="text-sm text-muted-foreground ml-1">{t("prodReadyDesc")}</span>
                           </div>
                         </div>
                       </div>
@@ -670,9 +656,9 @@ library(tauBayesW)`}
 
             {/* 5 ────────────────────────── Authors ────────────────────────── */}
             <section id="api" className="mb-12">
-              <h2 className="text-2xl font-bold tracking-tight mb-4">Authors</h2>
+              <h2 className="text-2xl font-bold tracking-tight mb-4">{t("authorsTitle")}</h2>
               <p className="text-muted-foreground mb-6">
-                Meet the team behind the development of <code>tauBayesW</code>.
+                {t("authorsDesc")}
               </p>
 
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -691,20 +677,20 @@ library(tauBayesW)`}
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col">
                     <p className="text-sm text-muted-foreground mb-4 leading-relaxed flex-1">
-                      Postdoctoral Researcher at the School of Applied Mathematics at Fundação Getulio Vargas (FGV EMAp) and a Research Affiliate at the José Luiz Setúbal Foundation (FJLES).
+                      {t("marcusDesc")}
                     </p>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">Email:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{t("email")}:</span>
                         <a
-                          href="mailto:marcus@example.com"
+                          href="mailto:marcus.lavagnole@fgv.br"
                           className="text-blue-600 hover:text-blue-700 hover:underline transition-colors"
                         >
                           marcus.lavagnole@fgv.br
                         </a>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">GitHub:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{t("github")}:</span>
                         <a
                           href="https://github.com/marcuslavagnole"
                           className="text-blue-600 hover:text-blue-700 hover:underline transition-colors"
@@ -733,20 +719,20 @@ library(tauBayesW)`}
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col">
                     <p className="text-sm text-muted-foreground mb-4 leading-relaxed flex-1">
-                      Associate Professor in the  Department of Statistics at the Federal University of Rio de Janeiro (UFRJ) in Brazil.
+                      {t("kellyDesc")}
                     </p>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">Email:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{t("email")}:</span>
                         <a
-                          href="mailto:kelly@example.com"
+                          href="mailto:kelly@dme.ufrj.br"
                           className="text-blue-600 hover:text-blue-700 hover:underline transition-colors"
                         >
                           kelly@dme.ufrj.br
                         </a>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">Web Page:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{t("webPage")}:</span>
                         <a
                           href="https://sites.google.com/dme.ufrj.br/kelly/home?authuser=0"
                           className="text-blue-600 hover:text-blue-700 hover:underline transition-colors"
@@ -775,20 +761,20 @@ library(tauBayesW)`}
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col">
                     <p className="text-sm text-muted-foreground mb-4 leading-relaxed flex-1">
-                      Assistant Professor in the  Department of Statistics at Universidad Nacional de Colombia (UNAL) in Medellin.
+                      {t("johnatanDesc")}
                     </p>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">Email:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{t("email")}:</span>
                         <a
-                          href="mailto:johntan@example.com"
+                          href="mailto:jcardonj@unal.edu.co"
                           className="text-blue-600 hover:text-blue-700 hover:underline transition-colors"
                         >
                           jcardonj@unal.edu.co
                         </a>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">GitHub:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{t("github")}:</span>
                         <a
                           href="https://github.com/JohnatanLAB"
                           className="text-blue-600 hover:text-blue-700 hover:underline transition-colors"
@@ -817,11 +803,11 @@ library(tauBayesW)`}
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col">
                     <p className="text-sm text-muted-foreground mb-4 leading-relaxed flex-1">
-                      Undergraduate student in the Statistics and Informatic Engineering programs at Universidad Nacional de Colombia (UNAL) in Medellin.
+                      {t("tomasDesc")}
                     </p>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">Email:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{t("email")}:</span>
                         <a
                           href="mailto:torodriguezt@unal.edu.co"
                           className="text-blue-600 hover:text-blue-700 hover:underline transition-colors"
@@ -830,7 +816,7 @@ library(tauBayesW)`}
                         </a>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">GitHub:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{t("github")}:</span>
                         <a
                           href="https://github.com/torodriguezt"
                           className="text-blue-600 hover:text-blue-700 hover:underline transition-colors"
@@ -851,9 +837,9 @@ library(tauBayesW)`}
             {/* 6 ─────────────────────────── Help ─────────────────────────── */}
             <section id="help" className="mb-16">
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold tracking-tight mb-4">Help & Resources</h2>
+                <h2 className="text-3xl font-bold tracking-tight mb-4">{t("helpTitle")}</h2>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Documentation, support resources, and community links for <code className="bg-muted px-2 py-1 rounded text-sm">tauBayesW</code>.
+                  {t("helpDesc")}
                 </p>
               </div>
 
@@ -865,45 +851,44 @@ library(tauBayesW)`}
                       <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                         <Code className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <CardTitle className="text-lg">R Console Commands</CardTitle>
+                      <CardTitle className="text-lg">{t("rConsole")}</CardTitle>
                     </div>
-                    <CardDescription>Quick access to function documentation</CardDescription>
+                    <CardDescription>{t("rConsoleDesc")}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <pre className="text-sm bg-slate-900 dark:bg-slate-800 text-green-400 p-4 rounded-lg overflow-x-auto border">
-{`# Function help
-?EM_BWQR_AL_MO
-
-# Package help
-help(package="tauBayesW")
-
-# Available vignettes
-vignette("tauBayesW")
-
-# Function examples
-example(MCMC_BWQR_AL)`}
-                    </pre>
+                    <div className="text-sm bg-slate-900 dark:bg-slate-800 text-green-400 p-4 rounded-lg border">
+                      <div className="space-y-2 font-mono">
+                        <div className="text-gray-400"># Function help</div>
+                        <div>?EM_BWQR_AL_MO</div>
+                        <div className="mt-2 text-gray-400"># Package help</div>
+                        <div>help(package="tauBayesW")</div>
+                        <div className="mt-2 text-gray-400"># Available vignettes</div>
+                        <div>vignette("tauBayesW")</div>
+                        <div className="mt-2 text-gray-400"># Function examples</div>
+                        <div>example(MCMC_BWQR_AL)</div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
-                {/* External Resources */}
+                {/* Research Paper */}
                 <Card className="border-2 hover:border-purple-200 dark:hover:border-purple-800 transition-all duration-300">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
                         <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <CardTitle className="text-lg">Research Paper</CardTitle>
+                      <CardTitle className="text-lg">{t("researchPaper")}</CardTitle>
                     </div>
-                    <CardDescription>Published research and methodology</CardDescription>
+                    <CardDescription>{t("researchPaperDesc")}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="p-4 border rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-200 dark:border-purple-800">
                       <h4 className="font-semibold text-sm mb-2 text-purple-800 dark:text-purple-200">
-                        Journal of Survey Statistics and Methodology
+                        {t("journalName")}
                       </h4>
                       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                        The complete methodology and theoretical foundation behind the algorithms implemented in this package.
+                        {t("journalDesc")}
                       </p>
                       <Button
                         variant="outline"
@@ -913,12 +898,12 @@ example(MCMC_BWQR_AL)`}
                       >
                         <a href="https://academic.oup.com/jssam/article-abstract/12/4/1105/7642687" target="_blank" rel="noopener noreferrer">
                           <FileText className="mr-2 h-4 w-4" />
-                          Read Full Paper
+                          {t("readPaper")}
                         </a>
                       </Button>
                       <div className="pt-2 border-t border-purple-200 dark:border-purple-700">
                         <p className="text-xs text-muted-foreground text-center">
-                          <span className="font-medium">Authors:</span> Marcus L. Nascimento & Kelly Cristina Mota Gonçalves
+                          {t("paperAuthors")}
                         </p>
                       </div>
                     </div>
@@ -932,27 +917,27 @@ example(MCMC_BWQR_AL)`}
                       <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
                         <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <CardTitle className="text-lg">Support</CardTitle>
+                      <CardTitle className="text-lg">{t("support")}</CardTitle>
                     </div>
-                    <CardDescription>Get help</CardDescription>
+                    <CardDescription>{t("supportDesc")}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <h4 className="font-semibold text-sm">Bugs and Requests</h4>
+                      <h4 className="font-semibold text-sm">{t("bugsRequests")}</h4>
                       <p className="text-sm text-muted-foreground">
-                        For bug reports and feature requests, please use GitHub Issues.
+                        {t("bugsRequestsDesc")}
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold text-sm">Contact</h4>
+                      <h4 className="font-semibold text-sm">{t("contact")}</h4>
                       <p className="text-sm text-muted-foreground">
-                        For doubts about the package usage, write to the email <code className="bg-muted px-1 rounded text-xs">torodriguezt@unal.edu.co</code>.
+                        {t("contactDesc")}
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold text-sm">Version Info</h4>
+                      <h4 className="font-semibold text-sm">{t("versionInfo")}</h4>
                       <p className="text-sm text-muted-foreground">
-                        <code className="bg-muted px-1 rounded text-xs">packageVersion("tauBayesW")</code> to check your version.
+                        <code className="bg-muted px-1 rounded text-xs">{t("versionInfoDesc")}</code>
                       </p>
                     </div>
                   </CardContent>
@@ -969,9 +954,9 @@ example(MCMC_BWQR_AL)`}
                       <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                         <Github className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <CardTitle className="text-xl">Source Code</CardTitle>
+                      <CardTitle className="text-xl">{t("sourceCode")}</CardTitle>
                     </div>
-                    <CardDescription>View the complete source code and contribute</CardDescription>
+                    <CardDescription>{t("sourceCodeDesc")}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Button
@@ -982,7 +967,7 @@ example(MCMC_BWQR_AL)`}
                     >
                       <a href="https://github.com/torodriguezt/tauBayesW" target="_blank" rel="noopener noreferrer">
                         <Github className="mr-2 h-4 w-4" />
-                        Visit GitHub Repository
+                        {t("visitGithub")}
                       </a>
                     </Button>
                   </CardContent>

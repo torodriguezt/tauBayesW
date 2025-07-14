@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { AppProvider } from '@/contexts/AppContext'
 
 export const metadata: Metadata = {
   title: 'tauBayesW',
@@ -14,7 +15,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppProvider>
+          {children}
+        </AppProvider>
+      </body>
     </html>
   )
 }
