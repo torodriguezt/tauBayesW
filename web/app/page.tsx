@@ -318,8 +318,7 @@ export default function RDocumentation() {
                         <ul className="text-sm text-muted-foreground space-y-1">
                           <li>• Rcpp (≥ 1.0.0)</li>
                           <li>• RcppEigen</li>
-                          <li>• ggplot2</li>
-                          <li>• coda</li>
+                          <li>• GIGrvg</li>
                         </ul>
                       </div>
                       <div>
