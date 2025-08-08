@@ -1,0 +1,367 @@
+---
+title: "Advanced Features and Methodology"
+author: "Tomas Rodriguez Taborda"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Advanced Features and Methodology}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+# Advanced Features and Methodology
+
+This vignette covers the advanced features and methodological details of the `tauBayesW` package.
+
+```{r setup}
+library(tauBayesW)
+set.seed(42)
+```
+
+## Methodological Background
+
+### MCMC Methods for Single Quantiles
+
+The package implements three MCMC approaches for single quantile estimation:
+
+#### 1. Asymmetric Laplace Distribution (ALD)
+
+The ALD method uses the asymmetric Laplace likelihood:
+
+$$f(y|\mu,\sigma,\tau) = \frac{\tau(1-\tau)}{\sigma} \exp\left(-\rho_\tau\left(\frac{y-\mu}{\sigma}\right)\right)$$
+
+where $\rho_\tau(u) = u(\tau - I(u < 0))$ is the check function.
+
+#### 2. Score-based Method
+
+Uses score functions for faster computation while maintaining accuracy.
+
+#### 3. Approximate Method
+
+Provides faster computation for large datasets with slight approximation.
+
+### EM Algorithm for Multiple Quantiles
+
+The EM algorithm efficiently estimates multiple quantiles simultaneously by:
+
+1. **E-step**: Computing expected values of latent variables
+2. **M-step**: Maximizing the expected log-likelihood
+
+This approach ensures:
+- Computational efficiency
+- Numerical stability
+- Non-crossing quantile constraints
+
+## Advanced Usage Examples
+
+### Convergence Diagnostics
+
+```{r convergence}
+# Generate data
+n <- 300
+x1 <- rnorm(n)
+x2 <- runif(n)
+y <- 1 + 2*x1 - x2 + rt(n, df = 3)  # Heavy-tailed errors
+weights <- rexp(n, rate = 1)
+data <- data.frame(y, x1, x2)
+
+# Fit model with more iterations for better convergence
+model <- bqr.svy(y ~ x1 + x2,
+                 data = data,
+                 weights = weights,
+                 quantile = 0.1,
+                 method = "ALD",
+                 n_mcmc = 5000,
+                 burnin = 1000)
+
+# Check convergence
+summary(model)
+
+# Convergence check function
+convergence_check(model)
+```
+
+### Comparing Methods
+
+```{r method-comparison}
+# Compare different methods for the same quantile
+methods <- c("ALD", "Score", "Approximate")
+results <- list()
+
+for(method in methods) {
+  results[[method]] <- bqr.svy(y ~ x1 + x2,
+                               data = data,
+                               weights = weights,
+                               quantile = 0.25,
+                               method = method,
+                               n_mcmc = 2000,
+                               burnin = 500,
+                               verbose = FALSE)
+}
+
+# Compare coefficients
+coef_comparison <- do.call(rbind, lapply(results, coef))
+print(coef_comparison)
+
+# Compare standard errors (from summary)
+se_comparison <- do.call(rbind, lapply(results, function(x) {
+  s <- summary(x)
+  s$coefficients[,"Std. Error"]
+}))
+print(se_comparison)
+```
+
+### Multiple Quantile Analysis
+
+```{r multi-quantile-analysis}
+# Comprehensive multiple quantile analysis
+quantiles <- seq(0.1, 0.9, by = 0.1)
+
+# Simulate data with heteroscedasticity
+n <- 400
+x <- rnorm(n)
+y <- 1 + 2*x + (0.5 + 0.3*x)*rnorm(n)  # Heteroscedastic errors
+weights <- rgamma(n, shape = 2, rate = 1)
+hetero_data <- data.frame(y, x)
+
+# Fit multiple quantiles
+multi_model <- mo.bqr.svy(y ~ x,
+                          data = hetero_data,
+                          weights = weights,
+                          quantiles = quantiles,
+                          max_iter = 150,
+                          tol = 1e-5)
+
+# Examine results
+print(multi_model)
+summary(multi_model)
+
+# Extract coefficient paths across quantiles
+coef_matrix <- coef(multi_model)
+print(coef_matrix)
+```
+
+### Advanced Plotting
+
+```{r advanced-plotting, fig.width=8, fig.height=6}
+# Advanced plotting for multiple quantiles
+plot(multi_model, type = "quantiles")
+
+# Plot coefficient paths
+plot(multi_model, type = "coefficients")
+
+# Convergence plots
+plot(multi_model, type = "convergence")
+```
+
+### Custom Plotting
+
+```{r custom-plotting, fig.width=7, fig.height=5}
+# Single quantile model for plotting
+single_model <- bqr.svy(y ~ x, 
+                        data = hetero_data,
+                        weights = weights,
+                        quantile = 0.5,
+                        n_mcmc = 2000)
+
+# Basic plot
+plot_quantile.bqr.svy(single_model, which_x = "x")
+
+# Plot with points
+plot_quantile_with_points(single_model, which_x = "x", alpha = 0.6)
+```
+
+## Working with Complex Survey Designs
+
+### Stratified Sampling Example
+
+```{r stratified-survey}
+# Simulate stratified survey data
+n_total <- 1000
+n_strata <- 4
+strata_sizes <- c(250, 300, 250, 200)
+strata_probs <- c(0.1, 0.3, 0.4, 0.2)  # Selection probabilities
+
+# Create stratified data
+survey_data <- do.call(rbind, lapply(1:n_strata, function(s) {
+  n_s <- strata_sizes[s]
+  x1 <- rnorm(n_s, mean = s, sd = 1)
+  x2 <- rbinom(n_s, 1, prob = 0.3 + 0.1*s)
+  y <- 2 + 1.5*x1 + 2*x2 + rnorm(n_s, sd = 1 + 0.2*s)
+  
+  # Survey weights (inverse of selection probability)
+  weights <- 1 / strata_probs[s]
+  
+  data.frame(y, x1, x2, stratum = s, weights = weights)
+}))
+
+# Analyze with survey weights
+survey_model <- mo.bqr.svy(y ~ x1 + x2,
+                           data = survey_data,
+                           weights = weights,
+                           quantiles = c(0.1, 0.25, 0.5, 0.75, 0.9))
+
+print(survey_model)
+```
+
+### Clustered Data Example
+
+```{r clustered-data}
+# Simulate clustered data
+n_clusters <- 50
+cluster_sizes <- sample(10:20, n_clusters, replace = TRUE)
+total_n <- sum(cluster_sizes)
+
+clustered_data <- do.call(rbind, lapply(1:n_clusters, function(c) {
+  n_c <- cluster_sizes[c]
+  cluster_effect <- rnorm(1, 0, 0.5)
+  
+  x1 <- rnorm(n_c)
+  x2 <- runif(n_c)
+  y <- 1 + 2*x1 - x2 + cluster_effect + rnorm(n_c, sd = 0.8)
+  
+  # Cluster-specific weights
+  cluster_weight <- runif(1, 0.5, 2)
+  
+  data.frame(y, x1, x2, cluster = c, weights = cluster_weight)
+}))
+
+# Fit model
+cluster_model <- bqr.svy(y ~ x1 + x2,
+                         data = clustered_data,
+                         weights = weights,
+                         quantile = 0.5,
+                         n_mcmc = 3000)
+
+summary(cluster_model)
+```
+
+## Model Diagnostics and Validation
+
+### Residual Analysis
+
+```{r residuals}
+# Residual analysis for single quantile model
+residuals_q50 <- residuals(single_model)
+fitted_q50 <- fitted(single_model)
+
+# Basic residual plots
+par(mfrow = c(2, 2))
+plot(fitted_q50, residuals_q50, main = "Residuals vs Fitted")
+abline(h = 0, col = "red", lty = 2)
+
+hist(residuals_q50, main = "Residual Distribution", breaks = 20)
+
+qqnorm(residuals_q50, main = "Q-Q Plot of Residuals")
+qqline(residuals_q50, col = "red")
+
+plot(hetero_data$x, residuals_q50, main = "Residuals vs X")
+abline(h = 0, col = "red", lty = 2)
+
+par(mfrow = c(1, 1))
+```
+
+### Model Comparison
+
+```{r model-comparison}
+# Compare models for different quantiles
+quantiles_comp <- c(0.1, 0.5, 0.9)
+models_comp <- list()
+
+for(q in quantiles_comp) {
+  models_comp[[paste0("q_", q)]] <- bqr.svy(y ~ x,
+                                           data = hetero_data,
+                                           weights = weights,
+                                           quantile = q,
+                                           n_mcmc = 2000,
+                                           verbose = FALSE)
+}
+
+# Extract log-likelihoods for comparison
+loglik_comp <- sapply(models_comp, logLik)
+names(loglik_comp) <- quantiles_comp
+print(loglik_comp)
+```
+
+## Simulation Studies
+
+### Data Simulation Function
+
+The package includes a data simulation function:
+
+```{r simulation}
+# Use built-in simulation function
+sim_data <- simulate_mo_bqr_data(n = 300,
+                                 beta = c(1, 2, -0.5),
+                                 seed = 123,
+                                 b = 1.2)
+
+str(sim_data)
+
+# Analyze simulated data
+sim_model <- mo.bqr.svy(y ~ x1 + x2,
+                        data = sim_data$data,
+                        weights = sim_data$weights,
+                        quantiles = c(0.25, 0.5, 0.75))
+
+# Compare estimated vs true coefficients
+true_coefs <- c(1, 2, -0.5)
+estimated_coefs <- coef(sim_model)
+print(estimated_coefs)
+```
+
+## Performance Considerations
+
+### Computational Efficiency Tips
+
+1. **For large datasets**: Use the "Approximate" method
+2. **For multiple quantiles**: Use `mo.bqr.svy()` instead of multiple `bqr.svy()` calls
+3. **MCMC tuning**: Start with fewer iterations for exploration, then increase for final analysis
+4. **Convergence**: Monitor R-hat values and effective sample sizes
+
+### Memory Management
+
+```{r memory-tips}
+# For very large datasets, consider:
+# 1. Reducing MCMC iterations initially
+# 2. Using the Approximate method
+# 3. Processing quantiles in batches
+
+# Example for large dataset approach
+large_n <- 10000
+large_data <- simulate_mo_bqr_data(n = large_n, seed = 456)
+
+# Use approximate method for initial exploration
+large_model_approx <- bqr.svy(y ~ x1 + x2,
+                              data = large_data$data,
+                              weights = large_data$weights,
+                              quantile = 0.5,
+                              method = "Approximate",
+                              n_mcmc = 1000,
+                              verbose = FALSE)
+
+print(coef(large_model_approx))
+```
+
+## References and Further Reading
+
+1. **Theoretical Background**:
+   - Yu, K. and Moyeed, R. A. (2001). Bayesian quantile regression. *Statistics & Probability Letters*, 54(4), 437-447.
+   - Kozumi, H. and Kobayashi, G. (2011). Gibbs sampling methods for Bayesian quantile regression. *Journal of Statistical Computation and Simulation*, 81(11), 1565-1578.
+
+2. **Survey Methodology**:
+   - Lohr, S. L. (2009). *Sampling: Design and Analysis*. Brooks/Cole.
+
+3. **Computational Methods**:
+   - Gelman, A., et al. (2013). *Bayesian Data Analysis*. Chapman and Hall/CRC.
+
+For more information, see the package documentation and additional vignettes.

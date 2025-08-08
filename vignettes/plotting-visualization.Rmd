@@ -1,0 +1,435 @@
+---
+title: "Plotting and Visualization"
+author: "Tomas Rodriguez Taborda"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Plotting and Visualization}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+# Plotting and Visualization with tauBayesW
+
+This vignette demonstrates the comprehensive plotting and visualization capabilities of the `tauBayesW` package.
+
+```{r setup}
+library(tauBayesW)
+set.seed(789)
+```
+
+## Overview of Plotting Functions
+
+The package provides several plotting functions:
+
+1. **`plot.bqr.svy()`**: S3 method for single quantile models
+2. **`plot.mo.bqr.svy()`**: S3 method for multiple quantile models  
+3. **`plot_quantile.bqr.svy()`**: Specialized quantile curve plotting
+4. **`plot_quantile_with_points()`**: Scatter plots with quantile overlay
+
+## Data Preparation
+
+Let's start by preparing some example datasets:
+
+```{r data-prep}
+# Simple linear relationship
+n <- 200
+x1 <- rnorm(n)
+x2 <- runif(n, -1, 1)
+y_linear <- 1 + 2*x1 - 0.5*x2 + rnorm(n)
+weights <- runif(n, 0.5, 2)
+linear_data <- data.frame(y = y_linear, x1, x2)
+
+# Non-linear relationship with heteroscedasticity
+x_nl <- seq(-2, 2, length.out = n)
+y_nonlinear <- 1 + 2*x_nl + 0.5*x_nl^2 + (0.5 + 0.3*abs(x_nl))*rnorm(n)
+weights_nl <- rgamma(n, shape = 2, rate = 1)
+nonlinear_data <- data.frame(y = y_nonlinear, x = x_nl)
+
+# Multiple predictor dataset
+n_multi <- 300
+x1_multi <- rnorm(n_multi)
+x2_multi <- rbinom(n_multi, 1, 0.4)
+x3_multi <- runif(n_multi, 0, 3)
+y_multi <- 2 + 1.5*x1_multi + 2*x2_multi - 0.8*x3_multi + rnorm(n_multi, sd = 1.2)
+weights_multi <- rexp(n_multi, rate = 0.8)
+multi_data <- data.frame(y = y_multi, x1 = x1_multi, x2 = x2_multi, x3 = x3_multi)
+```
+
+## Single Quantile Plotting
+
+### Basic Plotting
+
+```{r single-basic, fig.width=7, fig.height=5}
+# Fit single quantile model
+model_single <- bqr.svy(y ~ x1 + x2,
+                        data = linear_data,
+                        weights = weights,
+                        quantile = 0.5,
+                        n_mcmc = 2000,
+                        burnin = 500,
+                        verbose = FALSE)
+
+# Basic plot
+plot(model_single)
+```
+
+### Univariate Quantile Plots
+
+```{r univariate-plots, fig.width=8, fig.height=6}
+# Simple univariate model for clearer visualization
+model_uni <- bqr.svy(y ~ x,
+                     data = nonlinear_data,
+                     weights = weights_nl,
+                     quantile = 0.5,
+                     n_mcmc = 2000,
+                     verbose = FALSE)
+
+# Plot quantile curve
+par(mfrow = c(1, 2))
+plot_quantile.bqr.svy(model_uni, which_x = "x", 
+                      main = "Quantile Regression Curve",
+                      xlab = "X", ylab = "Y")
+
+# Plot with data points
+plot_quantile_with_points(model_uni, which_x = "x", alpha = 0.6,
+                          main = "Quantile Curve with Data Points",
+                          xlab = "X", ylab = "Y")
+
+par(mfrow = c(1, 1))
+```
+
+### Customizing Single Quantile Plots
+
+```{r custom-single, fig.width=7, fig.height=5}
+# Custom colors and styling
+plot_quantile_with_points(model_uni, which_x = "x", 
+                          alpha = 0.4,
+                          main = "Custom Styled Quantile Plot",
+                          xlab = "Predictor Variable", 
+                          ylab = "Response Variable",
+                          col = "darkblue",
+                          lwd = 2,
+                          pch = 16)
+```
+
+## Multiple Quantile Plotting
+
+### Fitting Multiple Quantiles
+
+```{r multi-fit}
+# Fit multiple quantiles
+quantiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+
+# Linear model with multiple quantiles
+model_multi_linear <- mo.bqr.svy(y ~ x1 + x2,
+                                 data = linear_data,
+                                 weights = weights,
+                                 quantiles = quantiles,
+                                 max_iter = 100,
+                                 verbose = FALSE)
+
+# Univariate model with multiple quantiles for better visualization
+model_multi_uni <- mo.bqr.svy(y ~ x,
+                              data = nonlinear_data,
+                              weights = weights_nl,
+                              quantiles = quantiles,
+                              max_iter = 100,
+                              verbose = FALSE)
+```
+
+### Basic Multiple Quantile Plots
+
+```{r multi-basic, fig.width=8, fig.height=6}
+# Multiple quantile curves
+par(mfrow = c(1, 2))
+plot(model_multi_uni, type = "quantiles")
+plot(model_multi_linear, type = "coefficients")
+par(mfrow = c(1, 1))
+```
+
+### Coefficient Path Plots
+
+```{r coef-paths, fig.width=8, fig.height=6}
+# Plot coefficient paths across quantiles
+plot(model_multi_linear, type = "coefficients")
+```
+
+### Convergence Diagnostics
+
+```{r convergence-plots, fig.width=7, fig.height=5}
+# Convergence plots for EM algorithm
+plot(model_multi_linear, type = "convergence")
+```
+
+## Advanced Visualization Techniques
+
+### Comparing Different Quantiles
+
+```{r compare-quantiles, fig.width=9, fig.height=6}
+# Fit different quantiles separately for comparison
+q_values <- c(0.1, 0.5, 0.9)
+models_comp <- list()
+
+for(q in q_values) {
+  models_comp[[paste0("q", q*100)]] <- bqr.svy(y ~ x,
+                                               data = nonlinear_data,
+                                               weights = weights_nl,
+                                               quantile = q,
+                                               n_mcmc = 2000,
+                                               verbose = FALSE)
+}
+
+# Create comparison plot
+par(mfrow = c(1, 3))
+for(i in 1:length(models_comp)) {
+  plot_quantile_with_points(models_comp[[i]], which_x = "x", 
+                            alpha = 0.3,
+                            main = paste("Quantile", names(models_comp)[i]),
+                            xlab = "X", ylab = "Y")
+}
+par(mfrow = c(1, 1))
+```
+
+### Custom Multiple Quantile Visualization
+
+```{r custom-multi, fig.width=8, fig.height=6}
+# Manual plotting for full customization
+x_seq <- seq(min(nonlinear_data$x), max(nonlinear_data$x), length.out = 100)
+X_pred <- matrix(c(rep(1, 100), x_seq), ncol = 2)
+
+# Get coefficients for all quantiles
+coefs <- coef(model_multi_uni)
+n_quantiles <- nrow(coefs)
+
+# Create base plot
+plot(nonlinear_data$x, nonlinear_data$y, 
+     pch = 16, col = adjustcolor("gray", alpha = 0.6),
+     xlab = "X", ylab = "Y", 
+     main = "Multiple Quantile Regression Curves")
+
+# Add quantile curves with different colors
+colors <- rainbow(n_quantiles)
+for(i in 1:n_quantiles) {
+  y_pred <- X_pred %*% coefs[i, ]
+  lines(x_seq, y_pred, col = colors[i], lwd = 2)
+}
+
+# Add legend
+legend("topleft", 
+       legend = paste("τ =", quantiles),
+       col = colors, 
+       lwd = 2,
+       bty = "n")
+```
+
+## Diagnostic Plots
+
+### Residual Analysis
+
+```{r residual-plots, fig.width=8, fig.height=6}
+# Residual plots for model diagnostics
+residuals_q50 <- residuals(model_single)
+fitted_q50 <- fitted(model_single)
+
+par(mfrow = c(2, 2))
+
+# Residuals vs Fitted
+plot(fitted_q50, residuals_q50, 
+     pch = 16, col = adjustcolor("blue", alpha = 0.6),
+     xlab = "Fitted Values", ylab = "Residuals",
+     main = "Residuals vs Fitted")
+abline(h = 0, col = "red", lty = 2, lwd = 2)
+lowess_fit <- lowess(fitted_q50, residuals_q50)
+lines(lowess_fit, col = "orange", lwd = 2)
+
+# Q-Q plot
+qqnorm(residuals_q50, main = "Normal Q-Q Plot",
+       pch = 16, col = adjustcolor("blue", alpha = 0.6))
+qqline(residuals_q50, col = "red", lwd = 2)
+
+# Histogram of residuals
+hist(residuals_q50, breaks = 20, 
+     main = "Distribution of Residuals",
+     xlab = "Residuals", col = adjustcolor("lightblue", alpha = 0.7),
+     border = "blue")
+
+# Scale-Location plot
+sqrt_abs_resid <- sqrt(abs(residuals_q50))
+plot(fitted_q50, sqrt_abs_resid,
+     pch = 16, col = adjustcolor("green", alpha = 0.6),
+     xlab = "Fitted Values", ylab = "√|Residuals|",
+     main = "Scale-Location Plot")
+lowess_fit2 <- lowess(fitted_q50, sqrt_abs_resid)
+lines(lowess_fit2, col = "red", lwd = 2)
+
+par(mfrow = c(1, 1))
+```
+
+### MCMC Diagnostics for Single Quantile
+
+```{r mcmc-diagnostics, fig.width=8, fig.height=6}
+# Fit model with more detailed output for diagnostics
+model_diag <- bqr.svy(y ~ x1 + x2,
+                      data = linear_data,
+                      weights = weights,
+                      quantile = 0.5,
+                      n_mcmc = 3000,
+                      burnin = 500,
+                      verbose = FALSE)
+
+# Check convergence
+conv_result <- convergence_check(model_diag)
+print(conv_result)
+
+# Basic diagnostic plot
+plot(model_diag)
+```
+
+## Interactive and Enhanced Visualizations
+
+### Side-by-Side Comparisons
+
+```{r side-by-side, fig.width=10, fig.height=5}
+# Compare different methods
+methods <- c("ALD", "Score")
+models_method <- list()
+
+for(method in methods) {
+  models_method[[method]] <- bqr.svy(y ~ x,
+                                     data = nonlinear_data,
+                                     weights = weights_nl,
+                                     quantile = 0.5,
+                                     method = method,
+                                     n_mcmc = 2000,
+                                     verbose = FALSE)
+}
+
+# Side-by-side comparison
+par(mfrow = c(1, 2))
+for(method in methods) {
+  plot_quantile_with_points(models_method[[method]], which_x = "x",
+                            alpha = 0.5,
+                            main = paste("Method:", method),
+                            xlab = "X", ylab = "Y")
+}
+par(mfrow = c(1, 1))
+```
+
+### Multi-panel Diagnostic Display
+
+```{r multi-panel, fig.width=10, fig.height=8}
+# Comprehensive diagnostic display
+par(mfrow = c(2, 3))
+
+# Model fit
+plot_quantile_with_points(model_uni, which_x = "x", alpha = 0.5,
+                          main = "Model Fit")
+
+# Residuals vs fitted
+plot(fitted(model_uni), residuals(model_uni),
+     pch = 16, col = adjustcolor("red", alpha = 0.6),
+     main = "Residuals vs Fitted",
+     xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, lty = 2)
+
+# Q-Q plot
+qqnorm(residuals(model_uni), main = "Q-Q Plot",
+       pch = 16, col = adjustcolor("blue", alpha = 0.6))
+qqline(residuals(model_uni))
+
+# Coefficient comparison (multiple quantiles)
+plot(model_multi_uni, type = "coefficients")
+
+# Residual histogram
+hist(residuals(model_uni), main = "Residual Distribution",
+     col = adjustcolor("green", alpha = 0.7), breaks = 15)
+
+# Multiple quantiles
+plot(model_multi_uni, type = "quantiles")
+
+par(mfrow = c(1, 1))
+```
+
+## Exporting and Saving Plots
+
+```{r export-example, eval=FALSE}
+# Example of saving high-quality plots
+
+# PDF output
+pdf("quantile_analysis.pdf", width = 10, height = 6)
+par(mfrow = c(1, 2))
+plot_quantile_with_points(model_uni, which_x = "x", alpha = 0.6)
+plot(model_multi_uni, type = "coefficients")
+dev.off()
+
+# PNG output
+png("quantile_plot.png", width = 800, height = 600, res = 150)
+plot_quantile_with_points(model_uni, which_x = "x", alpha = 0.6,
+                          main = "Quantile Regression Analysis",
+                          cex.main = 1.2, cex.lab = 1.1)
+dev.off()
+```
+
+## Customization Tips
+
+### Color Schemes and Styling
+
+```{r color-schemes, fig.width=7, fig.height=5}
+# Custom color scheme for multiple quantiles
+custom_colors <- c("#2E86AB", "#A23B72", "#F18F01", "#C73E1D", "#59CD90")
+
+# Manual plotting with custom colors
+plot(nonlinear_data$x, nonlinear_data$y, 
+     pch = 16, col = adjustcolor("gray30", alpha = 0.4),
+     xlab = "X", ylab = "Y", 
+     main = "Custom Color Scheme")
+
+coefs <- coef(model_multi_uni)
+x_seq <- seq(min(nonlinear_data$x), max(nonlinear_data$x), length.out = 100)
+X_pred <- matrix(c(rep(1, 100), x_seq), ncol = 2)
+
+for(i in 1:length(quantiles)) {
+  y_pred <- X_pred %*% coefs[i, ]
+  lines(x_seq, y_pred, col = custom_colors[i], lwd = 3)
+}
+
+legend("topleft", 
+       legend = paste("τ =", quantiles),
+       col = custom_colors, 
+       lwd = 3,
+       bty = "n",
+       cex = 1.1)
+```
+
+## Summary
+
+The `tauBayesW` package provides comprehensive plotting capabilities:
+
+1. **Automatic plotting** with S3 methods
+2. **Specialized functions** for quantile visualization  
+3. **Diagnostic plots** for model validation
+4. **Customization options** for publication-quality graphics
+5. **Multiple quantile visualization** tools
+
+These tools enable effective communication of quantile regression results and facilitate model diagnostics and interpretation.
+
+## Best Practices
+
+1. **Always check residual plots** for model adequacy
+2. **Use multiple quantiles** to understand distributional effects
+3. **Compare different methods** when uncertain about approach
+4. **Include confidence/credible intervals** when possible
+5. **Use appropriate transparency** for overlapping points
+6. **Save plots in vector format** (PDF) for publications
+
+For more advanced visualization techniques, consider combining these functions with other R graphics packages like `ggplot2` or interactive visualization packages.

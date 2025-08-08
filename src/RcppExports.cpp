@@ -13,8 +13,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bayesQR_weighted_EM_cpp
-List bayesQR_weighted_EM_cpp(const Eigen::MatrixXd& y, const Eigen::MatrixXd& x, const Eigen::VectorXd& w, const Eigen::VectorXd& u, const Eigen::VectorXd& gamma_u, double tau, const Eigen::VectorXd& mu0, const Eigen::MatrixXd& sigma0, double a0, double b0);
-RcppExport SEXP _tauBayesW_bayesQR_weighted_EM_cpp(SEXP ySEXP, SEXP xSEXP, SEXP wSEXP, SEXP uSEXP, SEXP gamma_uSEXP, SEXP tauSEXP, SEXP mu0SEXP, SEXP sigma0SEXP, SEXP a0SEXP, SEXP b0SEXP) {
+Rcpp::List bayesQR_weighted_EM_cpp(const Eigen::MatrixXd& y, const Eigen::MatrixXd& x, const Eigen::VectorXd& w, const Eigen::VectorXd& u, const Eigen::VectorXd& gamma_u, double tau, const Eigen::VectorXd& mu0, const Eigen::MatrixXd& sigma0, double a0, double b0, double eps, int max_iter, bool verbose);
+RcppExport SEXP _tauBayesW_bayesQR_weighted_EM_cpp(SEXP ySEXP, SEXP xSEXP, SEXP wSEXP, SEXP uSEXP, SEXP gamma_uSEXP, SEXP tauSEXP, SEXP mu0SEXP, SEXP sigma0SEXP, SEXP a0SEXP, SEXP b0SEXP, SEXP epsSEXP, SEXP max_iterSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -28,7 +28,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type sigma0(sigma0SEXP);
     Rcpp::traits::input_parameter< double >::type a0(a0SEXP);
     Rcpp::traits::input_parameter< double >::type b0(b0SEXP);
-    rcpp_result_gen = Rcpp::wrap(bayesQR_weighted_EM_cpp(y, x, w, u, gamma_u, tau, mu0, sigma0, a0, b0));
+    Rcpp::traits::input_parameter< double >::type eps(epsSEXP);
+    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(bayesQR_weighted_EM_cpp(y, x, w, u, gamma_u, tau, mu0, sigma0, a0, b0, eps, max_iter, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -164,7 +167,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_tauBayesW_bayesQR_weighted_EM_cpp", (DL_FUNC) &_tauBayesW_bayesQR_weighted_EM_cpp, 10},
+    {"_tauBayesW_bayesQR_weighted_EM_cpp", (DL_FUNC) &_tauBayesW_bayesQR_weighted_EM_cpp, 13},
     {"_tauBayesW_MCMC_BWQR_AL", (DL_FUNC) &_tauBayesW_MCMC_BWQR_AL, 7},
     {"_tauBayesW_MCMC_BWQR_AP", (DL_FUNC) &_tauBayesW_MCMC_BWQR_AP, 10},
     {"_tauBayesW_MCMC_BWQR_SL", (DL_FUNC) &_tauBayesW_MCMC_BWQR_SL, 9},

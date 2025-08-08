@@ -1,0 +1,186 @@
+---
+title: "Getting Started with tauBayesW"
+author: "Tomas Rodriguez Taborda"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with tauBayesW}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+# Introduction
+
+The `tauBayesW` package provides Bayesian quantile regression methods for complex survey designs with observation weights. It implements both single and multiple quantile estimation using efficient MCMC and EM algorithms.
+
+## Installation
+
+```{r eval=FALSE}
+# Install from CRAN
+install.packages("tauBayesW")
+
+# Or install development version from GitHub
+# devtools::install_github("torodriguezt/tauBayesW")
+```
+
+```{r setup}
+library(tauBayesW)
+set.seed(123)
+```
+
+## Main Functions
+
+The package provides three main functions:
+
+1. **`bqr.svy()`**: Single quantile estimation using MCMC methods
+2. **`mo.bqr.svy()`**: Multiple quantile estimation using EM algorithm  
+3. **`plot_quantile()`**: Visualization functions for model results
+
+## Basic Example: Single Quantile Estimation
+
+Let's start with a simple example using simulated data:
+
+```{r basic-example}
+# Generate sample data
+n <- 200
+x1 <- rnorm(n)
+x2 <- runif(n, -1, 1)
+y <- 1 + 2*x1 - 0.5*x2 + rnorm(n)
+weights <- runif(n, 0.5, 2)  # Survey weights
+data <- data.frame(y, x1, x2)
+
+# Fit single quantile model (median)
+model_median <- bqr.svy(y ~ x1 + x2, 
+                        data = data,
+                        weights = weights,
+                        quantile = 0.5,
+                        method = "ALD",
+                        n_mcmc = 2000,
+                        burnin = 500)
+
+# Print results
+print(model_median)
+```
+
+## Summary and Diagnostics
+
+The package provides comprehensive summary methods:
+
+```{r summary}
+# Detailed summary with convergence diagnostics
+summary(model_median)
+
+# Extract coefficients
+coef(model_median)
+
+# Get fitted values and residuals
+head(fitted(model_median))
+head(residuals(model_median))
+```
+
+## Multiple Quantile Estimation
+
+For multiple quantiles, use the EM algorithm:
+
+```{r multiple-quantiles}
+# Fit multiple quantiles simultaneously
+quantiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+model_multi <- mo.bqr.svy(y ~ x1 + x2,
+                          data = data,
+                          weights = weights,
+                          quantiles = quantiles,
+                          max_iter = 100,
+                          tol = 1e-4)
+
+print(model_multi)
+```
+
+## Visualization
+
+The package includes comprehensive plotting functions:
+
+```{r plots, fig.width=7, fig.height=5}
+# Plot single quantile model
+plot(model_median)
+
+# Plot multiple quantiles
+plot(model_multi)
+```
+
+## Advanced Usage: Different MCMC Methods
+
+The `bqr.svy()` function supports three MCMC methods:
+
+```{r mcmc-methods}
+# Asymmetric Laplace Distribution (default)
+model_ald <- bqr.svy(y ~ x1 + x2, data = data, weights = weights, 
+                     quantile = 0.25, method = "ALD", n_mcmc = 1000)
+
+# Score-based method
+model_score <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
+                       quantile = 0.25, method = "Score", n_mcmc = 1000)
+
+# Approximate method (faster for large datasets)
+model_approx <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
+                        quantile = 0.25, method = "Approximate", n_mcmc = 1000)
+
+# Compare coefficient estimates
+rbind(
+  ALD = coef(model_ald),
+  Score = coef(model_score),
+  Approximate = coef(model_approx)
+)
+```
+
+## Working with Real Survey Data
+
+Here's an example of how to use the package with survey weights:
+
+```{r survey-example}
+# Simulate more realistic survey data
+n <- 500
+strata <- sample(1:3, n, replace = TRUE, prob = c(0.4, 0.35, 0.25))
+x1 <- rnorm(n, mean = strata, sd = 1)
+x2 <- rbinom(n, 1, 0.6)
+# Survey weights inversely proportional to selection probability
+survey_weights <- ifelse(strata == 1, 2.5, ifelse(strata == 2, 2.9, 4.0))
+y <- 1 + 1.5*x1 + 2*x2 + rnorm(n, sd = 1.5)
+
+survey_data <- data.frame(y, x1, x2, strata, survey_weights)
+
+# Fit model with survey weights
+survey_model <- bqr.svy(y ~ x1 + x2, 
+                        data = survey_data,
+                        weights = survey_weights,
+                        quantile = 0.5,
+                        n_mcmc = 2000)
+
+summary(survey_model)
+```
+
+## Conclusion
+
+The `tauBayesW` package provides:
+
+- Efficient Bayesian quantile regression for survey data
+- Multiple MCMC algorithms for different use cases
+- EM algorithm for simultaneous multiple quantile estimation
+- Comprehensive diagnostic and visualization tools
+- Full integration with R's modeling framework
+
+For more details, see the function-specific help pages and additional vignettes.
+
+## References
+
+1. Yu, K. and Moyeed, R. A. (2001). Bayesian quantile regression. *Statistics & Probability Letters*, 54(4), 437-447.
+
+2. Kozumi, H. and Kobayashi, G. (2011). Gibbs sampling methods for Bayesian quantile regression. *Journal of Statistical Computation and Simulation*, 81(11), 1565-1578.

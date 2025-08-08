@@ -3,10 +3,10 @@
 // [[Rcpp::plugins(cpp14)]]
 
 // --------------------------------------------------------------
-// Traducción íntegra de las cuatro rutinas BWQR:
-//   • atualizarBETA   • atualizarSIGMA
-//   • atualizarV_GIG  • bayesQRWeighted (Gibbs completo)
-// La actualización de v usa GIGrvg::rgig —igual que en R—
+// Complete translation of the four BWQR routines:
+//   * atualizarBETA   * atualizarSIGMA
+//   * atualizarV_GIG  * bayesQRWeighted (complete Gibbs)
+// The v update uses GIGrvg::rgig - same as in R -
 // para que las cadenas sean comparables semilla a semilla.
 // --------------------------------------------------------------
 
@@ -16,7 +16,7 @@ using namespace Rcpp;
 using namespace arma;
 
 /* ============================================================= *
- * 1.  Muestreador Inverse-Gaussian IG(μ, λ)                      *
+ * 1.  Inverse-Gaussian sampler IG(mu, lambda)                    *
  * ============================================================= */
 inline double rinvgauss(double mu, double lambda)
 {
@@ -30,7 +30,7 @@ inline double rinvgauss(double mu, double lambda)
 }
 
 /* ============================================================= *
- * 2.  β | (σ, v, …)                                             *
+ * 2.  beta | (sigma, v, ...)                                     *
  * ============================================================= */
 static arma::vec draw_beta(const arma::mat& X,
                            const arma::vec& w,
@@ -68,7 +68,7 @@ static arma::vec draw_beta(const arma::mat& X,
 }
 
 /* ============================================================= *
- * 3.  σ | (β, v, …)                                             *
+ * 3.  sigma | (beta, v, ...)                                     *
  * ============================================================= */
 inline double draw_sigma(const arma::mat& X,
                          const arma::vec& w,
@@ -90,7 +90,7 @@ inline double draw_sigma(const arma::mat& X,
 }
 
 /* ============================================================= *
- * 4.  v | (β, σ, …)  –  GIG(½, χ, ψ) via GIGrvg::rgig          *
+ * 4.  v | (beta, sigma, ...)  -  GIG(1/2, chi, psi) via GIGrvg::rgig *
  * ============================================================= */
 // [[Rcpp::export]]
 arma::vec atualizarV_GIG(const arma::vec& y,
@@ -102,7 +102,7 @@ arma::vec atualizarV_GIG(const arma::vec& y,
                          double sigma,
                          int N)
 {
-  // Namespace y función rgig cargadas una sola vez
+  // Namespace y funcion rgig cargadas una sola vez
   static Rcpp::Environment gig_ns =
     Rcpp::Environment::namespace_env("GIGrvg");
   static Rcpp::Function rgig = gig_ns["rgig"];
@@ -157,7 +157,7 @@ double atualizarSIGMA(double c0, double C0,
 }
 
 /* ============================================================= *
- *  Gibbs completo  –  PARÁMETROS MCMC **OBLIGATORIOS**          *
+ *  Gibbs completo  -  PARAMETROS MCMC **OBLIGATORIOS**          *
  * ============================================================= */
 // [[Rcpp::export]]
 Rcpp::List NonCrossingBWQR_AL(const arma::vec& y,

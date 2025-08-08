@@ -1,6 +1,6 @@
 Package: tauBayesW
 Title: Bayesian Weighted Quantile Regression with EM and MCMC Algorithm
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: 
     c(
         person("Marcus L.", "Nascimiento", email = "marcus.lavagnole@fgv.br", role = "aut"),
@@ -8,10 +8,14 @@ Authors@R:
         person("Johntan", "Cardona Jiménez", email = "jcardonj@unal.edu.co", role = "aut"),
         person("Tomás", "Rodríguez Taborda", email = "torodriguezt@unal.edu.co", role = c("aut", "cre"))
     )
-Description: Implements a Bayesian quantile regression approach using the Expectation-Maximization (EM) algorithm 
-    and several MCMC methods with observation weights. Includes fast C++ implementations using Rcpp, RcppEigen, 
-    and RcppArmadillo for linear algebra, and Boost (via the BH package) for special functions such as Bessel. 
-    The package also calls 'GIGrvg' for sampling from Generalized Inverse Gaussian distributions.
+Description: Implements Bayesian quantile regression approaches using the Expectation-Maximization (EM) algorithm 
+    and several MCMC methods with observation weights for complex survey designs. The package provides two main 
+    functions: 'bqr.svy()' for single quantile estimation using MCMC methods (Asymmetric Laplace, Score, and 
+    Approximate), and 'mo.bqr.svy()' for multiple quantile estimation using the EM algorithm. Includes fast C++ 
+    implementations using 'Rcpp', 'RcppEigen', and 'RcppArmadillo' for linear algebra, and 'Boost' (via the 
+    'BH' package) for special functions such as Bessel. The package also calls 'GIGrvg' for sampling from 
+    Generalized Inverse Gaussian distributions. Methods are based on Yu and Moyeed (2001) 
+    <doi:10.1016/S0167-7152(01)00124-9> and Kozumi and Kobayashi (2011) <doi:10.1016/j.csda.2011.04.021>.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -24,7 +28,15 @@ LinkingTo:
     GIGrvg
 Imports:
     Rcpp,
+    stats
+Suggests:
+    testthat (>= 3.0.0),
     RcppArmadillo,
     RcppEigen,
     GIGrvg,
-    BH
+    BH,
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+URL: https://github.com/torodriguezt/tauBayesW
+BugReports: https://github.com/torodriguezt/tauBayesW/issues

@@ -353,18 +353,18 @@ export default function RDocumentation() {
             {/* 3 ───────────────────────── Functions ───────────────────────── */}
             <section id="functions" className="mb-12">
               <h2 className="text-2xl font-bold tracking-tight mb-4">
-                {t("functionsTitle")}
+                Main Functions
               </h2>
               <p className="text-muted-foreground mb-6">
-                {t("functionsDesc")}
+                The tauBayesW package provides three main functions for Bayesian quantile regression analysis with survey weights.
               </p>
 
-              {/* Layout estético: 2-2-1 con cajas más grandes y clickeables */}
+              {/* Layout: 3 main functions */}
               <div className="space-y-8">
-                {/* Fila superior: 2 cajas */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
-                  {/* Card 1 - Clickeable */}
-                  <Link href="/functions/EM_BWQR_AL_MO">
+                {/* Three main functions */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                  {/* Card 1 - bqr.svy */}
+                  <Link href="/functions/bqr-svy">
                     <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-blue-300 border-2">
                       <CardHeader className="pb-6 pt-8">
                         <div className="flex items-center gap-3 mb-3">
@@ -372,24 +372,24 @@ export default function RDocumentation() {
                             <Code className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                           </div>
                           <CardTitle className="text-xl font-bold group-hover:text-blue-600 transition-colors">
-                            EM_BWQR_AL_MO()
+                            bqr.svy()
                           </CardTitle>
                         </div>
                         <CardDescription className="text-base leading-relaxed">
-                          {t("emDesc")}
+                          Single quantile Bayesian regression using MCMC methods (ALD, Score, Approximate) with survey weights support.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0">
                         <div className="flex items-center text-sm text-muted-foreground group-hover:text-blue-600 transition-colors">
-                          <span>{t("clickToView")}</span>
+                          <span>View Documentation</span>
                           <span className="ml-auto">→</span>
                         </div>
                       </CardContent>
                     </Card>
                   </Link>
 
-                  {/* Card 2 - Clickeable */}
-                  <Link href="/functions/MCMC_BWQR_AL">
+                  {/* Card 2 - mo.bqr.svy */}
+                  <Link href="/functions/mo-bqr-svy">
                     <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-green-300 border-2">
                       <CardHeader className="pb-6 pt-8">
                         <div className="flex items-center gap-3 mb-3">
@@ -397,27 +397,24 @@ export default function RDocumentation() {
                             <Package className="h-5 w-5 text-green-600 dark:text-green-400" />
                           </div>
                           <CardTitle className="text-xl font-bold group-hover:text-green-600 transition-colors">
-                            MCMC_BWQR_AL()
+                            mo.bqr.svy()
                           </CardTitle>
                         </div>
                         <CardDescription className="text-base leading-relaxed">
-                          {t("mcmcALDesc")}
+                          Multiple quantile estimation using EM algorithm for efficient simultaneous quantile regression analysis.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0">
                         <div className="flex items-center text-sm text-muted-foreground group-hover:text-green-600 transition-colors">
-                          <span>{t("clickToView")}</span>
+                          <span>View Documentation</span>
                           <span className="ml-auto">→</span>
                         </div>
                       </CardContent>
                     </Card>
                   </Link>
-                </div>
 
-                {/* Fila inferior: 2 cajas */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
-                  {/* Card 3 - Clickeable */}
-                  <Link href="/functions/auto-plot">
+                  {/* Card 3 - plot_quantile */}
+                  <Link href="/functions/plot-quantile">
                     <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-purple-300 border-2">
                       <CardHeader className="pb-6 pt-8">
                         <div className="flex items-center gap-3 mb-3">
@@ -425,41 +422,16 @@ export default function RDocumentation() {
                             <BookOpen className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                           </div>
                           <CardTitle className="text-xl font-bold group-hover:text-purple-600 transition-colors">
-                            MCMC_BWQR_AP()
+                            plot_quantile()
                           </CardTitle>
                         </div>
                         <CardDescription className="text-base leading-relaxed">
-                          {t("mcmcAPDesc")}
+                          Comprehensive visualization functions for quantile regression models with customizable plotting options.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0">
                         <div className="flex items-center text-sm text-muted-foreground group-hover:text-purple-600 transition-colors">
-                          <span>{t("clickToView")}</span>
-                          <span className="ml-auto">→</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-
-                  {/* Card 4 - Clickeable */}
-                  <Link href="/functions/bayesian-qreg">
-                    <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-orange-300 border-2">
-                      <CardHeader className="pb-6 pt-8">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
-                            <FileText className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                          </div>
-                          <CardTitle className="text-xl font-bold group-hover:text-orange-600 transition-colors">
-                            MCMC_BWQR_SL()
-                          </CardTitle>
-                        </div>
-                        <CardDescription className="text-base leading-relaxed">
-                          {t("mcmcSLDesc")}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="flex items-center text-sm text-muted-foreground group-hover:text-orange-600 transition-colors">
-                          <span>{t("clickToView")}</span>
+                          <span>View Documentation</span>
                           <span className="ml-auto">→</span>
                         </div>
                       </CardContent>
@@ -467,32 +439,29 @@ export default function RDocumentation() {
                   </Link>
                 </div>
 
-                {/* Caja centrada: Card 5 - Más destacada */}
-                <div className="flex justify-center">
-                  <div className="w-full max-w-lg">
-                    <Link href="/functions/compare-models">
-                      <Card className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.03] hover:border-red-300 border-2 bg-gradient-to-br from-background to-muted/30">
-                        <CardHeader className="pb-6 pt-8 text-center">
-                          <div className="flex justify-center mb-4">
-                            <div className="h-12 w-12 rounded-xl bg-red-100 dark:bg-red-900 flex items-center justify-center">
-                              <Download className="h-6 w-6 text-red-600 dark:text-red-400" />
-                            </div>
-                          </div>
-                          <CardTitle className="text-2xl font-bold group-hover:text-red-600 transition-colors">
-                            NonCrossingBWQR_AL()
-                          </CardTitle>
-                          <CardDescription className="text-base leading-relaxed mt-3">
-                            {t("nonCrossingDesc")}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="pt-0 text-center">
-                          <div className="flex items-center justify-center text-sm text-muted-foreground group-hover:text-red-600 transition-colors">
-                            <span>{t("clickToView")}</span>
-                            <span className="ml-2">→</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
+                {/* Summary methods info */}
+                <div className="mt-12 bg-muted/30 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold mb-3">Summary and Print Methods</h3>
+                  <p className="text-muted-foreground mb-4">
+                    All functions include comprehensive summary() and print() methods for detailed model diagnostics:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <h4 className="font-medium text-foreground">For bqr.svy objects:</h4>
+                      <ul className="text-muted-foreground mt-1 space-y-1">
+                        <li>• MCMC convergence diagnostics</li>
+                        <li>• Posterior intervals and estimates</li>
+                        <li>• R-hat and effective sample sizes</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-foreground">For mo.bqr.svy objects:</h4>
+                      <ul className="text-muted-foreground mt-1 space-y-1">
+                        <li>• EM algorithm convergence</li>
+                        <li>• Multi-quantile coefficient estimates</li>
+                        <li>• Quantile-specific diagnostics</li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -7,7 +7,7 @@ using namespace arma;
 
 constexpr double PI = 3.14159265358979323846;
 
-/* ─────────────────── utilidades ─────────────────── */
+/* ------------------ utilidades ------------------ */
 inline arma::vec rmvnorm(const arma::vec& m, const arma::mat& L) {
   return m + L * randn<vec>(m.n_elem);
 }
@@ -26,7 +26,7 @@ static double log_post_SL(const arma::vec& beta,
   arma::vec res = y - X * beta;
   arma::vec ind = tau - conv_to<vec>::from(res < 0);
   
-  arma::vec w_un = mean(w) * w;                  // w_uf · w_i
+  arma::vec w_un = mean(w) * w;                  // w_uf * w_i
   arma::vec s_tau = X.t() * (w_un % ind);
   
   arma::mat XtW2X = X.t() * (X.each_col() % square(w));
@@ -38,7 +38,7 @@ static double log_post_SL(const arma::vec& beta,
   return lp - quad - ld;
 }
 
-/* ─────────────────── MCMC BWQR - SL ─────────────────── */
+/* ------------------ MCMC BWQR - SL ------------------ */
 // [[Rcpp::export]]
 Rcpp::List MCMC_BWQR_SL(const arma::vec& y,
                         const arma::mat& X,
@@ -55,7 +55,7 @@ Rcpp::List MCMC_BWQR_SL(const arma::vec& y,
   if (burnin >= n_mcmc) stop("burnin debe ser < n_mcmc");
   if (thin <= 0)        stop("thin debe ser positivo");
   
-  const int p = X.n_cols;           // ← número de covariables dinámico
+  const int p = X.n_cols;           // <- numero de covariables dinamico
   
   /* ----- prior -------------------------------------------------- */
   arma::vec b0;
@@ -71,13 +71,13 @@ Rcpp::List MCMC_BWQR_SL(const arma::vec& y,
   if (B0_.isNotNull()) {
     B0 = as<arma::mat>(B0_);
     if (B0.n_rows != p || B0.n_cols != p)
-      stop("B0 debe ser una matriz p×p");
+      stop("B0 debe ser una matriz pxp");
   } else {
     B0 = 1000.0 * arma::eye<mat>(p, p);
   }
   arma::mat B_inv = inv_sympd(B0);
   
-  /* ----- propuesta base Σ_prop --------------------------------- */
+  /* ----- propuesta base Sigma_prop --------------------------------- */
   arma::mat XtWX = X.t() * (X.each_col() % square(w));
   arma::mat Sigma_prop = (tau * (1.0 - tau) / y.n_elem) * inv_sympd(XtWX);
   arma::mat L_prop = chol(Sigma_prop, "lower");

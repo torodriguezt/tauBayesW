@@ -2,11 +2,11 @@
 // [[Rcpp::plugins(cpp14)]]
 
 /* ------------------------------------------------------------------
- *  MCMC_BWQR_AP.cpp  ―  Adaptive‐proposal Metropolis–Hastings sampler
- *  para regresión cuantílica bayesiana ponderada con **p covariables
- *  arbitrarias**.  En esta versión los parámetros **n_mcmc**, **burnin**
+ *  MCMC_BWQR_AP.cpp  -  Adaptive-proposal Metropolis-Hastings sampler
+ *  para regresion cuantilica bayesiana ponderada con **p covariables
+ *  arbitrarias**.  En esta version los parametros **n_mcmc**, **burnin**
  *  y **thin** son OBLIGATORIOS (sin valores por defecto) para replicar
- *  exactamente la llamada de la función R.
+ *  exactamente la llamada de la funcion R.
  * ------------------------------------------------------------------ */
 
 #include <RcppArmadillo.h>
@@ -19,13 +19,13 @@ constexpr double PI = 3.14159265358979323846;
 /* 1. Utilidades                                                      */
 /* ================================================================== */
 
-// Muestreo normal multivariante N(m, Σ) — requiere L = chol(Σ, "lower")
+// Muestreo normal multivariante N(m, Sigma) - requiere L = chol(Sigma, "lower")
 inline arma::vec rmvnorm(const arma::vec& m, const arma::mat& L)
 {
   return m + L * randn<vec>(m.n_elem);
 }
 
-// Log-posterior no normalizado (idéntico a la referencia R)
+// Log-posterior no normalizado (identico a la referencia R)
 static double log_post(const arma::vec& beta,
                        const arma::vec& b0,
                        const arma::mat& B_inv,
@@ -34,7 +34,7 @@ static double log_post(const arma::vec& beta,
                        const arma::vec& w,
                        double tau,
                        double w_scale,
-                       // buffers — se reutilizan en cada llamada
+                       // buffers - se reutilizan en cada llamada
                        arma::mat& S,
                        arma::mat& wcA,
                        arma::mat& wc)
@@ -47,8 +47,8 @@ static double log_post(const arma::vec& beta,
   arma::vec res = y - X * beta;
   arma::vec ind = tau - conv_to<vec>::from(res < 0);
   
-  arma::vec tmp = wuf * w % ind;                   // wuf·w·ind
-  arma::vec s_tau = X.t() * tmp;                   // Σ wuf w_i ind_i x_i
+  arma::vec tmp = wuf * w % ind;                   // wuf*w*ind
+  arma::vec s_tau = X.t() * tmp;                   // Sum wuf w_i ind_i x_i
   
   // S = diag(w_i ind_i) X (vectorizado)
   S.each_col() = w % ind;
@@ -56,7 +56,7 @@ static double log_post(const arma::vec& beta,
   
   arma::vec invw = 1.0 / (wuf * w);
   arma::vec fac  = (1.0 - invw) / square(invw);
-  wcA = (S.each_col() % fac).t() * S;              // Σ fac_i x_i x_iᵀ
+  wcA = (S.each_col() % fac).t() * S;              // Sum fac_i x_i x_iT
   
   bool ok = inv_sympd(wc, wcA);
   if (!ok) wc = pinv(wcA, 1e-12);
@@ -68,12 +68,12 @@ static double log_post(const arma::vec& beta,
 }
 
 /* ================================================================== */
-/* 2. Adaptive–proposal Metropolis–Hastings (parámetros obligatorios) */
+/* 2. Adaptive-proposal Metropolis-Hastings (parametros obligatorios) */
 /* ================================================================== */
 
 // [[Rcpp::export]]
 Rcpp::List MCMC_BWQR_AP(const arma::vec& y,           // respuesta (n)
-                        const arma::mat& X,           // diseño (n×p)
+                        const arma::mat& X,           // diseno (nxp)
                         const arma::vec& w,           // pesos (n)
                         int n_mcmc,                   // iteraciones totales
                         int burnin,                   // descarte inicial
@@ -104,7 +104,7 @@ Rcpp::List MCMC_BWQR_AP(const arma::vec& y,           // respuesta (n)
     stop("B0 debe ser una matriz %dx%d", p, p);
   arma::mat B_inv = inv_sympd(B0);
   
-  /* --- Propuesta base Σ_prop ≈ (τ(1−τ)/n)(Xᵀ W² X)⁻¹ ----------- */
+  /* --- Propuesta base Sigma_prop ~ (tau(1-tau)/n)(XT W^2 X)^-1 ----------- */
   arma::mat XtWX = X.t() * (X.each_col() % square(w));
   arma::mat Sigma_prop = (tau * (1.0 - tau) / n) * inv_sympd(XtWX);
   arma::mat L_prop = chol(Sigma_prop, "lower");
@@ -118,7 +118,7 @@ Rcpp::List MCMC_BWQR_AP(const arma::vec& y,           // respuesta (n)
   arma::mat beta_out(n_keep, p, fill::none);
   int accept = 0;
   
-  /* --- Inicialización ------------------------------------------- */
+  /* --- Inicializacion ------------------------------------------- */
   arma::vec beta_curr = solve(X, y);   // OLS como punto de arranque
   double ct = 2.38;                    // escala adaptativa inicial
   int k_out = 0;
@@ -141,7 +141,7 @@ Rcpp::List MCMC_BWQR_AP(const arma::vec& y,           // respuesta (n)
       ++accept;
     }
     
-    // Adaptación Robbins–Monro para ct
+    // Adaptacion Robbins-Monro para ct
     ct = std::exp(std::log(ct) + std::pow(k + 1.0, -0.8) * (acc_prob - 0.234));
     
     // Almacenar muestra si corresponde
