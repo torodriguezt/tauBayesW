@@ -167,7 +167,7 @@ logLik(model)        # Log-likelihood`
                       </div>
                       <div>
                         <h4 className="font-semibold">quantile</h4>
-                        <p className="text-sm text-muted-foreground">Quantile to estimate (0 < tau < 1)</p>
+                        <p className="text-sm text-muted-foreground">Quantile to estimate (0 &lt; tau &lt; 1)</p>
                       </div>
                       <div>
                         <h4 className="font-semibold">method</h4>
