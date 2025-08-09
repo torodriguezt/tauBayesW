@@ -32,7 +32,6 @@ The following benchmark compares the R and C++ versions of the main algorithms o
 | MCMC_BWQR_AL         | 12.3         | 0.01           | 2.0 GB | 50 MB   | ×1100          | ~40×           |
 | MCMC_BWQR_AP         | 21.78        | 2.81           | ? GB   | ? GB    | ×7.8           | ?              |
 | MCMC_BWQR_SL         | 9.7          | 1.4            | ?      | ?       | ×7.1           | ~7.2×          |
-| NonCrossingBWQR_AL   | 21.7         | 0.9            | 5.4 GB | 0.7 GB  | ×24.1          | ~7.7×          |
 
 > Test environment: R 4.4.2, Windows 11, Intel i5 13600-K, 32 GB RAM
 
