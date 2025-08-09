@@ -1,0 +1,319 @@
+---
+title: "tauBayesW: Bayesian Weighted Quantile Regression"
+author: "Tomas Rodriguez Taborda"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{tauBayesW}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+# tauBayesW: An R Framework for Bayesian Weighted Quantile Regression
+
+[![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/tauBayesW)](https://cran.r-project.org/package=tauBayesW)
+[![downloads](https://cranlogs.r-pkg.org/badges/tauBayesW)](https://cran.r-project.org/package=tauBayesW)
+
+## What is tauBayesW?
+
+**tauBayesW** is an R package that provides a comprehensive framework for Bayesian weighted quantile regression with survey designs. The package implements state-of-the-art MCMC and EM algorithms to handle complex survey data while maintaining computational efficiency and statistical rigor.
+
+Unlike traditional quantile regression approaches, tauBayesW:
+- 🎯 **Handles survey weights naturally** in the Bayesian framework
+- 🔄 **Implements multiple MCMC methods** (ALD, Score, Approximate)  
+- 📊 **Estimates multiple quantiles efficiently** using EM algorithms
+- 🎨 **Provides comprehensive visualization** tools
+- 📈 **Includes model diagnostics** and convergence checking
+
+## Installation
+
+```{r installation, eval=FALSE}
+# From CRAN (when available)
+install.packages("tauBayesW")
+
+# From GitHub (development version)
+# remotes::install_github("torodriguezt/tauBayesW")
+```
+
+```{r setup}
+library(tauBayesW)
+set.seed(123)
+```
+
+## Citation
+
+To cite tauBayesW in publications, please use:
+
+```{r citation, eval=FALSE}
+citation("tauBayesW")
+```
+
+## Getting Started
+
+tauBayesW provides three main functions that work together to cover all aspects of Bayesian quantile regression:
+
+- **`bqr.svy()`**: 🎯 Bayesian quantile regression for single quantiles with survey weights
+- **`mo.bqr.svy()`**: 📊 Multiple quantile regression using efficient EM algorithms  
+- **`plot_quantile()`**: 🎨 Comprehensive visualization functions for quantile regression
+
+### Basic Usage
+
+Let's start with a simple example using survey data:
+
+```{r basic-example}
+# Simulate survey data with design weights
+n <- 500
+x1 <- rnorm(n)
+x2 <- rbinom(n, 1, 0.4)
+y <- 1 + 2*x1 + 1.5*x2 + rnorm(n)
+weights <- runif(n, 0.5, 2)  # Survey weights
+
+data <- data.frame(y, x1, x2)
+
+# Single quantile regression (median)
+model_median <- bqr.svy(y ~ x1 + x2, 
+                        data = data,
+                        weights = weights,
+                        quantile = 0.5,
+                        n_mcmc = 2000,
+                        verbose = FALSE)
+
+summary(model_median)
+```
+
+### Multiple Quantile Analysis
+
+```{r multiple-quantiles}
+# Multiple quantiles simultaneously
+quantiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+
+model_multi <- mo.bqr.svy(y ~ x1 + x2,
+                          data = data, 
+                          weights = weights,
+                          quantile = quantiles,
+                          max_iter = 100,
+                          verbose = FALSE)
+
+summary(model_multi)
+```
+
+### Visualization
+
+```{r visualization, fig.width=8, fig.height=6}
+# Create univariate data for better visualization
+n_vis <- 300
+x_vis <- seq(-2, 2, length.out = n_vis)
+y_vis <- 1 + 2*x_vis + (0.5 + 0.3*abs(x_vis))*rnorm(n_vis)  # Heteroscedastic
+weights_vis <- rgamma(n_vis, 2, 1)
+data_vis <- data.frame(y = y_vis, x = x_vis)
+
+# Fit single quantile for plotting
+model_vis <- bqr.svy(y ~ x, 
+                     data = data_vis,
+                     weights = weights_vis,
+                     quantile = 0.5,
+                     n_mcmc = 2000,
+                     verbose = FALSE)
+
+# Plot quantile regression with data points
+plot_quantile_with_points(model_vis, data = data_vis, predictor = "x",
+                          point_alpha = 0.6,
+                          main = "Bayesian Quantile Regression (τ = 0.5)")
+```
+
+## Advanced Features
+
+### 1. Multiple MCMC Methods
+
+tauBayesW implements three different MCMC approaches:
+
+```{r mcmc-methods}
+n <- 800
+x1 <- runif(n)
+x2 <- rnorm(n)
+y <- 3 + 2*x1 + 1.5*x2 + rnorm(n)
+weights <- rep(1, n)
+data <- data.frame(y, x1, x2)
+
+methods <- c("ald", "score", "approximate")
+results <- list()
+
+for(method in methods) {
+  results[[method]] <- bqr.svy(y ~ x1 + x2,
+                               data = data,
+                               weights = weights,
+                               quantile = 0.3,
+                               method = method,
+                               n_mcmc = 60000,
+                               burnin = 25000,
+                               verbose = FALSE)
+}
+
+coef_names <- c("(Intercept)", "x1", "x2")
+coef_comparison <- do.call(rbind, lapply(results, function(mod) {
+  coefs <- coef(mod)
+  as.numeric(coefs[coef_names])
+}))
+colnames(coef_comparison) <- coef_names
+rownames(coef_comparison) <- methods
+print(round(coef_comparison, 4))
+
+```
+
+### 2. Complex Survey Designs
+
+```{r survey-design}
+# Simulate stratified survey data
+n_strata <- 3
+strata_data <- do.call(rbind, lapply(1:n_strata, function(s) {
+  n_s <- 150
+  x1 <- rnorm(n_s, mean = s, sd = 1)
+  x2 <- rbinom(n_s, 1, prob = 0.2 + 0.2*s)
+  y <- 1.5 + 2*x1 + 1.2*x2 + rnorm(n_s, sd = 0.8 + 0.2*s)
+  
+  # Inverse probability weights
+  weights <- 1 / (0.1 + 0.3*s/n_strata)
+  
+  data.frame(y, x1, x2, stratum = s, weights = weights)
+}))
+
+# Analyze stratified data
+strata_model <- bqr.svy(y ~ x1 + x2,
+                        data = strata_data,
+                        weights = strata_data$weights,
+                        quantile = 0.5,
+                        n_mcmc = 2000,
+                        verbose = FALSE)
+
+summary(strata_model)
+```
+
+
+### 4. Multiple Quantile Visualization
+
+```{r multi-quantile-viz, fig.width=8, fig.height=6}
+# Fit multiple quantiles for univariate case
+model_multi_vis <- mo.bqr.svy(y ~ x,
+                              data = data_vis,
+                              weights = weights_vis,
+                              quantile = c(0.1, 0.25, 0.5, 0.75, 0.9),
+                              max_iter = 100,
+                              verbose = FALSE)
+
+# Plot multiple quantile curves
+plot(model_multi_vis, type = "quantiles")
+
+# Plot coefficient evolution across quantiles  
+plot(model_multi_vis, type = "convergence")
+
+```
+
+
+
+
+
+## Methodology
+
+### Theoretical Background
+
+The package implements Bayesian quantile regression using the **Asymmetric Laplace Distribution (ALD)** representation:
+
+$$y_i \sim ALD(\mu_i, \sigma, \tau)$$
+
+where $\mu_i = \mathbf{x}_i^T \boldsymbol{\beta}$ and the likelihood is:
+
+$$f(y_i|\mu_i,\sigma,\tau) = \frac{\tau(1-\tau)}{\sigma} \exp\left(-\rho_\tau\left(\frac{y_i-\mu_i}{\sigma}\right)\right)$$
+
+The check function $\rho_\tau(u) = u(\tau - \mathbb{I}(u < 0))$ naturally incorporates quantile-specific loss.
+
+### Survey Weights Integration
+
+Survey weights $w_i$ are naturally incorporated in the Bayesian framework through the weighted likelihood:
+
+$$L(\boldsymbol{\beta}, \sigma) = \prod_{i=1}^n f(y_i|\mu_i, \sigma, \tau)^{w_i}$$
+
+This approach maintains design consistency while providing full posterior inference.
+
+### EM Algorithm for Multiple Quantiles
+
+For computational efficiency with multiple quantiles, the package implements an EM algorithm that:
+
+1. **E-step**: Computes posterior expectations of latent variables
+2. **M-step**: Updates parameters via weighted optimization
+
+This ensures:
+- ✅ Computational efficiency
+- ✅ Numerical stability  
+
+## Simulation and Validation
+
+```{r simulation}
+# Built-in simulation function
+sim_data <- simulate_mo_bqr_data(n = 700,
+                                 beta = c(1, 2, -0.5),
+                                 seed = 456)
+
+# Fit model to simulated data
+sim_model <- mo.bqr.svy(y ~ x1 + x2,
+                        data = sim_data$data,
+                        weights = sim_data$weights,
+                        quantile = c(0.25, 0.5, 0.75),
+                        verbose = FALSE)
+
+# Compare true vs estimated coefficients
+true_coefs <- c(1, 2, -0.5)
+estimated_coefs <- coef(sim_model)
+
+print("True coefficients:")
+print(true_coefs)
+print("Estimated coefficients quantile 0.25:")
+print(estimated_coefs[1]) 
+```
+
+## Additional Documentation
+
+For comprehensive documentation, examples, and advanced tutorials, visit:
+
+**📖 [https://torodriguezt.github.io/tauBayesW/](https://torodriguezt.github.io/tauBayesW/)**
+
+## Dependencies
+
+tauBayesW is designed to be lightweight with minimal dependencies:
+
+- **Base R packages**: stats, grDevices, graphics
+- **C++ integration**: Rcpp, RcppEigen, RcppArmadillo
+- **Suggested**: survey (for complex survey examples)
+
+This makes tauBayesW safe to use as a dependency in other packages without dependency conflicts.
+
+## Package Functions Overview
+
+| Function | Purpose | Type |
+|----------|---------|------|
+| `bqr.svy()` | Single quantile regression | Main |
+| `mo.bqr.svy()` | Multiple quantile regression | Main |
+| `plot_quantile()` | Quantile curve visualization | Plotting |
+| `plot_quantile_with_points()` | Scatter plot with quantile overlay | Plotting |
+| `convergence_check()` | MCMC convergence diagnostics | Diagnostic |
+| `simulate_mo_bqr_data()` | Data simulation for testing | Utility |
+
+All functions come with comprehensive S3 methods for `print()`, `summary()`, `plot()`, `coef()`, `fitted()`, `residuals()`, and `logLik()`.
+
+## References
+   - Yu, K. and Moyeed, R. A. (2001). Bayesian quantile regression. *Statistics & Probability Letters*, 54(4), 437-447.
+   - Kozumi, H. and Kobayashi, G. (2011). Gibbs sampling methods for Bayesian quantile regression. *Journal of Statistical Computation and Simulation*, 81(11), 1565-1578.
+   - Lohr, S. L. (2009). *Sampling: Design and Analysis*. Chapman and Hall/CRC.
+   - Gelman, A., et al. (2013). *Bayesian Data Analysis*. Chapman and Hall/CRC.
+
+---

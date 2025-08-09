@@ -1,17 +1,6 @@
-# mo_bqr_svy.R # # -----------------------------------------------------------------------------
-
-#   * Prior is now passed as a weak covariance (diag 1e6) -> inverted internallytiple-Output Bayesian Quantile Regression for Complex Surveys (EM algorithm)
-# Fixes:
-#   * Prior is now passed as a weak covariance (diag 1e6) -> inverted internallytable version (August 2025)
-# -----------------------------------------------------------------------------
-# Multiple-Output Bayesian Quantile Regression for Complex Surveys (EM algorithm)
-# Fixes:
-#   * Prior is now passed as a weak covariance (diag 1e6) - inverted internally
-#     in the back-end; avoids collapse of beta to 0.
-#   * gamma_u = 0 in the univariate case (orthogonal to u).
-# -----------------------------------------------------------------------------
-
-#' Multiple-Output Bayesian Quantile Regression for Complex Surveys
+#'#' Fits a Bayesian quantile regression model under asymmetric Laplace
+#' likelihood using an EM algorithm, accounting for survey weights.
+#' Supports multiple quantiles simultaneously. Bayesian Quantile Regression for Complex Surveys
 #'
 #' Fits a Bayesian quantile regression model under asymmetric Laplace
 #' likelihood using an EM algorithm, accounting for survey weights.
@@ -55,9 +44,6 @@ mo.bqr.svy <- function(formula,
                        max_iter = 1000,
                        verbose  = FALSE) {
   
-  # ---------------------------
-  # 1. Input checks
-  # ---------------------------
   if (algorithm != "em")
     stop("Only 'em' is implemented.")
   if (missing(data))
@@ -67,19 +53,16 @@ mo.bqr.svy <- function(formula,
   y  <- model.response(mf)
   X  <- model.matrix(attr(mf, "terms"), mf)
   n  <- length(y)
-  
-  # ---------------- Survey weights -------------------------------
   wts <- if (is.null(weights)) rep(1, n) else as.numeric(weights)
   if (length(wts) != n)  stop("'weights' must have length n.")
   if (any(!is.finite(wts)) || any(wts <= 0))
     stop("Invalid weights.")
-  wts <- wts / mean(wts)  # normalize
+  wts <- wts / mean(wts)
   
   if (any(!is.finite(y))) stop("Response 'y' contains non-finite values.")
   
   p <- ncol(X)
   
-  # ---------------- Prior (weak covariance) ----------------------
   if (is.null(prior)) prior <- list(
     beta_mean   = rep(0, p),
     beta_cov    = diag(1e6, p),
@@ -89,23 +72,17 @@ mo.bqr.svy <- function(formula,
   if (!all(c("beta_mean", "beta_cov", "sigma_shape", "sigma_rate") %in% names(prior)))
     stop("'prior' must contain beta_mean, beta_cov, sigma_shape, sigma_rate.")
   
-  # ---------------- Output container -----------------------------
   results <- vector("list", length(quantile))
   names(results) <- paste0("q", quantile)
-  
-  # ---------------------------
   # 2. Loop over quantiles
-  # ---------------------------
   for (qi in seq_along(quantile)) {
     q <- quantile[qi]
     if (q <= 0 || q >= 1) stop("'quantile' must be in (0,1).")
     
-    # ----- Data for C++ backend ----------------------------------
     y_matrix <- matrix(y, ncol = 1)
-    u        <- matrix(1.0, 1, 1)  # main direction
-    gamma_u  <- matrix(0.0, 1, 1)  # orthogonal in 1-D
+    u        <- matrix(1.0, 1, 1)
+    gamma_u  <- matrix(0.0, 1, 1)
     
-    # ----- Expanded prior ----------------------------------------
     m      <- p + 1
     mu0    <- c(prior$beta_mean, 0)
     sigma0 <- diag(1e6, m)
@@ -113,7 +90,6 @@ mo.bqr.svy <- function(formula,
     
     if (verbose) message(sprintf("Fitting tau = %.3f", q))
     
-    # ----- Call to C++ backend -----------------------------------
     cpp_result <- bayesQR_weighted_EM_cpp(
       y        = y_matrix,
       x        = X,
@@ -160,7 +136,7 @@ print.mo.bqr.svy <- function(x, ...) {
   invisible(x)
 }
 
-#' Simulate Data for Multiple Output Bayesian Quantile Regression
+#' Simulate data for multiple output Bayesian quantile regression
 #'
 #' Generates simulated data suitable for testing multiple output Bayesian
 #' quantile regression models with survey weights.

@@ -1,8 +1,3 @@
-# ======================================================================
-#  bqr.svy.R - Bayesian weighted quantile regression (survey design)
-#  Limpia columnas diagnosticas (accept_rate, n_mcmc, burnin, thin...)
-# ======================================================================
-
 if (!exists("%||%"))
   `%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
 
@@ -28,9 +23,11 @@ if (!exists("%||%"))
 #'   \item{method}{Method used}
 #'   \item{quantile}{Quantile fitted}
 #'   \item{prior}{Prior specification used}
+#'   \item{terms}{Terms object from the model frame}
+#'   \item{model}{The model frame}
+#'   \item{call}{The matched call}
 #' @examples
 #' \dontrun{
-#' # Simulate some data
 #' set.seed(123)
 #' n <- 100
 #' x1 <- rnorm(n)
@@ -39,13 +36,12 @@ if (!exists("%||%"))
 #' weights <- runif(n, 0.5, 2)
 #' data <- data.frame(y, x1, x2)
 #' 
-#' # Fit Bayesian quantile regression
 #' fit <- bqr.svy(y ~ x1 + x2, weights = weights, data = data, 
 #'                quantile = 0.5, method = "ald", niter = 1000)
 #' summary(fit)
 #' }
 #' @export
-#' @importFrom stats model.frame model.matrix model.response
+#' @importFrom stats model.frame model.matrix model.response terms
 bqr.svy <- function(formula,
                     weights  = NULL,
                     data     = NULL,
@@ -59,35 +55,36 @@ bqr.svy <- function(formula,
   tic    <- proc.time()[["elapsed"]]
   method <- match.arg(method)
   
+  cl <- match.call()
+  
   if (length(quantile) != 1 || quantile <= 0 || quantile >= 1)
-    stop("`quantile` debe ser un ESCALAR en (0,1).", call. = FALSE)
+    stop("'quantile' must be a scalar in (0,1).", call. = FALSE)
   
   if (is.null(data)) data <- environment(formula)
   
-  ## datos ----------------------------------------------------------------
   mf <- model.frame(formula, data)
   y  <- model.response(mf, "numeric")
   X  <- model.matrix(attr(mf, "terms"), mf)
   coef_names <- colnames(X)
   
+  mt <- attr(mf, "terms")
+  
   w <- if (is.null(weights)) {
     rep(1, length(y))
   } else if (is.numeric(weights)) {
     if (length(weights) != length(y))
-      stop("Longitud de `weights` != longitud de la respuesta.", call. = FALSE)
+      stop("Length of 'weights' != length of response.", call. = FALSE)
     weights
   } else if (inherits(weights, "formula")) {
     model.frame(weights, data)[[1L]]
-  } else stop("`weights` debe ser numerico o formula.", call. = FALSE)
+  } else stop("'weights' must be numeric or formula.", call. = FALSE)
   
-  ## prior ----------------------------------------------------------------
   prior <- prior %||% prior_default(ncol(X))
   if (!is.list(prior) || !all(c("b0", "B0") %in% names(prior)))
-    stop("`prior` debe contener al menos `b0` y `B0`.", call. = FALSE)
+    stop("'prior' must contain at least 'b0' and 'B0'.", call. = FALSE)
   
   w_norm <- w/mean(w)
   
-  ## back-end C++ ---------------------------------------------------------
   draws <- switch(method,
                   "ald" = MCMC_BWQR_AL(y, X, w_norm, tau = quantile,
                                        n_mcmc = niter, burnin = burnin, thin = thin),
@@ -100,7 +97,6 @@ bqr.svy <- function(formula,
                                                b0_ = prior$b0, B0_ = prior$B0)
   )
   
-  ## convertir a matriz numerica -----------------------------------------
   if (is.list(draws) && !is.data.frame(draws)) {
     draws <- lapply(draws, function(x) if (is.numeric(x) || is.matrix(x)) x)
     draws <- draws[!vapply(draws, is.null, logical(1))]
@@ -112,16 +108,14 @@ bqr.svy <- function(formula,
   draws <- as.matrix(draws)
   storage.mode(draws) <- "numeric"
   if (anyNA(draws))
-    stop("Back-end devolvio valores no numericos; imposible resumir.", call. = FALSE)
+    stop("Backend returned non-numeric values; cannot summarize.", call. = FALSE)
   
-  ## quitar columnas diagnosticas ----------------------------------------
   diag_cols <- c("accept_rate", "n_mcmc", "burnin", "thin", "n_samples")
   keep_idx  <- !colnames(draws) %in% diag_cols
   accept_rate <- if ("accept_rate" %in% colnames(draws))
     mean(draws[, "accept_rate"]) else NA_real_
   draws <- draws[, keep_idx, drop = FALSE]
   
-  ## nombrar columnas -----------------------------------------------------
   p <- length(coef_names)
   if (ncol(draws) >= p)
     colnames(draws)[1:p] <- coef_names
@@ -138,16 +132,21 @@ bqr.svy <- function(formula,
     warmup       = burnin,
     thin         = thin,
     runtime      = runtime,
-    call         = match.call(),
+    call         = cl,
     method       = method,
     quantile     = quantile,
-    prior        = prior
+    prior        = prior,
+    terms        = mt,
+    model        = mf,
+    formula      = formula
   )
+  
+  out$call$formula <- formula
+  
   class(out) <- c("bwqr_fit", "bqr.svy")
   out
 }
 
-# ----- prior difuso ----------------------------------------------------
 #' @keywords internal
 prior_default <- function(p,
                           b0      = rep(0, p),
