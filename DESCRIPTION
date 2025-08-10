@@ -9,9 +9,8 @@ Authors@R:
         person("Tomás", "Rodríguez Taborda", email = "torodriguezt@unal.edu.co", role = c("aut", "cre"))
     )
 Description: Implements Bayesian quantile regression approaches using the EM algorithm 
-    and several MCMC methods with observation weights for complex survey designs. The package 
-    provides two main functions: 'bqr.svy()' and 'mo.bqr.svy()'. Includes fast C++ implementations 
-    using 'Rcpp', 'RcppArmadillo', and 'RcppEigen'.
+    and several MCMC methods with observation weights for complex survey designs. 
+    Includes fast C++ implementations using 'Rcpp', 'RcppArmadillo', and 'RcppEigen'.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -24,12 +23,12 @@ Imports:
     Rcpp,
     stats,
     graphics,
-    grDevices
+    methods
 Suggests:
-    testthat (>= 3.0.0),
     knitr,
     rmarkdown,
-    grDevices
+    grDevices,
+    testthat (>= 3.0.0)
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 URL: https://github.com/torodriguezt/tauBayesW

@@ -55,13 +55,7 @@ plot(model)`
 summary(model)
 
 # Print method with convergence diagnostics
-print(model)
-
-# Access specific components
-coef(model)          # Coefficients
-fitted(model)        # Fitted values
-residuals(model)     # Residuals
-logLik(model)        # Log-likelihood`
+print(model)`
 
   return (
     <div className="min-h-screen bg-background">
@@ -123,7 +117,6 @@ logLik(model)        # Log-likelihood`
                     <li>Survey weights integration</li>
                     <li>Multiple MCMC algorithms</li>
                     <li>Convergence diagnostics</li>
-                    <li>Robust to outliers</li>
                     <li>Fast C++ implementation</li>
                   </ul>
                 </CardContent>
@@ -243,7 +236,7 @@ logLik(model)        # Log-likelihood`
                   <Alert>
                     <AlertDescription>
                       The summary() method provides detailed convergence diagnostics including R-hat values, 
-                      effective sample sizes, and posterior intervals for all parameters.
+                      effective sample sizes, and posterior intervals for all parameters using the Vehtari et al. (2021) criteria.
                     </AlertDescription>
                   </Alert>
                 </CardContent>

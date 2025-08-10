@@ -547,20 +547,6 @@ export default function RDocumentation() {
                       Core Gibbs sampler for single quantile regression using asymmetric Laplace 
                       likelihood with survey weights. Optimized for convergence and mixing.
                     </p>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Method:</span>
-                        <span className="font-medium">Gibbs Sampling</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Distribution:</span>
-                        <span className="font-medium">Asymmetric Laplace</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Used in:</span>
-                        <span className="font-medium">bqr.svy()</span>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
 
@@ -580,20 +566,6 @@ export default function RDocumentation() {
                       Expectation-Maximization algorithm for simultaneous estimation of multiple 
                       quantiles with crossing prevention and efficiency gains.
                     </p>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Method:</span>
-                        <span className="font-medium">EM Algorithm</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Distribution:</span>
-                        <span className="font-medium">Asymmetric Laplace</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Used in:</span>
-                        <span className="font-medium">mo.bqr.svy()</span>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
 
@@ -613,20 +585,6 @@ export default function RDocumentation() {
                       Approximate Bayesian computation approach for faster sampling with 
                       controlled approximation error for large datasets.
                     </p>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Method:</span>
-                        <span className="font-medium">Approximate Bayesian</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Advantage:</span>
-                        <span className="font-medium">Speed vs Accuracy</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Best for:</span>
-                        <span className="font-medium">Large datasets</span>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
 
@@ -646,20 +604,6 @@ export default function RDocumentation() {
                       Score-based likelihood approach providing alternative estimation 
                       method with different convergence properties.
                     </p>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Method:</span>
-                        <span className="font-medium">Score Likelihood</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Advantage:</span>
-                        <span className="font-medium">Alternative Convergence</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Best for:</span>
-                        <span className="font-medium">Robust estimation</span>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -745,15 +689,6 @@ export default function RDocumentation() {
                           <TableCell className="text-muted-foreground">-</TableCell>
                           <TableCell className="text-green-600 font-semibold">×7.1</TableCell>
                           <TableCell className="text-blue-600 font-semibold">~7.2×</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">NonCrossingBWQR_AL</TableCell>
-                          <TableCell>21.7</TableCell>
-                          <TableCell>0.9</TableCell>
-                          <TableCell>5.4 GB</TableCell>
-                          <TableCell>0.7 GB</TableCell>
-                          <TableCell className="text-green-600 font-semibold">×24.1</TableCell>
-                          <TableCell className="text-blue-600 font-semibold">~7.7×</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>

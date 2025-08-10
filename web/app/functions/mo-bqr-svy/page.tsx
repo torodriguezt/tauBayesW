@@ -52,18 +52,7 @@ plot(model)`
 summary(model)
 
 # Print method with convergence information
-print(model)
-
-# Access specific components
-coef(model)          # Coefficients for all quantiles
-fitted(model)        # Fitted values
-residuals(model)     # Residuals
-
-# Check convergence for specific quantiles
-convergence_check(model)
-
-# Extract results for specific quantile
-model$results[[3]]   # Results for 3rd quantile (0.5)`
+print(model)`
 
   return (
     <div className="min-h-screen bg-background">
@@ -107,9 +96,9 @@ model$results[[3]]   # Results for 3rd quantile (0.5)`
                     with observation weights.
                   </p>
                   <p>
-                    This function is particularly efficient when you need to estimate several quantiles 
-                    from the same model, as it leverages the EM algorithm to jointly estimate all 
-                    quantiles in a single run.
+                    Although the quantiles are estimated individually, this function is efficient when you need to estimate several quantiles 
+                    from the same model, as it leverages the EM algorithm to adjust all 
+                    quantiles in a single run by passing multiple quantiles at once.
                   </p>
                 </CardContent>
               </Card>
@@ -124,22 +113,7 @@ model$results[[3]]   # Results for 3rd quantile (0.5)`
                     <li>EM algorithm for computational efficiency</li>
                     <li>Survey weights integration</li>
                     <li>Automatic convergence monitoring</li>
-                    <li>Non-crossing quantile constraints</li>
                     <li>Fast C++ implementation</li>
-                  </ul>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Advantages over Single Quantile Methods</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="list-disc list-inside space-y-2">
-                    <li>Faster computation for multiple quantiles</li>
-                    <li>Consistent estimation across quantiles</li>
-                    <li>Better numerical stability</li>
-                    <li>Automatic handling of quantile crossing</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -253,7 +227,7 @@ model$results[[3]]   # Results for 3rd quantile (0.5)`
                   
                   <Alert>
                     <AlertDescription>
-                      The summary() method provides convergence information for each quantile, 
+                      The summary() method provides convergence information for each quantile using the Vehtari et al. (2021) criteria, 
                       coefficient estimates, and diagnostic plots for the EM algorithm convergence.
                     </AlertDescription>
                   </Alert>
