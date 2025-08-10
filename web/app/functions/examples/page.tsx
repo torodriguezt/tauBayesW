@@ -555,38 +555,6 @@ cat("4. Monitor memory with: gc(); pryr::mem_used()\\n")
                   </div>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Guidelines</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Method Selection</h4>
-                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                      <li><strong>ALD:</strong> Most accurate but slowest; use for n &lt; 1000</li>
-                      <li><strong>Score:</strong> Good balance of speed and accuracy</li>
-                      <li><strong>Approximate:</strong> Fastest; use for large datasets (n &gt; 5000)</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">MCMC Tuning</h4>
-                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                      <li>Start with n_mcmc = 10000, burnin = 2000</li>
-                      <li>Increase if convergence diagnostics are poor</li>
-                      <li>Use thinning (thin = 5-10) for memory management</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Memory Management</h4>
-                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                      <li>Use mo.bqr.svy() for multiple quantiles instead of separate calls</li>
-                      <li>Monitor memory usage with gc() and memory profiling</li>
-                      <li>Consider batch processing for very large datasets</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
         </div>

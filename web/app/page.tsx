@@ -543,10 +543,6 @@ export default function RDocumentation() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Core Gibbs sampler for single quantile regression using asymmetric Laplace 
-                      likelihood with survey weights. Optimized for convergence and mixing.
-                    </p>
                   </CardContent>
                 </Card>
 
@@ -562,10 +558,6 @@ export default function RDocumentation() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Expectation-Maximization algorithm for simultaneous estimation of multiple 
-                      quantiles with crossing prevention and efficiency gains.
-                    </p>
                   </CardContent>
                 </Card>
 
@@ -581,10 +573,6 @@ export default function RDocumentation() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Approximate Bayesian computation approach for faster sampling with 
-                      controlled approximation error for large datasets.
-                    </p>
                   </CardContent>
                 </Card>
 
@@ -600,10 +588,6 @@ export default function RDocumentation() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Score-based likelihood approach providing alternative estimation 
-                      method with different convergence properties.
-                    </p>
                   </CardContent>
                 </Card>
               </div>

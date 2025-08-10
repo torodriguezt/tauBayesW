@@ -82,7 +82,7 @@ plot(model_multi, type = "convergence")`
 
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-4">plot_quantile()</h1>
+            <h1 className="text-4xl font-bold mb-4">Plot Functions</h1>
             <p className="text-xl text-muted-foreground mb-4">
               Visualization Functions for Quantile Regression Models
             </p>
@@ -128,7 +128,6 @@ plot(model_multi, type = "convergence")`
                     <li><strong>Scatter plots with quantiles:</strong> Data points with overlaid quantile curves</li>
                     <li><strong>Coefficient plots:</strong> Displays coefficient estimates across quantiles</li>
                     <li><strong>Convergence plots:</strong> MCMC/EM algorithm diagnostics</li>
-                    <li><strong>Residual plots:</strong> Model diagnostic visualizations</li>
                   </ul>
                 </CardContent>
               </Card>
