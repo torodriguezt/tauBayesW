@@ -26,8 +26,7 @@ A list containing:
 }
 }
 \description{
-Generates synthetic data suitable for \code{\link{mo.bqr.svy}}. Produces a response,
-predictors, survey weights, and true coefficients.
+Generates synthetic data suitable for \code{\link{mo.bqr.svy}}.
 }
 \examples{
 sim <- simulate_mo_bqr_data(n = 50, p = 3)

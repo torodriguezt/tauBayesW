@@ -5,7 +5,7 @@ Authors@R:
     c(
         person("Marcus L.", "Nascimiento", email = "marcus.lavagnole@fgv.br", role = "aut"),
         person("Kelly Cristina", "Mota Gonçalves", email = "kelly@dme.ufrj.br", role = "aut"),
-        person("Johntan", "Cardona Jiménez", email = "jcardonj@unal.edu.co", role = "aut"),
+        person("Johnatan", "Cardona Jiménez", email = "jcardonj@unal.edu.co", role = "aut"),
         person("Tomás", "Rodríguez Taborda", email = "torodriguezt@unal.edu.co", role = c("aut", "cre"))
     )
 Description: Implements Bayesian quantile regression approaches using the Expectation-Maximization (EM) algorithm 

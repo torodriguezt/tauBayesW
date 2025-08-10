@@ -32,9 +32,9 @@ If not supplied, variables are taken from \code{\link{environment}(formula)}.}
 \item{method}{Character string; one of \code{"ald"}, \code{"score"}, or
 \code{"approximate"} indicating which MCMC kernel to use.}
 
-\item{prior}{A list containing at least \code{b0} and \code{B0}. Defaults to
-\code{\link{prior_default}(p)}. For \code{"approximate"}, can also include
-\code{w_scale}.}
+\item{prior}{A \code{bqr_prior} object created by \code{\link{prior_default}}
+(or a compatible list; it will be coerced via \code{\link{as_bqr_prior}}).
+For \code{"approximate"}, \code{w_scale} can be stored in the prior.}
 
 \item{niter}{Integer; total number of MCMC iterations.}
 
@@ -75,20 +75,24 @@ three MCMC kernels implemented in C++:
 Only a single quantile can be estimated at a time.
 }
 \details{
-This function acts as a high-level interface to compiled C++ MCMC routines for
+This function is a high-level interface to compiled C++ MCMC routines for
 Bayesian quantile regression under complex survey weights. The \code{"ald"} and
 \code{"score"} kernels use normalized weights; the \code{"approximate"} kernel
-uses raw weights and an additional \code{w_scale} parameter in the prior.
+uses raw weights and may rely on an additional \code{w_scale} parameter stored
+in the prior object (if not provided, it defaults to 2 in the call).
 }
 \examples{
 set.seed(1)
 sim <- simulate_bqr_data(n = 50)
+pr  <- prior_default(p = 3) # intercept + two slopes in the example below
 fit <- bqr.svy(y ~ x1 + x2, weights = sim$weights, data = sim$data,
-               quantile = 0.5, method = "ald", niter = 2000, burnin = 500)
+               quantile = 0.5, method = "ald", niter = 2000, burnin = 500,
+               prior = pr)
 summary(fit)
 
 }
 \seealso{
+\code{\link{prior_default}}, \code{\link{as_bqr_prior}},
 \code{\link{mo.bqr.svy}} for multiple-output quantile regression,
 \code{\link{simulate_bqr_data}} for data simulation.
 }

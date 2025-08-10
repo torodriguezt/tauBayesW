@@ -43,10 +43,10 @@ knitr::opts_chunk$set(
 
 ```{r installation, eval=FALSE}
 # From CRAN (when available)
-install.packages("tauBayesW")
+#install.packages("tauBayesW")
 
 # From GitHub (development version)
-# remotes::install_github("torodriguezt/tauBayesW")
+remotes::install_github("torodriguezt/tauBayesW")
 ```
 
 ```{r setup}
@@ -129,7 +129,7 @@ model_vis <- bqr.svy(y ~ x,
                      verbose = FALSE)
 
 # Plot quantile regression with data points
-plot_quantile_with_points(model_vis, data = data_vis, predictor = "x",
+plot_quantile_with_points.bqr.svy(model_vis, data = data_vis, predictor = "x",
                           point_alpha = 0.6,
                           main = "Bayesian Quantile Regression (τ = 0.5)")
 ```
@@ -162,13 +162,20 @@ for(method in methods) {
 }
 
 coef_names <- c("(Intercept)", "x1", "x2")
+
 coef_comparison <- do.call(rbind, lapply(results, function(mod) {
-  coefs <- coef(mod)
-  as.numeric(coefs[coef_names])
+  betas <- mod$beta
+  
+  vals <- setNames(rep(NA_real_, length(coef_names)), coef_names)
+  vals[names(betas)] <- betas
+  
+  as.numeric(vals)
 }))
+
 colnames(coef_comparison) <- coef_names
 rownames(coef_comparison) <- methods
 print(round(coef_comparison, 4))
+
 
 ```
 
@@ -271,12 +278,12 @@ sim_model <- mo.bqr.svy(y ~ x1 + x2,
 
 # Compare true vs estimated coefficients
 true_coefs <- c(1, 2, -0.5)
-estimated_coefs <- coef(sim_model)
+estimated_coefs <- sim_model$fit$q0.5
 
 print("True coefficients:")
 print(true_coefs)
-print("Estimated coefficients quantile 0.25:")
-print(estimated_coefs[1]) 
+print("Estimated coefficients quantile 0.5:")
+print(estimated_coefs) 
 ```
 
 ## Additional Documentation

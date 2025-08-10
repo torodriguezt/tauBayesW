@@ -34,14 +34,16 @@ quantiles can be passed.}
 
 \item{algorithm}{Character string; currently only \code{"em"} is implemented.}
 
-\item{prior}{A list containing prior parameters:
+\item{prior}{A \code{mo_bqr_prior} created by \code{\link{mo_prior_default}}
+(or a compatible list; it will be coerced via \code{\link{as_mo_bqr_prior}}).
+Contains:
 \describe{
 \item{\code{beta_mean}}{Prior mean vector for regression coefficients.}
 \item{\code{beta_cov}}{Prior covariance matrix for regression coefficients.}
-\item{\code{sigma_shape}}{Shape parameter for inverse-gamma prior on sigma\eqn{^2}.}
-\item{\code{sigma_rate}}{Rate parameter for inverse-gamma prior on sigma\eqn{^2}.}
+\item{\code{sigma_shape}}{Shape parameter for inverse-gamma prior on \eqn{\sigma^2}.}
+\item{\code{sigma_rate}}{Rate parameter for inverse-gamma prior on \eqn{\sigma^2}.}
 }
-If \code{NULL}, default vague priors are used.}
+If \code{NULL}, a default vague prior is used (\code{\link{mo_prior_default}}).}
 
 \item{n_dir}{Integer; number of directional quantiles to estimate (default 1).}
 
@@ -82,11 +84,14 @@ minimized under Bayesian regularization.
 }
 \examples{
 sim <- simulate_mo_bqr_data(n = 50, p = 2)
+pr  <- mo_prior_default(p = 3)  # intercept + two slopes in the example below
 fit <- mo.bqr.svy(y ~ x1 + x2, weights = sim$weights, data = sim$data,
-                  quantile = c(0.1, 0.5, 0.9), algorithm = "em", max_iter = 200)
+                  quantile = c(0.1, 0.5, 0.9), algorithm = "em",
+                  max_iter = 200, prior = pr)
 print(fit)
 
 }
 \seealso{
+\code{\link{mo_prior_default}}, \code{\link{as_mo_bqr_prior}},
 \code{\link{bqr.svy}}, \code{\link{simulate_mo_bqr_data}}
 }
