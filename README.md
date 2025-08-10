@@ -1,6 +1,5 @@
 # tauBayesW: Bayesian Weighted Quantile Regression
 
-[![R-CMD-check](https://github.com/torodriguezt/tauBayesW/workflows/R-CMD-check/badge.svg)](https://github.com/torodriguezt/tauBayesW/actions)
 [![CRAN status](https://www.r-pkg.org/badges/version/tauBayesW)](https://CRAN.R-project.org/package=tauBayesW)
 
 **tauBayesW** is an R package for **Bayesian weighted quantile regression** for complex survey designs. The package provides both single and multiple quantile estimation using efficient MCMC and EM algorithms with fast C++ implementations.
@@ -17,9 +16,6 @@
 - **Multiple algorithms**: MCMC (ALD, Score, Approximate) and EM methods  
 - **Fast computation**: C++ implementations using Rcpp, RcppEigen, and RcppArmadillo
 - **Comprehensive output**: Detailed summaries with convergence diagnostics
-- **Visualization**: Built-in plotting functions with ggplot2
-- **CRAN ready**: Full documentation and examples
-
 ---
 
 ## 🚀 Performance Benchmark
@@ -109,8 +105,8 @@ plot(fit_multi)
 
 The package implements methods based on:
 
-- [GitHub Repository: bqr_informative_sampling](https://github.com/marcuslavagnole/bqr_informative_sampling)
 - Marcus L Nascimento, Kelly C M Gonçalves, Bayesian Quantile Regression Models for Complex Survey Data Under Informative Sampling, Journal of Survey Statistics and Methodology, Volume 12, Issue 4, September 2024, Pages 1105–1130, [https://doi.org/10.1093/jssam/smae015](https://academic.oup.com/jssam/article-abstract/12/4/1105/7642687)
+- [GitHub Repository: bqr_informative_sampling](https://github.com/marcuslavagnole/bqr_informative_sampling)
 
 ---
 
