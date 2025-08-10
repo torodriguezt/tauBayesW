@@ -49,299 +49,176 @@ model <- bqr.svy(
   y ~ x1 + x2,
   data = sim_data$data,
   weights = sim_data$weights,
-  quantile = 0.75,          # 75th percentile
-  method = "ALD",           # Asymmetric Laplace Distribution
-  n_mcmc = 15000,
-  burnin = 3000,
+  quantile = 0.5,
+  method = "ALD",
+  n_mcmc = 10000,
+  burnin = 2000,
+  prior = prior,
   verbose = TRUE
 )
 
-# 4. Model Summary and Diagnostics
-print(model)
-summary_results <- summary(model)
-print(summary_results)
+# 4. Convergence Diagnostics
+print("Convergence diagnostics:")
+conv_results <- convergence_check(model)
+print(conv_results)
 
-# 5. Convergence Assessment
-conv_check <- convergence_check(model, verbose = TRUE)
+# 5. Model Summary and Interpretation
+print("Complete model summary:")
+summary(model)
+
+print("Basic model output:")
+print(model)
 
 # 6. Visualization
 plot(model)
-plot_quantile.bqr.svy(model, which_x = "x1")
 
-# 7. Posterior Analysis
-posterior_samples <- model$draws
-beta_posterior_means <- apply(posterior_samples[, 1:3], 2, mean)
-beta_credible_intervals <- apply(posterior_samples[, 1:3], 2, 
-                                quantile, probs = c(0.025, 0.975))
+# 7. Custom Plotting
+plot_quantile.bqr.svy(model, which_x = "x1", 
+                      main = "Quantile Regression Results",
+                      xlab = "X1 Variable", 
+                      ylab = "Response Y")
 
-print("Posterior coefficient means:")
-print(beta_posterior_means)
-print("95% Credible intervals:")
-print(beta_credible_intervals)`
+# 8. Model Comparison with True Values
+cat("\\n=== Model Validation ===\\n")
+cat("True coefficients:", sim_data$betas, "\\n")
+cat("Estimated coefficients:", coef(model), "\\n")
+cat("Estimation error:", abs(coef(model) - sim_data$betas), "\\n")`
 
-  const multipleQuantilesCode = `# Multiple quantile analysis workflow
+  const multipleQuantilesCode = `# Multiple quantiles analysis using EM algorithm
 library(tauBayesW)
 
-# 1. Data Generation for Multiple Quantiles
+# 1. Generate data with heteroscedastic errors
 set.seed(123)
-sim_data <- simulate_mo_bqr_data(
-  n = 250, 
-  p = 3,    # 3 covariates (excluding intercept)
-  beta_true = c(1.0, 2.0, -1.5, 0.8),  # intercept + 3 slopes
-  seed = 123
-)
+n <- 250
+x1 <- rnorm(n)
+x2 <- runif(n, -1, 1)
 
-# 2. Multiple Quantile Model Fitting
-quantiles_of_interest <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+# Heteroscedastic error structure
+error_sd <- 0.5 + 0.3 * abs(x1)  # variance depends on x1
+errors <- rnorm(n, 0, error_sd)
+
+y <- 1 + 2*x1 - 0.5*x2 + errors
+weights <- runif(n, 0.8, 1.5)
+data <- data.frame(y, x1, x2)
+
+# 2. Fit multiple quantiles simultaneously
+quantiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
 
 multi_model <- mo.bqr.svy(
-  y ~ .,  # use all available predictors
-  data = sim_data$data,
-  weights = sim_data$weights,
-  quantiles = quantiles_of_interest,
-  max_iter = 200,
-  tol = 1e-6,
+  y ~ x1 + x2,
+  data = data,
+  weights = weights,
+  quantile = quantiles,
+  algorithm = "em",
+  max_iter = 1000,
+  tolerance = 1e-6,
   verbose = TRUE
 )
 
-# 3. Model Summary
-print(multi_model)
-multi_summary <- summary(multi_model)
-print(multi_summary)
+# 3. Examine results for all quantiles
+print("Multi-quantile model summary:")
+summary(multi_model)
 
-# 4. Convergence Check for EM Algorithm
-convergence_check(multi_model, verbose = TRUE)
+# 4. Extract specific quantile results
+print("Results for median (0.5 quantile):")
+median_results <- multi_model$results[[3]]  # 3rd element = 0.5 quantile
+print(median_results)
 
-# 5. Visualization of Results
+# 5. Convergence diagnostics
+print("Convergence status:")
+conv_check <- convergence_check(multi_model)
+print(conv_check)
+
+# 6. Coefficient comparison across quantiles
+cat("\\n=== Coefficients across quantiles ===\\n")
+for(i in seq_along(quantiles)) {
+  cat("Quantile", quantiles[i], ":")
+  cat(" Coefficients =", round(multi_model$results[[i]]$coefficients, 3), "\\n")
+}
+
+# 7. Plotting multiple quantiles
 plot(multi_model, type = "quantiles")
-plot(multi_model, type = "coefficients")
-plot(multi_model, type = "convergence")
+plot(multi_model, type = "coefficients")`
 
-# 6. Extract Results for Specific Quantiles
-# Access median regression results
-median_results <- multi_model$fit[[3]]  # 3rd quantile is 0.5
-print("Median regression coefficients:")
-print(median_results$beta)
-
-# Compare coefficients across quantiles
-coef_comparison <- sapply(multi_model$fit, function(x) x$beta)
-colnames(coef_comparison) <- paste0("Q", quantiles_of_interest)
-print("Coefficients across quantiles:")
-print(coef_comparison)
-
-# 7. Quantile-specific Analysis
-for(i in seq_along(quantiles_of_interest)) {
-  cat("\\n=== Quantile:", quantiles_of_interest[i], "===\\n")
-  fit_i <- multi_model$fit[[i]]
-  cat("Converged:", fit_i$converged, "\\n")
-  cat("Iterations:", fit_i$iter, "\\n")
-  cat("Coefficients:", paste(round(fit_i$beta, 3), collapse = ", "), "\\n")
-}`
-
-  const surveyWeightsCode = `# Advanced survey weights and complex sampling
+  const surveyWeightsCode = `# Complex survey data analysis with survey weights
 library(tauBayesW)
 
-# 1. Realistic Survey Data Simulation
-set.seed(456)
-n_population <- 1000
-n_sample <- 200
+# 1. Simulate realistic survey data with sampling bias
+set.seed(789)
+n_population <- 10000
+n_sample <- 500
 
-# Create a stratified sampling scenario
-# Population with different strata
-population_data <- data.frame(
-  id = 1:n_population,
-  stratum = sample(1:4, n_population, replace = TRUE, prob = c(0.3, 0.3, 0.25, 0.15)),
-  x1 = rnorm(n_population),
-  x2 = rnorm(n_population),
-  auxiliary = runif(n_population)
+# Population with complex structure
+pop_x1 <- rnorm(n_population, 0, 1)
+pop_x2 <- rbinom(n_population, 1, 0.4)  # binary covariate
+
+# True population relationship
+pop_y <- 2 + 1.5*pop_x1 + 0.8*pop_x2 + rnorm(n_population, 0, 1)
+
+# Create informative sampling (bias toward higher x1 values)
+sampling_prob <- pnorm(pop_x1, mean = 0, sd = 1)
+sampled_indices <- sample(n_population, n_sample, prob = sampling_prob)
+
+# Extract sample
+sample_data <- data.frame(
+  y = pop_y[sampled_indices],
+  x1 = pop_x1[sampled_indices],
+  x2 = pop_x2[sampled_indices]
 )
 
-# Create response with stratum-specific effects
-population_data$y <- with(population_data, {
-  2 + 1.5*x1 - 0.8*x2 + 0.5*(stratum-2.5) + rnorm(n_population, sd = 1.0)
-})
+# Calculate inverse probability weights
+sample_weights <- 1 / sampling_prob[sampled_indices]
+sample_weights <- sample_weights / mean(sample_weights)  # normalize
 
-# Stratified sampling with unequal selection probabilities
-sample_indices <- c()
-for(s in 1:4) {
-  stratum_indices <- which(population_data$stratum == s)
-  n_stratum <- length(stratum_indices)
-  # Different sampling rates by stratum
-  sample_rate <- c(0.15, 0.20, 0.25, 0.30)[s]
-  n_sample_stratum <- round(n_stratum * sample_rate)
-  sample_indices <- c(sample_indices, 
-                     sample(stratum_indices, n_sample_stratum))
-}
-
-# Extract sample data
-sample_data <- population_data[sample_indices, ]
-
-# Calculate sampling weights (inverse probability weighting)
-sample_data$weights <- NA
-for(s in 1:4) {
-  n_pop_stratum <- sum(population_data$stratum == s)
-  n_sample_stratum <- sum(sample_data$stratum == s)
-  sample_rate <- n_sample_stratum / n_pop_stratum
-  sample_data$weights[sample_data$stratum == s] <- 1 / sample_rate
-}
-
-# Normalize weights
-sample_data$weights <- sample_data$weights / mean(sample_data$weights)
-
-print("Survey design summary:")
-print(table(sample_data$stratum))
-print("Weight distribution:")
-print(summary(sample_data$weights))
-
-# 2. Weighted Quantile Regression Analysis
-weighted_model <- bqr.svy(
-  y ~ x1 + x2 + factor(stratum),
-  data = sample_data,
-  weights = weights,
-  quantile = 0.5,
-  method = "ALD",
-  n_mcmc = 12000,
-  burnin = 2000
-)
-
-# 3. Compare with Unweighted Analysis
+# 2. Compare weighted vs unweighted analysis
+cat("=== Unweighted Analysis ===\\n")
 unweighted_model <- bqr.svy(
-  y ~ x1 + x2 + factor(stratum),
+  y ~ x1 + x2,
   data = sample_data,
-  weights = NULL,  # No weights
   quantile = 0.5,
   method = "ALD",
-  n_mcmc = 12000,
-  burnin = 2000
+  n_mcmc = 8000,
+  burnin = 1500
 )
 
-# 4. Compare Results
-print("Weighted model summary:")
+cat("\\n=== Weighted Analysis ===\\n")
+weighted_model <- bqr.svy(
+  y ~ x1 + x2,
+  data = sample_data,
+  weights = sample_weights,
+  quantile = 0.5,
+  method = "ALD", 
+  n_mcmc = 8000,
+  burnin = 1500
+)
+
+# 3. Results comparison
+cat("\\n=== Comparison with Population Truth ===\\n")
+cat("True population coefficients: [2.0, 1.5, 0.8]\\n")
+cat("Unweighted estimates:", round(coef(unweighted_model), 3), "\\n")
+cat("Weighted estimates:", round(coef(weighted_model), 3), "\\n")
+
+# Calculate bias
+true_coefs <- c(2.0, 1.5, 0.8)
+unweighted_bias <- abs(coef(unweighted_model) - true_coefs)
+weighted_bias <- abs(coef(weighted_model) - true_coefs)
+
+cat("\\nAbsolute bias (unweighted):", round(unweighted_bias, 3), "\\n")
+cat("Absolute bias (weighted):", round(weighted_bias, 3), "\\n")
+cat("Bias reduction:", round(unweighted_bias - weighted_bias, 3), "\\n")
+
+# 4. Diagnostic summaries
+print("\\n=== Weighted Model Summary ===")
 summary(weighted_model)
-print("\\nUnweighted model summary:")
+
+print("\\n=== Unweighted Model Summary ===")  
 summary(unweighted_model)
 
-# Extract and compare coefficients
-weighted_coefs <- apply(weighted_model$draws[, 1:6], 2, mean)
-unweighted_coefs <- apply(unweighted_model$draws[, 1:6], 2, mean)
-
-comparison <- data.frame(
-  Weighted = weighted_coefs,
-  Unweighted = unweighted_coefs,
-  Difference = weighted_coefs - unweighted_coefs
-)
-print("\\nCoefficient comparison:")
-print(comparison)
-
-# 5. Visualization
-par(mfrow = c(1, 2))
+# 5. Visualization comparison
 plot_quantile.bqr.svy(weighted_model, which_x = "x1", 
                       main = "Weighted Analysis")
 plot_quantile.bqr.svy(unweighted_model, which_x = "x1", 
                       main = "Unweighted Analysis")`
-
-  const performanceCode = `# Performance optimization and large-scale analysis
-library(tauBayesW)
-
-# 1. Performance Comparison Setup
-test_sample_sizes <- c(500, 1000, 2000, 5000)
-methods <- c("ALD", "Score", "Approximate")
-performance_results <- data.frame()
-
-# 2. Benchmarking Function
-benchmark_method <- function(n, method_name) {
-  # Generate data
-  sim_data <- simulate_bqr_data(n = n, betas = c(1, 0.5, -0.3), sigma = 1)
-  
-  # Time the analysis
-  start_time <- Sys.time()
-  
-  # Adjust MCMC settings based on sample size
-  n_mcmc <- min(10000, max(5000, n))
-  burnin <- min(2000, max(1000, n/5))
-  
-  model <- bqr.svy(
-    y ~ x1 + x2,
-    data = sim_data$data,
-    weights = sim_data$weights,
-    quantile = 0.5,
-    method = method_name,
-    n_mcmc = n_mcmc,
-    burnin = burnin,
-    verbose = FALSE
-  )
-  
-  end_time <- Sys.time()
-  elapsed_time <- as.numeric(difftime(end_time, start_time, units = "secs"))
-  
-  # Convergence check
-  conv_check <- convergence_check(model, verbose = FALSE)
-  converged <- all(conv_check$converged, na.rm = TRUE)
-  
-  return(list(
-    time = elapsed_time,
-    converged = converged,
-    n_samples = n,
-    method = method_name,
-    mean_rhat = mean(conv_check$rhat, na.rm = TRUE),
-    mean_ess = mean(conv_check$neff, na.rm = TRUE)
-  ))
-}
-
-# 3. Run Performance Tests
-cat("Running performance benchmarks...\\n")
-for(n in test_sample_sizes) {
-  for(method in methods) {
-    cat("Testing n =", n, "with method =", method, "\\n")
-    
-    # Run benchmark
-    result <- benchmark_method(n, method)
-    
-    # Store results
-    performance_results <- rbind(performance_results, data.frame(
-      sample_size = n,
-      method = method,
-      time_seconds = result$time,
-      converged = result$converged,
-      mean_rhat = result$mean_rhat,
-      mean_ess = result$mean_ess
-    ))
-  }
-}
-
-# 4. Performance Analysis
-print("Performance benchmark results:")
-print(performance_results)
-
-# Calculate speedup factors
-ald_times <- performance_results[performance_results$method == "ALD", "time_seconds"]
-score_times <- performance_results[performance_results$method == "Score", "time_seconds"]
-approx_times <- performance_results[performance_results$method == "Approximate", "time_seconds"]
-
-speedup_score <- ald_times / score_times
-speedup_approx <- ald_times / approx_times
-
-print("\\nSpeedup factors relative to ALD method:")
-speedup_df <- data.frame(
-  sample_size = test_sample_sizes,
-  Score_speedup = speedup_score,
-  Approximate_speedup = speedup_approx
-)
-print(speedup_df)
-
-# 5. Memory Usage Optimization Tips
-cat("\\n=== Memory Optimization Tips ===\\n")
-cat("1. Use thinning for large MCMC runs: thin = 5 or thin = 10\\n")
-cat("2. For n > 5000, consider method = 'Approximate'\\n")
-cat("3. Use mo.bqr.svy() for multiple quantiles instead of separate calls\\n")
-cat("4. Monitor memory with: gc(); pryr::mem_used()\\n")
-
-# 6. Large-scale Example (demonstration only - commented out)
-# Uncomment for actual large-scale analysis
-# large_sim <- simulate_bqr_data(n = 10000, betas = c(1, 0.5, -0.3))
-# large_model <- bqr.svy(y ~ x1 + x2, data = large_sim$data, 
-#                       weights = large_sim$weights, 
-#                       method = "Approximate", n_mcmc = 5000)`
 
   return (
     <div className="min-h-screen bg-background">
@@ -359,17 +236,14 @@ cat("4. Monitor memory with: gc(); pryr::mem_used()\\n")
             </p>
             <div className="flex gap-2 mb-4">
               <Badge variant="secondary">Complete Workflows</Badge>
-              <Badge variant="secondary">Real Applications</Badge>
-              <Badge variant="secondary">Best Practices</Badge>
             </div>
           </div>
 
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="basic">Basic Workflow</TabsTrigger>
               <TabsTrigger value="multiple">Multiple Quantiles</TabsTrigger>
               <TabsTrigger value="survey">Survey Weights</TabsTrigger>
-              <TabsTrigger value="performance">Performance</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic" className="space-y-6">
@@ -399,44 +273,6 @@ cat("4. Monitor memory with: gc(); pryr::mem_used()\\n")
                   </div>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Key Steps Explained</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">1. Data Simulation</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Generate realistic synthetic data with known parameters for testing and validation.
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">2. Prior Specification</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Set up appropriate prior distributions for Bayesian inference.
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">3. Model Fitting</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Run MCMC algorithm to obtain posterior samples of model parameters.
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">4. Diagnostics & Validation</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Check convergence, effective sample sizes, and model adequacy.
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">5. Interpretation</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Extract meaningful insights from posterior distributions and credible intervals.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             <TabsContent value="multiple" className="space-y-6">
@@ -444,7 +280,7 @@ cat("4. Monitor memory with: gc(); pryr::mem_used()\\n")
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BarChart className="h-5 w-5 text-green-500" />
-                    Multiple Quantile Analysis
+                    Multiple Quantiles Analysis
                   </CardTitle>
                   <CardDescription>
                     Simultaneous estimation of multiple quantiles using EM algorithm
@@ -466,13 +302,6 @@ cat("4. Monitor memory with: gc(); pryr::mem_used()\\n")
                   </div>
                 </CardContent>
               </Card>
-
-              <Alert>
-                <AlertDescription>
-                  The EM algorithm in mo.bqr.svy() is particularly efficient for multiple quantiles, 
-                  providing faster computation than running separate MCMC analyses for each quantile.
-                </AlertDescription>
-              </Alert>
             </TabsContent>
 
             <TabsContent value="survey" className="space-y-6">
@@ -480,10 +309,10 @@ cat("4. Monitor memory with: gc(); pryr::mem_used()\\n")
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Database className="h-5 w-5 text-purple-500" />
-                    Complex Survey Weights
+                    Survey Weights Implementation
                   </CardTitle>
                   <CardDescription>
-                    Handling stratified sampling and survey weights in quantile regression
+                    Handling complex survey designs with informative sampling and weights
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -496,59 +325,6 @@ cat("4. Monitor memory with: gc(); pryr::mem_used()\\n")
                       variant="outline"
                       className="absolute top-2 right-2"
                       onClick={() => copyToClipboard(surveyWeightsCode)}
-                    >
-                      {copied ? "Copied!" : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Survey Weights Best Practices</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Weight Construction</h4>
-                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                      <li>Use inverse probability weighting for stratified samples</li>
-                      <li>Normalize weights to have mean = 1 for interpretability</li>
-                      <li>Consider post-stratification adjustments if needed</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Model Comparison</h4>
-                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                      <li>Always compare weighted vs. unweighted results</li>
-                      <li>Large differences indicate informative sampling</li>
-                      <li>Weighted results correct for selection bias</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="performance" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-orange-500" />
-                    Performance Optimization
-                  </CardTitle>
-                  <CardDescription>
-                    Benchmarking different methods and optimizing for large datasets
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="relative">
-                    <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm max-h-96">
-                      <code>{performanceCode}</code>
-                    </pre>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="absolute top-2 right-2"
-                      onClick={() => copyToClipboard(performanceCode)}
                     >
                       {copied ? "Copied!" : <Copy className="h-4 w-4" />}
                     </Button>
