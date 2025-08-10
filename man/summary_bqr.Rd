@@ -2,15 +2,15 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{summary_bqr}
 \alias{summary_bqr}
-\title{Helper function for user convenience - unified summary interface}
+\title{Generic summary function for Bayesian Quantile Regression objects}
 \usage{
 summary_bqr(object, ...)
 }
 \arguments{
-\item{object}{A fitted model object (bqr.svy or mo.bqr.svy)}
+\item{object}{An object containing model fit results.}
 
-\item{...}{Additional arguments passed to specific summary methods}
+\item{...}{Additional arguments passed to other methods.}
 }
 \description{
-Helper function for user convenience - unified summary interface
+Generic summary function for Bayesian Quantile Regression objects
 }

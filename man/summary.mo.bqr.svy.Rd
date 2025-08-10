@@ -7,17 +7,15 @@
 \method{summary}{mo.bqr.svy}(object, digits = 3, ...)
 }
 \arguments{
-\item{object}{An object of class 'mo.bqr.svy'}
+\item{object}{An object of class \code{mo.bqr.svy}.}
 
-\item{digits}{Number of decimal places for output (default: 3)}
+\item{digits}{Integer, number of decimal places for output (default 3).}
 
-\item{...}{Additional arguments (unused)}
+\item{...}{Additional arguments (unused).}
 }
 \value{
-A summary object with results for all quantiles
+An object of class \code{summary.mo.bqr.svy} containing per-quantile results and metadata.
 }
 \description{
-Provides a comprehensive summary of multiple-output Bayesian quantile
-regression results including posterior estimates for each quantile,
-convergence information, and iteration counts.
+Summary method for Multiple-Output Bayesian Quantile Regression
 }

@@ -2,22 +2,17 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{print.bwqr_fit}
 \alias{print.bwqr_fit}
-\title{Print method for Bayesian Quantile Regression fits}
+\title{Print method for bwqr_fit objects}
 \usage{
-\method{print}{bwqr_fit}(x, digits = 3, ...)
-
 \method{print}{bwqr_fit}(x, digits = 3, ...)
 }
 \arguments{
-\item{x}{An object of class 'bwqr_fit'}
+\item{x}{An object of class \code{"bwqr_fit"}.}
 
-\item{digits}{Number of decimal places for output (default: 3)}
+\item{digits}{Integer, number of significant digits to print.}
 
-\item{...}{Additional arguments (unused)}
-}
-\value{
-Invisibly returns the input object
+\item{...}{Additional arguments passed to \code{\link[base]{print}}.}
 }
 \description{
-Provides a brief summary of a fitted Bayesian quantile regression model
+Print method for bwqr_fit objects
 }

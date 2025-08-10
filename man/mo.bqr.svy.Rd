@@ -2,7 +2,7 @@
 % Please edit documentation in R/mo.bqr.svy.R
 \name{mo.bqr.svy}
 \alias{mo.bqr.svy}
-\title{Multiple-Output Bayesian Quantile Regression for Complex Surveys}
+\title{Multiple-Output Bayesian Quantile Regression for Complex Surveys (EM)}
 \usage{
 mo.bqr.svy(
   formula,
@@ -14,41 +14,79 @@ mo.bqr.svy(
   n_dir = 1,
   epsilon = 1e-06,
   max_iter = 1000,
-  verbose = FALSE
+  verbose = FALSE,
+  niter = NULL,
+  burnin = NULL,
+  thin = NULL,
+  ...
 )
 }
 \arguments{
-\item{formula}{Model formula (\code{y ~ x1 + x2})}
+\item{formula}{An object of class \code{\link{formula}} specifying the model.}
 
-\item{weights}{Survey weights (numeric) or \code{NULL}}
+\item{weights}{Optional survey weights. Can be a numeric vector of length equal
+to the number of observations.}
 
-\item{data}{Data frame with variables used in the formula}
+\item{data}{A \code{data.frame} containing the variables in the model.}
 
-\item{quantile}{Scalar or vector of quantiles (default 0.5)}
+\item{quantile}{Numeric vector of quantiles in (0, 1) to estimate. Multiple
+quantiles can be passed.}
 
-\item{algorithm}{Currently only \code{'em'}}
+\item{algorithm}{Character string; currently only \code{"em"} is implemented.}
 
-\item{prior}{List with \code{beta_mean}, \code{beta_cov}, \code{sigma_shape}, \code{sigma_rate}}
+\item{prior}{A list containing prior parameters:
+\describe{
+\item{\code{beta_mean}}{Prior mean vector for regression coefficients.}
+\item{\code{beta_cov}}{Prior covariance matrix for regression coefficients.}
+\item{\code{sigma_shape}}{Shape parameter for inverse-gamma prior on sigma\eqn{^2}.}
+\item{\code{sigma_rate}}{Rate parameter for inverse-gamma prior on sigma\eqn{^2}.}
+}
+If \code{NULL}, default vague priors are used.}
 
-\item{n_dir}{Number of directions (reserved for future extensions)}
+\item{n_dir}{Integer; number of directional quantiles to estimate (default 1).}
 
-\item{epsilon}{EM convergence tolerance}
+\item{epsilon}{Convergence tolerance for EM.}
 
-\item{max_iter}{Maximum number of EM iterations}
+\item{max_iter}{Maximum number of EM iterations.}
 
-\item{verbose}{If \code{TRUE}, prints progress}
+\item{verbose}{Logical; if \code{TRUE}, prints progress messages.}
+
+\item{niter, burnin, thin}{Ignored for EM, but included for compatibility with MCMC
+interfaces.}
+
+\item{...}{Additional arguments (currently unused).}
 }
 \value{
-An object of class \code{mo.bqr.svy}
+An object of class \code{"mo.bqr.svy"}, which is a list containing:
+\describe{
+\item{\code{call}}{Matched call.}
+\item{\code{formula}}{Model formula.}
+\item{\code{terms}}{Model terms object.}
+\item{\code{quantile}}{Quantile levels estimated.}
+\item{\code{algorithm}}{Algorithm used.}
+\item{\code{prior}}{Prior specification used.}
+\item{\code{fit}}{List of fitted results for each quantile.}
+\item{\code{coefficients}}{Vector of coefficients for the first quantile.}
+\item{\code{n_dir}}{Number of directional quantiles estimated.}
+}
 }
 \description{
-Fits a Bayesian quantile regression model under asymmetric Laplace
-likelihood using an EM algorithm, accounting for survey weights.
-Supports multiple quantiles simultaneously. - stable version (August 2025)
-Multiple-Output Bayesian Quantile Regression for Complex Surveys
+Fits a multiple-output Bayesian quantile regression model under complex survey
+weights using the Expectation-Maximization (EM) algorithm implemented in C++.
+Currently only the \code{"em"} algorithm is supported.
 }
 \details{
-Fits a Bayesian quantile regression model under asymmetric Laplace
-likelihood using an EM algorithm, accounting for survey weights.
-Supports multiple quantiles simultaneously.
+The EM algorithm iteratively maximizes the posterior mode under the specified
+prior distribution. For each quantile \eqn{\tau}, the weighted check loss is
+minimized under Bayesian regularization.
+}
+\examples{
+sim <- simulate_mo_bqr_data(n = 50, p = 2)
+fit <- mo.bqr.svy(y ~ x1 + x2, weights = sim$weights, data = sim$data,
+                  quantile = c(0.1, 0.5, 0.9), algorithm = "em", max_iter = 200)
+print(fit)
+
+}
+\seealso{
+\code{\link{bqr.svy}}, \code{\link{simulate_mo_bqr_data}}
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/bqr.svy.R
 \name{bqr.svy}
 \alias{bqr.svy}
-\title{Bayesian weighted quantile regression (survey design)}
+\title{Bayesian Weighted Quantile Regression (Survey Design)}
 \usage{
 bqr.svy(
   formula,
@@ -18,53 +18,77 @@ bqr.svy(
 )
 }
 \arguments{
-\item{formula}{A symbolic description of the model to be fitted}
+\item{formula}{An object of class \code{\link{formula}} specifying the model.}
 
-\item{weights}{Survey weights (optional). Can be NULL, numeric vector, or formula}
+\item{weights}{Optional survey weights. Can be a numeric vector of length equal
+to the number of observations, or a one-sided formula referring to a variable
+in \code{data}.}
 
-\item{data}{An optional data frame containing the variables in the model}
+\item{data}{An optional \code{data.frame} containing the variables in the model.
+If not supplied, variables are taken from \code{\link{environment}(formula)}.}
 
-\item{quantile}{Numeric scalar containing the quantile of interest (default=0.5)}
+\item{quantile}{Numeric scalar in (0, 1) giving the quantile level \eqn{\tau}.}
 
-\item{method}{Character string specifying the method: 'ald', 'score', 'approximate'}
+\item{method}{Character string; one of \code{"ald"}, \code{"score"}, or
+\code{"approximate"} indicating which MCMC kernel to use.}
 
-\item{prior}{An S3 object of class "prior". If omitted, a diffuse prior will be assumed}
+\item{prior}{A list containing at least \code{b0} and \code{B0}. Defaults to
+\code{\link{prior_default}(p)}. For \code{"approximate"}, can also include
+\code{w_scale}.}
 
-\item{niter}{Number of MCMC draws}
+\item{niter}{Integer; total number of MCMC iterations.}
 
-\item{burnin}{Number of burn-in iterations to discard from the beginning of the Markov chain}
+\item{burnin}{Integer; number of burn-in iterations to discard.}
 
-\item{thin}{Thinning parameter, i.e., keep every \code{thin}-th draw (default=1)}
+\item{thin}{Integer; thinning interval for MCMC samples.}
 
-\item{...}{Additional arguments (currently unused)}
+\item{...}{Additional arguments passed to internal functions (currently unused).}
 }
 \value{
-An object of class \code{c("bwqr_fit", "bqr.svy")} containing:
-\item{draws}{Matrix of posterior draws}
-\item{accept_rate}{Acceptance rate for MCMC}
-\item{method}{Method used}
-\item{quantile}{Quantile fitted}
-\item{prior}{Prior specification used}
+An object of class \code{"bqr.svy"} and \code{"bwqr_fit"}, which is a
+list containing:
+\describe{
+\item{\code{beta}}{Posterior mean estimates of regression coefficients.}
+\item{\code{draws}}{Matrix of posterior draws.}
+\item{\code{accept_rate}}{Average acceptance rate (if available).}
+\item{\code{n_chains}}{Number of MCMC chains.}
+\item{\code{warmup}}{Number of warmup iterations.}
+\item{\code{thin}}{Thinning interval.}
+\item{\code{runtime}}{Elapsed runtime in seconds.}
+\item{\code{call}}{Matched call.}
+\item{\code{method}}{Method used.}
+\item{\code{quantile}}{Quantile level estimated.}
+\item{\code{prior}}{Prior specification used.}
+\item{\code{terms}}{Model terms object.}
+\item{\code{model}}{Model frame.}
+\item{\code{formula}}{Model formula.}
+}
 }
 \description{
 Fits a Bayesian quantile regression model with survey weights using one of
-three MCMC kernels implemented in C++: \code{MCMC_BWQR_AL}, \code{MCMC_BWQR_SL},
-\code{MCMC_BWQR_AP}. \strong{Only one quantile at a time.}
+three MCMC kernels implemented in C++:
+\itemize{
+\item \code{.MCMC_BWQR_AL} – Asymmetric Laplace Distribution
+\item \code{.MCMC_BWQR_SL} – Score likelihood
+\item \code{.MCMC_BWQR_AP} – Approximate likelihood
+}
+Only a single quantile can be estimated at a time.
+}
+\details{
+This function acts as a high-level interface to compiled C++ MCMC routines for
+Bayesian quantile regression under complex survey weights. The \code{"ald"} and
+\code{"score"} kernels use normalized weights; the \code{"approximate"} kernel
+uses raw weights and an additional \code{w_scale} parameter in the prior.
 }
 \examples{
-\dontrun{
-# Simulate some data
-set.seed(123)
-n <- 100
-x1 <- rnorm(n)
-x2 <- runif(n)
-y <- 1 + 2*x1 - 0.5*x2 + rnorm(n)
-weights <- runif(n, 0.5, 2)
-data <- data.frame(y, x1, x2)
-
-# Fit Bayesian quantile regression
-fit <- bqr.svy(y ~ x1 + x2, weights = weights, data = data, 
-               quantile = 0.5, method = "ald", niter = 1000)
+set.seed(1)
+sim <- simulate_bqr_data(n = 50)
+fit <- bqr.svy(y ~ x1 + x2, weights = sim$weights, data = sim$data,
+               quantile = 0.5, method = "ald", niter = 2000, burnin = 500)
 summary(fit)
+
 }
+\seealso{
+\code{\link{mo.bqr.svy}} for multiple-output quantile regression,
+\code{\link{simulate_bqr_data}} for data simulation.
 }

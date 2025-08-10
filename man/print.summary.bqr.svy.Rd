@@ -2,15 +2,15 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{print.summary.bqr.svy}
 \alias{print.summary.bqr.svy}
-\title{Print method for summary.bqr.svy}
+\title{Print method for summary.bqr.svy objects}
 \usage{
 \method{print}{summary.bqr.svy}(x, ...)
 }
 \arguments{
-\item{x}{A summary.bqr.svy object}
+\item{x}{An object of class \code{"summary.bqr.svy"}.}
 
-\item{...}{Additional arguments (unused)}
+\item{...}{Additional arguments passed to \code{\link[base]{print}}.}
 }
 \description{
-Print method for summary.bqr.svy
+Print method for summary.bqr.svy objects
 }

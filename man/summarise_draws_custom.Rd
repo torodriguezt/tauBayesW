@@ -2,16 +2,11 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{summarise_draws_custom}
 \alias{summarise_draws_custom}
-\title{Compute summary statistics for MCMC draws}
+\title{Summaries and diagnostics for MCMC draws (Vehtari et al., 2021)}
 \usage{
-summarise_draws_custom(draws, max_lag = 1000)
-}
-\arguments{
-\item{draws}{Matrix of MCMC draws (samples x parameters)}
-
-\item{max_lag}{Maximum lag for effective sample size calculation}
+summarise_draws_custom(draws, max_lag = 200)
 }
 \description{
-Compute summary statistics for MCMC draws
+Summaries and diagnostics for MCMC draws (Vehtari et al., 2021)
 }
 \keyword{internal}

@@ -4,7 +4,7 @@ Version: 0.1.0
 Authors@R: 
     c(
         person("Marcus L.", "Nascimiento", email = "marcus.lavagnole@fgv.br", role = "aut"),
-        person("Kelly Cristina", "Mota Gonçalves",  email = "kelly@dme.ufrj.br",  role = "aut"),
+        person("Kelly Cristina", "Mota Gonçalves", email = "kelly@dme.ufrj.br", role = "aut"),
         person("Johntan", "Cardona Jiménez", email = "jcardonj@unal.edu.co", role = "aut"),
         person("Tomás", "Rodríguez Taborda", email = "torodriguezt@unal.edu.co", role = c("aut", "cre"))
     )
@@ -28,13 +28,12 @@ LinkingTo:
     GIGrvg
 Imports:
     Rcpp,
-    stats
+    stats,
+    grDevices,
+    graphics
+VignetteBuilder: knitr
 Suggests:
     testthat (>= 3.0.0),
-    RcppArmadillo,
-    RcppEigen,
-    GIGrvg,
-    BH,
     knitr,
     rmarkdown
 Config/testthat/edition: 3

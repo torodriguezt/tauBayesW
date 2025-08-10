@@ -20,6 +20,10 @@ knitr::opts_chunk$set(
 )
 ```
 
+<p align="center">
+  <img src="logo_tau.png" width="180" alt="tauBayesW logo"/>
+</p>
+
 # tauBayesW: An R Framework for Bayesian Weighted Quantile Regression
 
 [![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/tauBayesW)](https://cran.r-project.org/package=tauBayesW)
@@ -27,14 +31,13 @@ knitr::opts_chunk$set(
 
 ## What is tauBayesW?
 
-**tauBayesW** is an R package that provides a comprehensive framework for Bayesian weighted quantile regression with survey designs. The package implements state-of-the-art MCMC and EM algorithms to handle complex survey data while maintaining computational efficiency and statistical rigor.
+**tauBayesW** is an R package that provides a comprehensive framework for Bayesian weighted quantile regression with survey designs. The package implements MCMC and EM algorithms to handle complex survey data while maintaining computational efficiency using a C++ backend. Some of its key features include:
 
-Unlike traditional quantile regression approaches, tauBayesW:
-- 🎯 **Handles survey weights naturally** in the Bayesian framework
-- 🔄 **Implements multiple MCMC methods** (ALD, Score, Approximate)  
-- 📊 **Estimates multiple quantiles efficiently** using EM algorithms
-- 🎨 **Provides comprehensive visualization** tools
-- 📈 **Includes model diagnostics** and convergence checking
+- **Handles survey weights naturally** under a Bayesian framework
+- **Implements multiple MCMC methods** (ALD, Score, Approximate)  
+- **Estimates multiple quantiles efficiently** using EM algorithms
+- **Provides comprehensive visualization** tools
+- **Includes model diagnostics** and convergence checking
 
 ## Installation
 
@@ -61,7 +64,7 @@ citation("tauBayesW")
 
 ## Getting Started
 
-tauBayesW provides three main functions that work together to cover all aspects of Bayesian quantile regression:
+tauBayesW provides two main functions to fit a bayesian quantile regression model with survey weights using MCMC and EM algorithms, also each of them has a plotting function to visualize the results and a summary method to extract key information:
 
 - **`bqr.svy()`**: 🎯 Bayesian quantile regression for single quantiles with survey weights
 - **`mo.bqr.svy()`**: 📊 Multiple quantile regression using efficient EM algorithms  
@@ -111,10 +114,9 @@ summary(model_multi)
 ### Visualization
 
 ```{r visualization, fig.width=8, fig.height=6}
-# Create univariate data for better visualization
 n_vis <- 300
 x_vis <- seq(-2, 2, length.out = n_vis)
-y_vis <- 1 + 2*x_vis + (0.5 + 0.3*abs(x_vis))*rnorm(n_vis)  # Heteroscedastic
+y_vis <- 1 + 2*x_vis + (0.5 + 0.3*abs(x_vis))*rnorm(n_vis) 
 weights_vis <- rgamma(n_vis, 2, 1)
 data_vis <- data.frame(y = y_vis, x = x_vis)
 
@@ -132,7 +134,6 @@ plot_quantile_with_points(model_vis, data = data_vis, predictor = "x",
                           main = "Bayesian Quantile Regression (τ = 0.5)")
 ```
 
-## Advanced Features
 
 ### 1. Multiple MCMC Methods
 
@@ -220,9 +221,6 @@ plot(model_multi_vis, type = "convergence")
 ```
 
 
-
-
-
 ## Methodology
 
 ### Theoretical Background
@@ -247,14 +245,14 @@ This approach maintains design consistency while providing full posterior infere
 
 ### EM Algorithm for Multiple Quantiles
 
-For computational efficiency with multiple quantiles, the package implements an EM algorithm that:
+The package implements an EM algorithm that:
 
 1. **E-step**: Computes posterior expectations of latent variables
 2. **M-step**: Updates parameters via weighted optimization
 
-This ensures:
-- ✅ Computational efficiency
-- ✅ Numerical stability  
+Both MCMC and EM algorithms ensures:
+- Computational efficiency
+- Numerical stability  
 
 ## Simulation and Validation
 
@@ -308,12 +306,11 @@ This makes tauBayesW safe to use as a dependency in other packages without depen
 | `convergence_check()` | MCMC convergence diagnostics | Diagnostic |
 | `simulate_mo_bqr_data()` | Data simulation for testing | Utility |
 
-All functions come with comprehensive S3 methods for `print()`, `summary()`, `plot()`, `coef()`, `fitted()`, `residuals()`, and `logLik()`.
 
 ## References
-   - Yu, K. and Moyeed, R. A. (2001). Bayesian quantile regression. *Statistics & Probability Letters*, 54(4), 437-447.
-   - Kozumi, H. and Kobayashi, G. (2011). Gibbs sampling methods for Bayesian quantile regression. *Journal of Statistical Computation and Simulation*, 81(11), 1565-1578.
-   - Lohr, S. L. (2009). *Sampling: Design and Analysis*. Chapman and Hall/CRC.
-   - Gelman, A., et al. (2013). *Bayesian Data Analysis*. Chapman and Hall/CRC.
+- Nascimento, M. L., & Gonçalves, K. C. M. (2024). Bayesian Quantile Regression Models for Complex Survey Data Under Informative Sampling. Journal of Survey Statistics and Methodology, 12(4), 1105–1130. https://doi.org/10.1093/jssam/smae015
 
+- Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Bürkner, P.-C. (2021). Rank-Normalization, Folding, and Localization: An Improved $\hat{R}$ for Assessing Convergence of MCMC (with Discussion). Bayesian Analysis, 16(2), 667–718. https://doi.org/10.1214/20-BA1221
+
+- Yu, K. and Moyeed, R. A. (2001). Bayesian quantile regression. Statistics & Probability Letters, 54(4), 437-447.
 ---

@@ -2,42 +2,35 @@
 % Please edit documentation in R/mo.bqr.svy.R
 \name{simulate_mo_bqr_data}
 \alias{simulate_mo_bqr_data}
-\title{Simulate Data for Multiple Output Bayesian Quantile Regression}
+\title{Simulate data for Multiple-Output Bayesian Quantile Regression}
 \usage{
-simulate_mo_bqr_data(n = 200, beta = c(1, 2, -1), seed = NULL, b = 1)
+simulate_mo_bqr_data(n = 100, p = 2, beta_true = NULL, seed = NULL)
 }
 \arguments{
-\item{n}{Integer. Number of observations to generate. Default is 200.}
+\item{n}{Number of observations.}
 
-\item{beta}{Numeric vector. True regression coefficients. Default is c(1, 2, -1).}
+\item{p}{Number of predictors (excluding intercept).}
 
-\item{seed}{Integer. Random seed for reproducibility. Default is NULL.}
+\item{beta_true}{Optional numeric vector of length \code{p + 1} containing the
+intercept and slopes. If \code{NULL}, defaults to \code{c(1, 1, 2, ..., p)}.}
 
-\item{b}{Numeric. Scale parameter for the Laplace error distribution. Default is 1.}
+\item{seed}{Optional integer seed for reproducibility.}
 }
 \value{
 A list containing:
-\item{data}{A data frame with response variable y and covariates x1, x2}
-\item{weights}{A numeric vector of survey weights}
+\describe{
+\item{\code{data}}{\code{data.frame} with response \code{y} and predictors.}
+\item{\code{weights}}{Numeric vector of survey weights.}
+\item{\code{true_betas}}{Matrix with the true coefficients.}
+\item{\code{quantiles}}{Vector of example quantiles.}
+}
 }
 \description{
-Generates simulated data suitable for testing multiple output Bayesian
-quantile regression models with survey weights.
-}
-\details{
-This function generates data following a linear model with Laplace
-errors, which is suitable for quantile regression analysis. The covariates
-x1 and x2 are generated from normal and uniform distributions respectively.
-Survey weights are generated from a uniform distribution.
+Generates synthetic data suitable for \code{\link{mo.bqr.svy}}. Produces a response,
+predictors, survey weights, and true coefficients.
 }
 \examples{
-\dontrun{
-# Generate simulated data
-sim_data <- simulate_mo_bqr_data(n = 100, seed = 123)
-
-# Use with mo.bqr.svy
-result <- mo.bqr.svy(y ~ x1 + x2, data = sim_data$data, 
-                     weights = sim_data$weights, quantiles = c(0.25, 0.5, 0.75))
-}
+sim <- simulate_mo_bqr_data(n = 50, p = 3)
+head(sim$data)
 
 }

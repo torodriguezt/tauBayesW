@@ -7,9 +7,9 @@
 \method{print}{summary.mo.bqr.svy}(x, ...)
 }
 \arguments{
-\item{x}{A summary.mo.bqr.svy object}
+\item{x}{An object of class \code{summary.mo.bqr.svy}.}
 
-\item{...}{Additional arguments (unused)}
+\item{...}{Additional arguments (unused).}
 }
 \description{
 Print method for summary.mo.bqr.svy

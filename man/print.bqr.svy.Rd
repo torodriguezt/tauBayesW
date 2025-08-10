@@ -7,11 +7,11 @@
 \method{print}{bqr.svy}(x, digits = 3, ...)
 }
 \arguments{
-\item{x}{An object of class 'bqr.svy'}
+\item{x}{An object of class \code{"bqr.svy"}.}
 
-\item{digits}{Number of decimal places for output (default: 3)}
+\item{digits}{Integer, number of significant digits to print.}
 
-\item{...}{Additional arguments (unused)}
+\item{...}{Additional arguments passed to \code{\link[base]{print}}.}
 }
 \description{
 Print method for bqr.svy objects

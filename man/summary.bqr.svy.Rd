@@ -2,24 +2,19 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{summary.bqr.svy}
 \alias{summary.bqr.svy}
-\title{Summary method for Bayesian Quantile Regression (single quantile)}
+\title{Summary method for bqr.svy objects}
 \usage{
 \method{summary}{bqr.svy}(object, probs = c(0.025, 0.975), digits = 3, ...)
 }
 \arguments{
-\item{object}{An object of class 'bqr.svy'}
+\item{object}{An object of class \code{"bqr.svy"}.}
 
-\item{probs}{Quantiles for credible intervals (default: c(0.025, 0.975))}
+\item{probs}{Numeric vector of probabilities for summary statistics.}
 
-\item{digits}{Number of decimal places for output (default: 3)}
+\item{digits}{Integer, number of significant digits to display.}
 
-\item{...}{Additional arguments passed to other methods}
-}
-\value{
-A summary object with posterior statistics and diagnostics
+\item{...}{Additional arguments passed to other methods.}
 }
 \description{
-Provides a comprehensive summary of Bayesian quantile regression results
-including posterior estimates, credible intervals, and MCMC diagnostics
-following Stan-like output format.
+Summary method for bqr.svy objects
 }

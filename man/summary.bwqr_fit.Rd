@@ -2,25 +2,21 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{summary.bwqr_fit}
 \alias{summary.bwqr_fit}
-\title{Summary method for Bayesian Quantile Regression fits (bwqr_fit class)}
+\title{Summary method for bwqr_fit objects}
 \usage{
-\method{summary}{bwqr_fit}(object, probs = c(0.025, 0.975), digits = 3, max_lag = 1000, ...)
+\method{summary}{bwqr_fit}(object, probs = c(0.025, 0.975), digits = 3, max_lag = 200, ...)
 }
 \arguments{
-\item{object}{An object of class 'bwqr_fit'}
+\item{object}{An object of class \code{"bwqr_fit"}.}
 
-\item{probs}{Quantiles for credible intervals (default: c(0.025, 0.975))}
+\item{probs}{Numeric vector of probabilities for summary statistics.}
 
-\item{digits}{Number of decimal places for output (default: 3)}
+\item{digits}{Integer, number of significant digits to display.}
 
-\item{max_lag}{Maximum lag for effective sample size calculation (default: 1000)}
+\item{max_lag}{Integer, maximum lag for autocorrelation diagnostics.}
 
-\item{...}{Additional arguments passed to other methods}
-}
-\value{
-A summary object with posterior statistics and diagnostics
+\item{...}{Additional arguments passed to other methods.}
 }
 \description{
-Provides detailed summary statistics and MCMC diagnostics for fitted
-Bayesian quantile regression models
+Summary method for bwqr_fit objects
 }
