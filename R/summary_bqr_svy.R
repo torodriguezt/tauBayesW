@@ -3,10 +3,10 @@
 # =============================================================================
 
 # Safe scalar "or" operator:
-# - No intenta is.na() sobre objetos de tipo 'language' (calls) ni vectores no escalares.
-# - Si 'a' es NULL -> devuelve 'b'
-# - Si 'a' es atómico y escalar y NA -> devuelve 'b'
-# - En cualquier otro caso -> devuelve 'a'
+# - Does not attempt is.na() on 'language' (calls) objects or non-scalar vectors.
+# - If 'a' is NULL -> returns 'b'
+# - If 'a' is atomic and scalar and NA -> returns 'b'
+# - In any other case -> returns 'a'
 `%||%` <- function(a, b) {
   if (is.null(a)) return(b)
   if (is.atomic(a) && length(a) == 1L) {
@@ -16,7 +16,7 @@
 }
 
 # =============================================================================
-# Vehtari diagnostics (ESS, R-hat) — utilidades internas
+# Vehtari diagnostics (ESS, R-hat) — internal utilities
 # =============================================================================
 
 #' Autocovariance calculation for Vehtari method
@@ -297,7 +297,7 @@ summary.bwqr_fit <- function(object,
   stats$lower_ci <- round(apply(draws, 2, quantile, probs = probs[1], na.rm = TRUE), digits)
   stats$upper_ci <- round(apply(draws, 2, quantile, probs = probs[2], na.rm = TRUE), digits)
 
-  # ---- Back-compat para tests que esperan $coefficients con solo betas ----
+  # ---- Back-compat for tests that expect $coefficients with only betas ----
   coef_df <- stats[stats$variable != "sigma", c("variable","mean","sd","lower_ci","upper_ci")]
   names(coef_df) <- c("Variable","Mean","SD","Lower","Upper")
 
@@ -317,7 +317,7 @@ summary.bwqr_fit <- function(object,
     digits            = digits
   )
 
-  # Incluimos ambas clases para que `inherits(x, "summary.bqr.svy")` sea TRUE
+  # Include both classes so that `inherits(x, "summary.bqr.svy")` is TRUE
   class(summary_obj) <- c("summary.bqr.svy", "summary.bwqr_fit")
   summary_obj
 }
@@ -441,7 +441,7 @@ print.summary.bqr.svy <- function(x, ...) {
   cat("====================================\n\n")
   cat("Model Information:\n")
   cat("  Method           :", x$method, "\n")
-  # Línea adicional para compatibilidad con el test que busca "Quantile: 0.5"
+  # Additional line for compatibility with test that looks for "Quantile: 0.5"
   cat("  Quantile (tau)   :", x$quantile, "\n")
 
   n_chains_val <- if (is.null(x$n_chains) || is.na(x$n_chains)) 1L else as.integer(x$n_chains)
