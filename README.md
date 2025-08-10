@@ -1,6 +1,5 @@
 # tauBayesW: Bayesian Weighted Quantile Regression
 
-[![R-CMD-check](https://github.com/torodriguezt/tauBayesW/workflows/R-CMD-check/badge.svg)](https://github.com/torodriguezt/tauBayesW/actions)
 [![CRAN status](https://www.r-pkg.org/badges/version/tauBayesW)](https://CRAN.R-project.org/package=tauBayesW)
 
 **tauBayesW** is an R package for **Bayesian weighted quantile regression** for complex survey designs. The package provides both single and multiple quantile estimation using efficient MCMC and EM algorithms with fast C++ implementations.
