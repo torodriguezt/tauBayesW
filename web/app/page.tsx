@@ -317,8 +317,8 @@ export default function RDocumentation() {
                         <h4 className="font-semibold text-sm mb-2">{t("dependencies")}</h4>
                         <ul className="text-sm text-muted-foreground space-y-1">
                           <li>• Rcpp (≥ 1.0.0)</li>
+                          <li>• RcppArmadillo</li>
                           <li>• RcppEigen</li>
-                          <li>• GIGrvg</li>
                         </ul>
                       </div>
                       <div>
