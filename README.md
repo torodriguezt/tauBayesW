@@ -16,9 +16,6 @@
 - **Multiple algorithms**: MCMC (ALD, Score, Approximate) and EM methods  
 - **Fast computation**: C++ implementations using Rcpp, RcppEigen, and RcppArmadillo
 - **Comprehensive output**: Detailed summaries with convergence diagnostics
-- **Visualization**: Built-in plotting functions with ggplot2
-- **CRAN ready**: Full documentation and examples
-
 ---
 
 ## 🚀 Performance Benchmark
