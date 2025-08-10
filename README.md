@@ -109,8 +109,8 @@ plot(fit_multi)
 
 The package implements methods based on:
 
-- [GitHub Repository: bqr_informative_sampling](https://github.com/marcuslavagnole/bqr_informative_sampling)
 - Marcus L Nascimento, Kelly C M Gonçalves, Bayesian Quantile Regression Models for Complex Survey Data Under Informative Sampling, Journal of Survey Statistics and Methodology, Volume 12, Issue 4, September 2024, Pages 1105–1130, [https://doi.org/10.1093/jssam/smae015](https://academic.oup.com/jssam/article-abstract/12/4/1105/7642687)
+- [GitHub Repository: bqr_informative_sampling](https://github.com/marcuslavagnole/bqr_informative_sampling)
 
 ---
 
