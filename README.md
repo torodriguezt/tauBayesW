@@ -24,7 +24,7 @@
 
 ## 🚀 Performance Benchmark
 
-The following benchmark compares the R and C++ versions of the main algorithms on a large simulated dataset with 100,000 observations and 10 predictors.
+The following benchmark compares the R and C++ versions of the main algorithms on a simulated dataset with 100,000 observations and 10 predictors.
 
 | Algorithm            | R Time (seg) | C++ Time (seg) | R RAM  | C++ RAM | Speedup Factor | Memory Saving |
 |----------------------|--------------|----------------|--------|---------|----------------|----------------|
