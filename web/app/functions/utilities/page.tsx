@@ -47,6 +47,7 @@ print(sim_multi$true_betas)
 summary(sim_multi$data)`
 
   const priorCode = `# Prior specification functions
+# Prior specification functions / Complete example
 library(tauBayesW)
 
 ## 1) Simulate data
@@ -61,14 +62,14 @@ data <- data.frame(y, x1, x2)
 ## 2) Informative prior for bqr.svy (single-output)
 prior_info <- prior_default(
   p     = 3,                     # (Intercept), x1, x2
-  b0    = c(0.8, 1.9, -0.4),     # prior means (near the DGP)
+  b0    = c(0.8, 1.9, -0.4),     # prior means (close to the DGP)
   B0    = diag(0.5, 3),          # smaller variances => more informative
   c0    = 2,                     # IG(shape) for ALD scale
   C0    = 1,                     # IG(rate)  for ALD scale
   names = c("(Intercept)", "x1", "x2")
 )
 
-## 3) Fit bqr.svy with the three methods
+## 3) Fit bqr.svy with three methods
 niter  <- 5000
 burnin <- 1000
 thin   <- 5
@@ -104,8 +105,11 @@ fit_aprx <- bqr.svy(
   niter    = niter, burnin = burnin, thin = thin
 )
 
-## 4) Informative prior for mo.bqr.svy via mo_prior_default 
-prior_multi <- mo_prior_default(
+## 4) Priors for mo.bqr.svy (multi-output, EM)
+taus <- c(0.10, 0.25, 0.50, 0.75, 0.90)
+
+# (A) Single prior (recycled for all quantiles)
+prior_multi_single <- mo_prior_default(
   p           = 3,
   beta_mean   = rep(0, 3),
   beta_cov    = diag(1000, 3),
@@ -114,33 +118,78 @@ prior_multi <- mo_prior_default(
   names       = c("(Intercept)", "x1", "x2")
 )
 
+# (B1) Different priors per quantile using a generating FUNCTION
+prior_fun <- function(tau, p, names) {
+  # Example: more informative away from the median
+  sc <- 1 + 2 * abs(tau - 0.5)
+  mo_prior_default(
+    p            = p,
+    beta_mean    = rep(0, p),
+    beta_cov     = diag(sc, p),            # smaller variances when |tau-0.5| is large
+    sigma_shape  = 2 + 2 * abs(tau - 0.5), # more concentrated IG away from tau=0.5
+    sigma_rate   = 1 + abs(tau - 0.5),
+    names        = names
+  )
+}
+
+# (B2) Different priors per quantile using a NAMED LIST (alternative)
+# prior_list <- list(
+#   "q0.1" = mo_prior_default(3, beta_mean = c(0,0,0),   beta_cov = diag(5,3),   sigma_shape=2.2, sigma_rate=1.1,
+#                             names = c("(Intercept)","x1","x2")),
+#   "q0.25"= mo_prior_default(3, beta_mean = c(0,0.5,0), beta_cov = diag(2,3),   sigma_shape=2.5, sigma_rate=1.2,
+#                             names = c("(Intercept)","x1","x2")),
+#   "q0.5" = mo_prior_default(3, beta_mean = c(0,0,0),   beta_cov = diag(1e3,3), sigma_shape=2.0, sigma_rate=1.0,
+#                             names = c("(Intercept)","x1","x2")),
+#   "q0.75"= mo_prior_default(3, beta_mean = c(0,0,0),   beta_cov = diag(2,3),   sigma_shape=2.5, sigma_rate=1.2,
+#                             names = c("(Intercept)","x1","x2")),
+#   "q0.9" = mo_prior_default(3, beta_mean = c(0,0,0),   beta_cov = diag(5,3),   sigma_shape=2.8, sigma_rate=1.3,
+#                             names = c("(Intercept)","x1","x2"))
+# )
+
 ## 5) Fit mo.bqr.svy (EM by default)
-fit_multi <- mo.bqr.svy(
+# (A) Single prior for all quantiles
+fit_multi_single <- mo.bqr.svy(
   y ~ x1 + x2,
   data      = data,
   weights   = weights,
-  quantiles = c(0.10, 0.25, 0.50, 0.75, 0.90),
+  quantile  = taus,         # Note: the argument is 'quantile'
   algorithm = "em",
-  prior     = prior_multi,
+  prior     = prior_multi_single,
   epsilon   = 1e-6,
   max_iter  = 500,
   verbose   = FALSE
 )
 
-## 6) Quick coefficient comparison
+# (B) Different priors per quantile (using prior_fun)
+fit_multi_perq <- mo.bqr.svy(
+  y ~ x1 + x2,
+  data      = data,
+  weights   = weights,
+  quantile  = taus,
+  algorithm = "em",
+  prior     = prior_fun,    # <- you can also pass 'prior_list' instead
+  epsilon   = 1e-6,
+  max_iter  = 500,
+  verbose   = FALSE
+)
+
+## 6) Quick coefficient comparison for quantile 0.5 (single-output vs multi-output)
 res <- rbind(
-  "True (sim)" = c(1, 2, -0.5),
-  "ALD"        = round(fit_ald$beta,   3),
-  "Score"      = round(fit_score$beta, 3),
-  "Approx"     = round(fit_aprx$beta,  3)
+  "True (sim)"                  = c(1, 2, -0.5),
+  "ALD"                         = round(fit_ald$beta,   3),
+  "Score"                       = round(fit_score$beta, 3),
+  "Approx"                      = round(fit_aprx$beta,  3),
+  "MO-EM (q=0.5, single prior)" = round(fit_multi_single$fit[[which(taus==0.5)]]$beta, 3),
+  "MO-EM (q=0.5, per-q prior)"  = round(fit_multi_perq$fit[[which(taus==0.5)]]$beta, 3)
 )
 print(res)
 
-## 7) Base plots (S3 plot methods)
+## 7) Base plots (S3)
 plot(fit_ald)
-plot(fit_multi)
+plot(fit_multi_single)
+plot(fit_multi_perq)
 
-## 8) Overlay points + fitted curves (must pass data & predictor)
+## 8) Overlay points + fitted curves
 plot_quantile_with_points.bqr.svy(
   object    = fit_ald,
   data      = data,
@@ -149,11 +198,22 @@ plot_quantile_with_points.bqr.svy(
 )
 
 plot_quantile_with_points.mo.bqr.svy(
-  object    = fit_multi,
+  object    = fit_multi_single,
   data      = data,
   predictor = "x1",
   alpha     = 0.6
 )
+
+plot_quantile_with_points.mo.bqr.svy(
+  object    = fit_multi_perq,
+  data      = data,
+  predictor = "x1",
+  alpha     = 0.6
+)
+
+## 9) (Optional) Inspect the prior used per quantile in mo.bqr.svy
+# Example: for tau = 0.75 in the per-quantile priors fit:
+# fit_multi_perq$fit[["q0.75"]]$prior
 `
 
   const convergenceCode = `# Convergence diagnostics

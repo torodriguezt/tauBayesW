@@ -6,30 +6,6 @@
 \usage{
 simulate_mo_bqr_data(n = 100, p = 2, beta_true = NULL, seed = NULL)
 }
-\arguments{
-\item{n}{Number of observations.}
-
-\item{p}{Number of predictors (excluding intercept).}
-
-\item{beta_true}{Optional numeric vector of length \code{p + 1} containing the
-intercept and slopes. If \code{NULL}, defaults to \code{c(1, 1, 2, ..., p)}.}
-
-\item{seed}{Optional integer seed for reproducibility.}
-}
-\value{
-A list containing:
-\describe{
-\item{\code{data}}{\code{data.frame} with response \code{y} and predictors.}
-\item{\code{weights}}{Numeric vector of survey weights.}
-\item{\code{true_betas}}{Matrix with the true coefficients.}
-\item{\code{quantiles}}{Vector of example quantiles.}
-}
-}
 \description{
-Generates synthetic data suitable for \code{\link{mo.bqr.svy}}.
-}
-\examples{
-sim <- simulate_mo_bqr_data(n = 50, p = 3)
-head(sim$data)
-
+Simulate data for Multiple-Output Bayesian Quantile Regression
 }

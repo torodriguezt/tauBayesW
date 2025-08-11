@@ -30,7 +30,9 @@ new_mo_bqr_prior <- function(beta_mean, beta_cov, sigma_shape, sigma_rate, names
 #'
 #' Creates a prior object (class \code{"mo_bqr_prior"}) for \code{\link{mo.bqr.svy}}.
 #' The regression coefficients have a multivariate normal prior, and the noise
-#' variance has an inverse-gamma prior specified via shape/rate.
+#' variance has an inverse-gamma prior specified via shape/rate. This function
+#' can be used to create individual priors that can then be assigned to specific
+#' quantiles, allowing for quantile-specific prior distributions.
 #'
 #' @param p Number of regression coefficients (including the intercept).
 #' @param beta_mean Numeric vector of length \code{p}. A scalar is expanded to length \code{p}.
@@ -44,12 +46,32 @@ new_mo_bqr_prior <- function(beta_mean, beta_cov, sigma_shape, sigma_rate, names
 #' @param sigma_rate Positive scalar (rate of the inverse-gamma prior on \eqn{\sigma^2}).
 #' @param names Optional coefficient names to attach to \code{beta_mean} and \code{beta_cov}.
 #'
+#' @details
+#' When used with \code{\link{mo.bqr.svy}}, you can specify different priors for each quantile
+#' by providing a list of \code{mo_bqr_prior} objects, a function that takes (tau, p, names)
+#' as arguments, or use a single prior that will be recycled across all quantiles.
+#'
 #' @return An object of class \code{"mo_bqr_prior"} with fields \code{beta_mean},
 #'   \code{beta_cov}, \code{sigma_shape}, and \code{sigma_rate}.
 #'
 #' @examples
-#' pr <- mo_prior_default(p = 3, beta_mean = 0, beta_cov = 1e6)
-#' pr
+#' # Create a single prior (will be recycled for all quantiles)
+#' prior1 <- mo_prior_default(p = 3, beta_mean = c(0, 1, -0.5))
+#' 
+#' # Create quantile-specific priors using a list
+#' priors_list <- list(
+#'   q0.1 = mo_prior_default(p = 3, beta_mean = c(0, 0.8, -0.3)),
+#'   q0.5 = mo_prior_default(p = 3, beta_mean = c(0, 1.0, -0.5)),
+#'   q0.9 = mo_prior_default(p = 3, beta_mean = c(0, 1.2, -0.7))
+#' )
+#' 
+#' # Create quantile-specific priors using a function
+#' prior_fn <- function(tau, p, names) {
+#'   # More informative priors for extreme quantiles
+#'   variance <- ifelse(tau < 0.2 | tau > 0.8, 0.5, 1.0)
+#'   mo_prior_default(p = p, beta_cov = diag(variance, p), names = names)
+#' }
+#' 
 #' @export
 mo_prior_default <- function(p,
                              beta_mean   = rep(0, p),
@@ -84,16 +106,6 @@ mo_prior_default <- function(p,
 
 #' Coerce to a \code{mo_bqr_prior} object
 #'
-#' Allows passing legacy list priors to \code{\link{mo.bqr.svy}}. A valid list must
-#' contain \code{beta_mean}, \code{beta_cov}, \code{sigma_shape}, and \code{sigma_rate}.
-#' Scalars/vectors are expanded as in \code{\link{mo_prior_default}}.
-#'
-#' @param x A \code{mo_bqr_prior} or a list with components
-#'   \code{beta_mean}, \code{beta_cov}, \code{sigma_shape}, \code{sigma_rate}.
-#' @param p Number of coefficients.
-#' @param names Optional coefficient names.
-#'
-#' @return A \code{mo_bqr_prior} object.
 #' @export
 as_mo_bqr_prior <- function(x, p, names = NULL) {
   if (inherits(x, "mo_bqr_prior")) {
@@ -149,114 +161,136 @@ print.mo_bqr_prior <- function(x, ...) {
 }
 
 
+as_prior_list_per_tau <- function(prior, p, names, taus) {
+  # caso NULL
+  if (is.null(prior)) {
+    priors <- replicate(length(taus), mo_prior_default(p, names = names), simplify = FALSE)
+    names(priors) <- paste0("q", taus)
+    return(priors)
+  }
+
+  # caso función
+  if (is.function(prior)) {
+    priors <- lapply(taus, function(tau) {
+      pr <- prior(tau, p, names)
+      as_mo_bqr_prior(pr, p = p, names = names)
+    })
+    names(priors) <- paste0("q", taus)
+    return(priors)
+  }
+
+  # caso objeto único o lista "legacy" válida
+  if (inherits(prior, "mo_bqr_prior") ||
+      (is.list(prior) && all(c("beta_mean","beta_cov","sigma_shape","sigma_rate") %in% names(prior)))) {
+    pr0 <- as_mo_bqr_prior(prior, p = p, names = names)
+    priors <- replicate(length(taus), pr0, simplify = FALSE)
+    names(priors) <- paste0("q", taus)
+    return(priors)
+  }
+
+  # caso lista de priors (uno por tau)
+  if (is.list(prior)) {
+    # nombrada: intentar emparejar "q0.1" o "0.1"
+    if (!is.null(names(prior))) {
+      priors <- vector("list", length(taus))
+      for (i in seq_along(taus)) {
+        key1 <- paste0("q", taus[i])
+        key2 <- as.character(taus[i])
+        if (!is.null(prior[[key1]])) {
+          priors[[i]] <- as_mo_bqr_prior(prior[[key1]], p = p, names = names)
+        } else if (!is.null(prior[[key2]])) {
+          priors[[i]] <- as_mo_bqr_prior(prior[[key2]], p = p, names = names)
+        } else if (length(prior) == length(taus)) {
+          priors[[i]] <- as_mo_bqr_prior(prior[[i]], p = p, names = names)
+        } else {
+          stop("No se encontró prior para tau=", taus[i],
+               ". Nombra los elementos como 'q", taus[i], "' o provee longitud exacta.")
+        }
+      }
+      names(priors) <- paste0("q", taus)
+      return(priors)
+    }
+    # no nombrada: exigir longitud correcta
+    if (length(prior) != length(taus))
+      stop("'prior' como lista debe tener la misma longitud que 'quantile' o venir nombrada.")
+    priors <- lapply(prior, function(pr) as_mo_bqr_prior(pr, p = p, names = names))
+    names(priors) <- paste0("q", taus)
+    return(priors)
+  }
+
+  stop("Formato de 'prior' no reconocido. Usa mo_bqr_prior, lista válida, función, o NULL.")
+}
+
+
 # =====================================================
 # mo.bqr.svy() - Multiple-Output Bayesian Quantile Regression for Complex Surveys (EM)
 # =====================================================
 
 #' Multiple-Output Bayesian Quantile Regression for Complex Surveys (EM)
 #'
-#' Fits a multiple-output Bayesian quantile regression model under complex survey
-#' weights using the Expectation-Maximization (EM) algorithm implemented in C++.
-#' Currently only the \code{"em"} algorithm is supported. Survey weights are 
-#' normalized internally (divided by their mean).
+#' Fits Bayesian quantile regression models for multiple quantiles simultaneously
+#' using the EM algorithm. Supports complex survey designs through sampling weights
+#' and allows for quantile-specific prior distributions.
 #'
-#' @param formula An object of class \code{\link{formula}} specifying the model.
-#' @param weights Optional survey weights. Can be a numeric vector of length equal
-#'   to the number of observations. Weights are normalized internally and do not
-#'   require any preprocessing.
-#' @param data A \code{data.frame} containing the variables in the model.
-#' @param quantile Numeric vector of quantiles in (0, 1) to estimate. Multiple
-#'   quantiles can be passed.
-#' @param algorithm Character string; currently only \code{"em"} is implemented.
+#' @param formula A formula object specifying the model.
+#' @param weights Optional vector of sampling weights. If \code{NULL}, equal weights are used.
+#' @param data A data frame containing the variables in the model.
+#' @param quantile Numeric vector of quantile levels (between 0 and 1, exclusive).
+#' @param algorithm Character string specifying the algorithm. Currently only \code{"em"} is supported.
 #' @param prior Prior specification. Can be:
 #'   \itemize{
-#'     \item A \code{mo_bqr_prior} object from \code{\link{mo_prior_default}}
-#'     \item A list with components \code{beta_mean}, \code{beta_cov}, \code{sigma_shape}, \code{sigma_rate}
-#'     \item \code{NULL} (uses default vague priors)
+#'     \item \code{NULL}: Default priors are used for all quantiles
+#'     \item A single \code{mo_bqr_prior} object: Recycled for all quantiles
+#'     \item A list of \code{mo_bqr_prior} objects: One prior per quantile
+#'     \item A function \code{f(tau, p, names)}: Generates quantile-specific priors
 #'   }
-#'   Contains:
-#'   \describe{
-#'     \item{\code{beta_mean}}{Prior mean vector for regression coefficients.}
-#'     \item{\code{beta_cov}}{Prior covariance matrix for regression coefficients.}
-#'     \item{\code{sigma_shape}}{Shape parameter for inverse-gamma prior on \eqn{\sigma^2}.}
-#'     \item{\code{sigma_rate}}{Rate parameter for inverse-gamma prior on \eqn{\sigma^2}.}
-#'   }
-#'   If \code{NULL}, a default vague prior is used (\code{\link{mo_prior_default}}).
-#' @param n_dir Integer; number of directional quantiles to estimate (default 1).
-#' @param epsilon Convergence tolerance for EM.
+#' @param n_dir Number of search directions (currently not used).
+#' @param epsilon Convergence tolerance for the EM algorithm.
 #' @param max_iter Maximum number of EM iterations.
-#' @param verbose Logical; if \code{TRUE}, prints progress messages.
-#' @param niter,burnin,thin Ignored for EM, but included for compatibility with MCMC
-#'   interfaces.
+#' @param verbose Logical indicating whether to print progress messages.
+#' @param niter Deprecated. Use \code{max_iter} instead.
+#' @param burnin Ignored for EM algorithm.
+#' @param thin Ignored for EM algorithm.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return An object of class \code{"mo.bqr.svy"}, which is a list containing:
-#' \describe{
-#'   \item{\code{call}}{Matched call.}
-#'   \item{\code{formula}}{Model formula.}
-#'   \item{\code{terms}}{Model terms object.}
-#'   \item{\code{quantile}}{Quantile levels estimated.}
-#'   \item{\code{algorithm}}{Algorithm used.}
-#'   \item{\code{prior}}{Prior specification used.}
-#'   \item{\code{fit}}{List of fitted results for each quantile.}
-#'   \item{\code{coefficients}}{Vector of coefficients for the first quantile.}
-#'   \item{\code{n_dir}}{Number of directional quantiles estimated.}
-#' }
-#'
 #' @details
-#' The EM algorithm iteratively maximizes the posterior mode under the specified
-#' prior distribution. For each quantile \eqn{\tau}, the weighted check loss is
-#' minimized under Bayesian regularization.
-#' 
-#' \strong{Prior Specification:}
-#' 
-#' The prior can be specified in several ways:
-#' \enumerate{
-#'   \item Using \code{\link{mo_prior_default}} (recommended):
-#'   \preformatted{
-#'   prior <- mo_prior_default(
-#'     p            = 3,                             # number of coefficients
-#'     beta_mean    = c(0, 1.4, -0.7),               # prior means
-#'     beta_cov     = diag(c(0.25, 0.25, 0.25)),     # prior covariance matrix
-#'     sigma_shape  = 2,                             # IG shape parameter
-#'     sigma_rate   = 1,                             # IG rate parameter
-#'     names        = c("(Intercept)", "x1", "x2")
-#'   )}
-#'   
-#'   \item As a list:
-#'   \preformatted{
-#'   prior <- list(
-#'     beta_mean    = c(0, 1.4, -0.7),
-#'     beta_cov     = diag(c(0.25, 0.25, 0.25)),
-#'     sigma_shape  = 2,
-#'     sigma_rate   = 1
-#'   )}
-#'   
-#'   \item \code{NULL} for default vague priors
-#' }
+#' This function allows for flexible prior specification across quantiles. When a list
+#' of priors is provided, elements can be named using either \code{"q0.1"} format or
+#' \code{"0.1"} format to match specific quantiles. When a function is provided, it
+#' will be called with \code{(tau, p, names)} for each quantile level.
 #'
-#' @seealso \code{\link{mo_prior_default}}, \code{\link{as_mo_bqr_prior}},
-#'   \code{\link{bqr.svy}}, \code{\link{simulate_mo_bqr_data}}
+#' @return An object of class \code{"mo.bqr.svy"} containing:
+#'   \item{call}{The matched call}
+#'   \item{formula}{The model formula}
+#'   \item{terms}{The terms object}
+#'   \item{quantile}{Vector of fitted quantiles}
+#'   \item{algorithm}{Algorithm used}
+#'   \item{prior}{List of priors used for each quantile}
+#'   \item{fit}{List of fitted results for each quantile}
+#'   \item{coefficients}{Coefficients from the first quantile}
+#'   \item{n_dir}{Number of directions}
 #'
 #' @examples
 #' # Basic usage with default priors
-#' sim <- simulate_mo_bqr_data(n = 50, p = 2)
-#' fit1 <- mo.bqr.svy(y ~ x1 + x2, weights = sim$weights, data = sim$data,
-#'                    quantile = c(0.1, 0.5, 0.9), algorithm = "em",
-#'                    max_iter = 200)
-#'
-#' # With informative priors  
-#' prior <- mo_prior_default(
-#'   p            = 3,  # intercept + two slopes
-#'   beta_mean    = c(1, 1, 2),                    # prior means
-#'   beta_cov     = diag(c(1, 0.5, 0.5)),          # prior covariances
-#'   sigma_shape  = 3,                             # more concentrated IG
-#'   sigma_rate   = 2
+#' fit1 <- mo.bqr.svy(y ~ x1 + x2, data = mydata, quantile = c(0.1, 0.5, 0.9))
+#' 
+#' # Using quantile-specific priors via function
+#' prior_fn <- function(tau, p, names) {
+#'   # More concentrated priors for extreme quantiles
+#'   variance <- ifelse(tau < 0.2 | tau > 0.8, 0.1, 1.0)
+#'   mo_prior_default(p = p, beta_cov = diag(variance, p), names = names)
+#' }
+#' fit2 <- mo.bqr.svy(y ~ x1 + x2, data = mydata, 
+#'                    quantile = c(0.1, 0.5, 0.9), prior = prior_fn)
+#' 
+#' # Using a list of quantile-specific priors
+#' priors <- list(
+#'   q0.1 = mo_prior_default(p = 3, beta_mean = c(0, 0.8, -0.3)),
+#'   q0.5 = mo_prior_default(p = 3, beta_mean = c(0, 1.0, -0.5)),
+#'   q0.9 = mo_prior_default(p = 3, beta_mean = c(0, 1.2, -0.7))
 #' )
-#' fit2 <- mo.bqr.svy(y ~ x1 + x2, weights = sim$weights, data = sim$data,
-#'                    quantile = c(0.25, 0.5, 0.75), algorithm = "em",
-#'                    prior = prior, max_iter = 300, verbose = TRUE)
-#'
+#' fit3 <- mo.bqr.svy(y ~ x1 + x2, data = mydata, 
+#'                    quantile = c(0.1, 0.5, 0.9), prior = priors)
 #'
 #' @export
 #' @importFrom stats model.frame model.matrix model.response
@@ -310,29 +344,31 @@ mo.bqr.svy <- function(formula,
 
   p <- ncol(X)
 
-  # Resolve prior: default constructor or coercion of user-supplied object/list
-  prior <- if (is.null(prior)) {
-    mo_prior_default(p, names = coef_names)  # 'mo_bqr_prior' object
-  } else {
-    as_mo_bqr_prior(prior, p = p, names = coef_names)
-  }
+  # ---- NUEVO: normalizar 'prior' a lista por tau ----
+  prior_list <- as_prior_list_per_tau(
+    prior  = prior,
+    p      = p,
+    names  = coef_names,
+    taus   = quantile
+  )
 
   results <- vector("list", length(quantile))
   names(results) <- paste0("q", quantile)
 
   for (qi in seq_along(quantile)) {
     q <- quantile[qi]
+    pr_q <- prior_list[[qi]]   # prior específico de este cuantil
 
-    # These objects are 1x1 in the current implementation
+    # Estos objetos son 1x1 en la implementación actual
     y_matrix <- matrix(y, ncol = 1)
     u        <- matrix(1.0, 1, 1)
     gamma_u  <- matrix(0.0, 1, 1)
 
-    # Augment prior to match the C++ parameterization (p + 1)
+    # Aumentar prior al param. C++ (p + 1)
     m      <- p + 1
-    mu0    <- c(prior$beta_mean, 0)
+    mu0    <- c(pr_q$beta_mean, 0)
     sigma0 <- diag(1e6, m)
-    sigma0[1:p, 1:p] <- prior$beta_cov
+    sigma0[1:p, 1:p] <- pr_q$beta_cov
 
     if (verbose) message(sprintf("Fitting tau = %.3f", q))
 
@@ -345,8 +381,8 @@ mo.bqr.svy <- function(formula,
       tau      = q,
       mu0      = mu0,
       sigma0   = sigma0,
-      a0       = prior$sigma_shape,
-      b0       = prior$sigma_rate,
+      a0       = pr_q$sigma_shape,
+      b0       = pr_q$sigma_rate,
       eps      = epsilon,
       max_iter = max_iter,
       verbose  = verbose
@@ -359,7 +395,8 @@ mo.bqr.svy <- function(formula,
       beta      = as.numeric(beta_final),
       sigma     = as.numeric(sigma_final),
       iter      = cpp_result$iter,
-      converged = cpp_result$converged
+      converged = cpp_result$converged,
+      prior     = pr_q  # guardamos el prior usado por cuantil
     )
   }
 
@@ -371,7 +408,7 @@ mo.bqr.svy <- function(formula,
     terms        = attr(mf, "terms"),
     quantile     = quantile,
     algorithm    = algorithm,
-    prior        = prior,
+    prior        = prior_list,   # guardar la lista completa de priors por tau
     fit          = results,
     coefficients = coefficients_all,
     n_dir        = n_dir
@@ -382,10 +419,8 @@ rho_q <- function(u, q) u * (q - as.numeric(u < 0))
 
 #' Print method for mo.bqr.svy objects
 #'
-#' @param x An object of class \code{mo.bqr.svy}.
-#' @param ... Further arguments passed to or from other methods.
 #' @export
-print.mo.bqr.svy <- function(x, ...) {
+print.mo_bqr.svy <- function(x, ...) {
   cat("Call:\n"); print(x$call)
   for (i in seq_along(x$quantile)) {
     cat(sprintf("\nQuantile: %.2f\n", x$quantile[i]))
@@ -395,26 +430,6 @@ print.mo.bqr.svy <- function(x, ...) {
 }
 
 #' Simulate data for Multiple-Output Bayesian Quantile Regression
-#'
-#' Generates synthetic data suitable for \code{\link{mo.bqr.svy}}.
-#'
-#' @param n Number of observations.
-#' @param p Number of predictors (excluding intercept).
-#' @param beta_true Optional numeric vector of length \code{p + 1} containing the
-#'   intercept and slopes. If \code{NULL}, defaults to \code{c(1, 1, 2, ..., p)}.
-#' @param seed Optional integer seed for reproducibility.
-#'
-#' @return A list containing:
-#' \describe{
-#'   \item{\code{data}}{\code{data.frame} with response \code{y} and predictors.}
-#'   \item{\code{weights}}{Numeric vector of survey weights.}
-#'   \item{\code{true_betas}}{Matrix with the true coefficients.}
-#'   \item{\code{quantiles}}{Vector of example quantiles.}
-#' }
-#'
-#' @examples
-#' sim <- simulate_mo_bqr_data(n = 50, p = 3)
-#' head(sim$data)
 #'
 #' @export
 simulate_mo_bqr_data <- function(n = 100, p = 2, beta_true = NULL, seed = NULL) {

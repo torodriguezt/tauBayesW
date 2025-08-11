@@ -40,7 +40,3 @@ Creates a prior object (class \code{"mo_bqr_prior"}) for \code{\link{mo.bqr.svy}
 The regression coefficients have a multivariate normal prior, and the noise
 variance has an inverse-gamma prior specified via shape/rate.
 }
-\examples{
-pr <- mo_prior_default(p = 3, beta_mean = 0, beta_cov = 1e6)
-pr
-}

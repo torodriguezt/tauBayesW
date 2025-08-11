@@ -6,19 +6,6 @@
 \usage{
 as_mo_bqr_prior(x, p, names = NULL)
 }
-\arguments{
-\item{x}{A \code{mo_bqr_prior} or a list with components
-\code{beta_mean}, \code{beta_cov}, \code{sigma_shape}, \code{sigma_rate}.}
-
-\item{p}{Number of coefficients.}
-
-\item{names}{Optional coefficient names.}
-}
-\value{
-A \code{mo_bqr_prior} object.
-}
 \description{
-Allows passing legacy list priors to \code{\link{mo.bqr.svy}}. A valid list must
-contain \code{beta_mean}, \code{beta_cov}, \code{sigma_shape}, and \code{sigma_rate}.
-Scalars/vectors are expanded as in \code{\link{mo_prior_default}}.
+Coerce to a \code{mo_bqr_prior} object
 }
