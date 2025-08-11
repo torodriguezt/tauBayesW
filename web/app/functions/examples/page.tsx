@@ -328,31 +328,6 @@ fit_approx_mild <- bqr.svy(
 cat("ALD method:           ", round(summary(fit_mild)$coefficients[,"Mean"], 3), "\n")
 cat("Score method:         ", round(summary(fit_score_mild)$coefficients[,"Mean"], 3), "\n")
 cat("Approximate method:   ", round(summary(fit_approx_mild)$coefficients[,"Mean"], 3), "\n")
-
-# =====================================================
-# 6. Visualization
-# =====================================================
-par(mfrow = c(2, 2))
-plot(fit_vague, main = "Vague Prior")
-plot(fit_informed, main = "Informed Prior")
-plot(fit_mild, main = "Mildly Informed Prior")
-
-# Compare posterior densities
-if (require(coda)) {
-    par(mfrow = c(1, 3))
-    for (i in 1:3) {
-        coef_name <- c("Intercept", "x1", "x2")[i]
-        plot(density(fit_vague$beta[,i]), main = paste("Posterior:", coef_name),
-             col = "blue", lwd = 2, xlim = range(c(fit_vague$beta[,i], 
-             fit_informed$beta[,i], fit_mild$beta[,i])))
-        lines(density(fit_informed$beta[,i]), col = "red", lwd = 2)
-        lines(density(fit_mild$beta[,i]), col = "green", lwd = 2)
-        abline(v = sim_data$true_betas[i], lty = 2, col = "black", lwd = 2)
-        legend("topright", c("Vague", "Informed", "Mild", "True"), 
-               col = c("blue", "red", "green", "black"), 
-               lty = c(1, 1, 1, 2), lwd = 2, cex = 0.8)
-    }
-}
 `
 
   return (

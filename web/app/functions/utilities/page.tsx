@@ -49,30 +49,112 @@ summary(sim_multi$data)`
   const priorCode = `# Prior specification functions
 library(tauBayesW)
 
-# Default priors for single quantile models
-prior_single <- prior_default(
-  p = 3,        # number of coefficients (including intercept)
-  b0 = 0,       # prior mean (scalar expanded to vector)
-  B0 = 1000     # prior variance (scalar expanded to diagonal matrix)
+## 1) Simulate data
+set.seed(123)
+n <- 200
+x1 <- rnorm(n)
+x2 <- runif(n)
+y  <- 1 + 2*x1 - 0.5*x2 + rnorm(n)
+weights <- runif(n, 0.5, 2)
+data <- data.frame(y, x1, x2)
+
+## 2) Informative prior for bqr.svy (single-output)
+prior_info <- prior_default(
+  p     = 3,                     # (Intercept), x1, x2
+  b0    = c(0.8, 1.9, -0.4),     # prior means (near the DGP)
+  B0    = diag(0.5, 3),          # smaller variances => more informative
+  c0    = 2,                     # IG(shape) for ALD scale
+  C0    = 1,                     # IG(rate)  for ALD scale
+  names = c("(Intercept)", "x1", "x2")
 )
 
-# Custom prior with different means and variances
-prior_custom <- prior_default(
-  p = 3,
-  b0 = c(0, 1, -0.5),           # different prior means
-  B0 = diag(c(100, 50, 200))    # different prior variances
+## 3) Fit bqr.svy with the three methods
+niter  <- 5000
+burnin <- 1000
+thin   <- 5
+tau    <- 0.5
+
+fit_ald <- bqr.svy(
+  y ~ x1 + x2,
+  data     = data,
+  weights  = weights,
+  quantile = tau,
+  method   = "ald",
+  prior    = prior_info,
+  niter    = niter, burnin = burnin, thin = thin
 )
 
-# Multiple quantile priors
+fit_score <- bqr.svy(
+  y ~ x1 + x2,
+  data     = data,
+  weights  = weights,
+  quantile = tau,
+  method   = "score",
+  prior    = prior_info,
+  niter    = niter, burnin = burnin, thin = thin
+)
+
+fit_aprx <- bqr.svy(
+  y ~ x1 + x2,
+  data     = data,
+  weights  = weights,
+  quantile = tau,
+  method   = "approximate",
+  prior    = prior_info,
+  niter    = niter, burnin = burnin, thin = thin
+)
+
+## 4) Informative prior for mo.bqr.svy via mo_prior_default 
 prior_multi <- mo_prior_default(
-  p = 3,
-  b0 = 0,
-  B0 = 1000
+  p           = 3,
+  beta_mean   = rep(0, 3),
+  beta_cov    = diag(1000, 3),
+  sigma_shape = 2,
+  sigma_rate  = 1,
+  names       = c("(Intercept)", "x1", "x2")
 )
 
-# Convert priors
-as_bqr_prior(prior_multi, method = "ald")
-as_mo_bqr_prior(prior_single)`
+## 5) Fit mo.bqr.svy (EM by default)
+fit_multi <- mo.bqr.svy(
+  y ~ x1 + x2,
+  data      = data,
+  weights   = weights,
+  quantiles = c(0.10, 0.25, 0.50, 0.75, 0.90),
+  algorithm = "em",
+  prior     = prior_multi,
+  epsilon   = 1e-6,
+  max_iter  = 500,
+  verbose   = FALSE
+)
+
+## 6) Quick coefficient comparison
+res <- rbind(
+  "True (sim)" = c(1, 2, -0.5),
+  "ALD"        = round(fit_ald$beta,   3),
+  "Score"      = round(fit_score$beta, 3),
+  "Approx"     = round(fit_aprx$beta,  3)
+)
+print(res)
+
+## 7) Base plots (S3 plot methods)
+plot(fit_ald)
+plot(fit_multi)
+
+## 8) Overlay points + fitted curves (must pass data & predictor)
+plot_quantile_with_points.bqr.svy(
+  object    = fit_ald,
+  data      = data,
+  predictor = "x1",
+  alpha     = 0.6
+)
+
+plot_quantile_with_points.mo.bqr.svy(
+  object    = fit_multi,
+  data      = data,
+  predictor = "x1",
+  alpha     = 0.6
+)
+`
 
   const convergenceCode = `# Convergence diagnostics
 library(tauBayesW)

@@ -163,6 +163,10 @@ print(model)`
                         <p className="text-sm text-muted-foreground">Expected-Maximization algorithm</p>
                       </div>
                       <div>
+                        <h4 className="font-semibold">prior</h4>
+                        <p className="text-sm text-muted-foreground">Object created using mo_prior_default specifiying prior distribution for parameters</p>
+                      </div>
+                      <div>
                         <h4 className="font-semibold">max_iter</h4>
                         <p className="text-sm text-muted-foreground">Maximum number of EM iterations</p>
                       </div>

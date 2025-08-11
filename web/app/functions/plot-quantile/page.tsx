@@ -107,7 +107,7 @@ res <- rbind(
 )
 print(res)
 
-## 7) Base plots (your S3 plot methods)
+## 7) Base plots (S3 plot methods)
 plot(fit_ald)
 plot(fit_multi)`
 
