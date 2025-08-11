@@ -25,200 +25,335 @@ library(tauBayesW)
 # 1. Data Simulation
 set.seed(42)
 sim_data <- simulate_bqr_data(
-  n = 300,
-  betas = c(2.0, 1.5, -0.8),  # intercept + 2 slopes
-  sigma = 1.2,
-  seed = 42
+    n     = 300,
+    betas = c(2.0, 1.5, -0.8),  # intercept + slopes
+    sigma = 1.2,
+    seed  = 42
 )
 
-# Examine the simulated data
-print("Data structure:")
-str(sim_data)
-print("Summary statistics:")
-summary(sim_data$data)
-
-# 2. Prior Specification
+# 2. Prior Specification (informative)
 prior <- prior_default(
-  p = 3,                    # number of coefficients
-  b0 = c(0, 0, 0),         # prior means
-  B0 = diag(c(100, 100, 100))  # prior covariances
+    p  = 3,                             # number of coefficients
+    b0 = c(0, 1.4, -0.7),               # prior means
+    B0 = diag(c(0.25, 0.25, 0.25)),     # smaller variances = more concentrated prior
+    c0 = 2,                             # ALD hyperparameter
+    C0 = 1,
+    names = c("(Intercept)", "x1", "x2")
 )
 
-# 3. Model Fitting
-model <- bqr.svy(
-  y ~ x1 + x2,
-  data = sim_data$data,
-  weights = sim_data$weights,
-  quantile = 0.5,
-  method = "ALD",
-  n_mcmc = 10000,
-  burnin = 2000,
-  prior = prior,
-  verbose = TRUE
+# 3. Fit models (single quantile = 0.5)
+fit_ald <- bqr.svy(
+    formula  = y ~ x1 + x2,
+    data     = sim_data$data,
+    weights  = sim_data$weights,
+    quantile = 0.5,
+    method   = "ald",
+    prior    = prior,
+    niter    = 2000,
+    burnin   = 500,
+    thin     = 5
 )
 
-# 4. Convergence Diagnostics
-print("Convergence diagnostics:")
-conv_results <- convergence_check(model)
-print(conv_results)
+fit_score <- bqr.svy(
+    formula  = y ~ x1 + x2,
+    data     = sim_data$data,
+    weights  = sim_data$weights,
+    quantile = 0.5,
+    method   = "score",
+    prior    = prior,
+    niter    = 2000,
+    burnin   = 500,
+    thin     = 5
+)
 
-# 5. Model Summary and Interpretation
-print("Complete model summary:")
-summary(model)
+fit_ap <- bqr.svy(
+    formula  = y ~ x1 + x2,
+    data     = sim_data$data,
+    weights  = sim_data$weights,
+    quantile = 0.5,
+    method   = "approximate",
+    prior    = prior,
+    niter    = 2000,
+    burnin   = 500,
+    thin     = 5
+)
 
-print("Basic model output:")
-print(model)
+# 4. Summaries
+cat("\n--- ALD ---\n")
+print(fit_ald$beta)
+cat("\n--- Score ---\n")
+print(fit_score$beta)
+cat("\n--- Approximate ---\n")
+print(fit_ap$beta)
+
+# 5. Model Validation
+cat("\n=== Model Validation ===\n")
+cat("True coefficients:     ", sim_data$true_betas, "\n")
+cat("ALD Estimated:         ", fit_ald$beta, "\n")
+cat("Score Estimated:       ", fit_score$beta, "\n")
+cat("Approximate Estimated: ", fit_ap$beta, "\n")
 
 # 6. Visualization
-plot(model)
+par(mfrow = c(2, 2))
+plot(fit_ald)
+plot(fit_score)
+plot(fit_ap)
 
-# 7. Custom Plotting
-plot_quantile.bqr.svy(model, which_x = "x1", 
-                      main = "Quantile Regression Results",
-                      xlab = "X1 Variable", 
-                      ylab = "Response Y")
+# Custom plot function: regression line with points
+plot_quantile_with_points.bqr.svy <- function(object, data, predictor,
+                                              main = NULL, ...) {
+    if (!inherits(object, "bqr.svy"))
+        stop("Object must be of class 'bqr.svy'.")
+    response_var <- all.vars(object$formula)[1]
+    if (is.null(main)) {
+        main <- paste("Quantile Regression (tau =", object$quantile, ") vs", predictor)
+    }
+    plot(data[[predictor]], data[[response_var]],
+         col = adjustcolor("steelblue", 0.4),
+         pch = 16, xlab = predictor, ylab = response_var,
+         main = main)
+    grid()
+    plot_quantile.bqr.svy(object, data, predictor, add = TRUE, ...)
+}
 
-# 8. Model Comparison with True Values
-cat("\\n=== Model Validation ===\\n")
-cat("True coefficients:", sim_data$betas, "\\n")
-cat("Estimated coefficients:", coef(model), "\\n")
-cat("Estimation error:", abs(coef(model) - sim_data$betas), "\\n")`
+# Plot regression lines with points for each model
+par(mfrow = c(1, 3))
+plot_quantile_with_points.bqr.svy(fit_ald,   sim_data$data, "x1", main = "ALD vs x1")
+plot_quantile_with_points.bqr.svy(fit_score, sim_data$data, "x1", main = "Score vs x1")
+plot_quantile_with_points.bqr.svy(fit_ap,    sim_data$data, "x1", main = "Approximate vs x1")`
 
   const multipleQuantilesCode = `# Multiple quantiles analysis using EM algorithm
 library(tauBayesW)
 
-# 1. Generate data with heteroscedastic errors
-set.seed(123)
-n <- 250
-x1 <- rnorm(n)
-x2 <- runif(n, -1, 1)
-
-# Heteroscedastic error structure
-error_sd <- 0.5 + 0.3 * abs(x1)  # variance depends on x1
-errors <- rnorm(n, 0, error_sd)
-
-y <- 1 + 2*x1 - 0.5*x2 + errors
-weights <- runif(n, 0.8, 1.5)
-data <- data.frame(y, x1, x2)
-
-# 2. Fit multiple quantiles simultaneously
-quantiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
-
-multi_model <- mo.bqr.svy(
-  y ~ x1 + x2,
-  data = data,
-  weights = weights,
-  quantile = quantiles,
-  algorithm = "em",
-  max_iter = 1000,
-  tolerance = 1e-6,
-  verbose = TRUE
+# =====================================================
+# 1. Data Simulation
+# =====================================================
+set.seed(42)
+sim_data <- simulate_mo_bqr_data(
+    n          = 300,
+    p          = 2,                      # predictors (excluding intercept)
+    beta_true  = c(2.0, 1.5, -0.8),      # intercept + slopes
+    seed       = 42
 )
 
-# 3. Examine results for all quantiles
-print("Multi-quantile model summary:")
-summary(multi_model)
+# =====================================================
+# 2. Prior Specification (informative)
+# =====================================================
+prior_mo <- mo_prior_default(
+    p            = 3,                             # intercept + slopes
+    beta_mean    = c(0, 1.4, -0.7),               # prior means
+    beta_cov     = diag(c(0.25, 0.25, 0.25)),     # small variances
+    sigma_shape  = 2,                             # IG shape
+    sigma_rate   = 1,                             # IG rate
+    names        = c("(Intercept)", "x1", "x2")
+)
 
-# 4. Extract specific quantile results
-print("Results for median (0.5 quantile):")
-median_results <- multi_model$results[[3]]  # 3rd element = 0.5 quantile
-print(median_results)
+# =====================================================
+# 3. Fit model (multiple quantiles, EM algorithm)
+# =====================================================
+fit_mo <- mo.bqr.svy(
+    formula   = y ~ x1 + x2,
+    data      = sim_data$data,
+    weights   = sim_data$weights,
+    quantile  = c(0.25, 0.5, 0.75),
+    algorithm = "em",
+    prior     = prior_mo,
+    max_iter  = 500,
+    verbose   = TRUE
+)
 
-# 5. Convergence diagnostics
-print("Convergence status:")
-conv_check <- convergence_check(multi_model)
-print(conv_check)
+# =====================================================
+# 4. Summaries
+# =====================================================
+print(fit_mo)
 
-# 6. Coefficient comparison across quantiles
-cat("\\n=== Coefficients across quantiles ===\\n")
-for(i in seq_along(quantiles)) {
-  cat("Quantile", quantiles[i], ":")
-  cat(" Coefficients =", round(multi_model$results[[i]]$coefficients, 3), "\\n")
+# =====================================================
+# 5. Model Validation
+# =====================================================
+cat("\n=== Model Validation ===\n")
+cat("True coefficients: ", sim_data$true_betas, "\n")
+for (q in seq_along(fit_mo$quantile)) {
+    cat(sprintf("Quantile %.2f Estimated: %s\n",
+                fit_mo$quantile[q],
+                paste(round(fit_mo$fit[[q]]$beta, 6), collapse = " ")))
 }
 
-# 7. Plotting multiple quantiles
-plot(multi_model, type = "quantiles")
-plot(multi_model, type = "coefficients")`
+# =====================================================
+# 6. Visualization
+# =====================================================
+# Standard plot (built-in)
+plot(fit_mo)
 
-  const surveyWeightsCode = `# Complex survey data analysis with survey weights
+# Custom plot: one panel per quantile
+par(mfrow = c(1, length(fit_mo$quantile)))
+for (q in seq_along(fit_mo$quantile)) {
+    plot_quantile_with_points.mo.bqr.svy(
+        fit_mo,
+        sim_data$data,
+        predictor = "x1",
+        main = paste("Tau =", fit_mo$quantile[q])
+    )
+}
+`
+
+  const priorSpecificationCode = `# Prior specification and model comparison
 library(tauBayesW)
 
-# 1. Simulate realistic survey data with sampling bias
-set.seed(789)
-n_population <- 10000
-n_sample <- 500
-
-# Population with complex structure
-pop_x1 <- rnorm(n_population, 0, 1)
-pop_x2 <- rbinom(n_population, 1, 0.4)  # binary covariate
-
-# True population relationship
-pop_y <- 2 + 1.5*pop_x1 + 0.8*pop_x2 + rnorm(n_population, 0, 1)
-
-# Create informative sampling (bias toward higher x1 values)
-sampling_prob <- pnorm(pop_x1, mean = 0, sd = 1)
-sampled_indices <- sample(n_population, n_sample, prob = sampling_prob)
-
-# Extract sample
-sample_data <- data.frame(
-  y = pop_y[sampled_indices],
-  x1 = pop_x1[sampled_indices],
-  x2 = pop_x2[sampled_indices]
+# =====================================================
+# 1. Data Simulation
+# =====================================================
+set.seed(123)
+sim_data <- simulate_bqr_data(
+    n     = 200,
+    betas = c(1.5, 2.0, -1.2),
+    sigma = 0.8,
+    seed  = 123
 )
 
-# Calculate inverse probability weights
-sample_weights <- 1 / sampling_prob[sampled_indices]
-sample_weights <- sample_weights / mean(sample_weights)  # normalize
+# =====================================================
+# 2. Different Prior Specifications
+# =====================================================
 
-# 2. Compare weighted vs unweighted analysis
-cat("=== Unweighted Analysis ===\\n")
-unweighted_model <- bqr.svy(
-  y ~ x1 + x2,
-  data = sample_data,
-  quantile = 0.5,
-  method = "ALD",
-  n_mcmc = 8000,
-  burnin = 1500
+# Vague prior (default)
+prior_vague <- prior_default(
+    p     = 3,
+    names = c("(Intercept)", "x1", "x2")
 )
 
-cat("\\n=== Weighted Analysis ===\\n")
-weighted_model <- bqr.svy(
-  y ~ x1 + x2,
-  data = sample_data,
-  weights = sample_weights,
-  quantile = 0.5,
-  method = "ALD", 
-  n_mcmc = 8000,
-  burnin = 1500
+# Informative prior (concentrated around true values)
+prior_informed <- prior_default(
+    p     = 3,
+    b0    = c(1.5, 2.0, -1.2),           # close to true values
+    B0    = diag(c(0.1, 0.1, 0.1)),      # small variances
+    c0    = 3,                           # more concentrated ALD
+    C0    = 2,
+    names = c("(Intercept)", "x1", "x2")
 )
 
-# 3. Results comparison
-cat("\\n=== Comparison with Population Truth ===\\n")
-cat("True population coefficients: [2.0, 1.5, 0.8]\\n")
-cat("Unweighted estimates:", round(coef(unweighted_model), 3), "\\n")
-cat("Weighted estimates:", round(coef(weighted_model), 3), "\\n")
+# Mildly informative prior
+prior_mild <- prior_default(
+    p     = 3,
+    b0    = c(0, 1.5, -1.0),             # somewhat informed
+    B0    = diag(c(1.0, 0.5, 0.5)),      # moderate precision
+    c0    = 2,
+    C0    = 1,
+    names = c("(Intercept)", "x1", "x2")
+)
 
-# Calculate bias
-true_coefs <- c(2.0, 1.5, 0.8)
-unweighted_bias <- abs(coef(unweighted_model) - true_coefs)
-weighted_bias <- abs(coef(weighted_model) - true_coefs)
+# =====================================================
+# 3. Model Fitting with Different Priors
+# =====================================================
 
-cat("\\nAbsolute bias (unweighted):", round(unweighted_bias, 3), "\\n")
-cat("Absolute bias (weighted):", round(weighted_bias, 3), "\\n")
-cat("Bias reduction:", round(unweighted_bias - weighted_bias, 3), "\\n")
+# ALD method with different priors
+fit_vague <- bqr.svy(
+    formula  = y ~ x1 + x2,
+    data     = sim_data$data,
+    weights  = sim_data$weights,
+    quantile = 0.5,
+    method   = "ald",
+    prior    = prior_vague,
+    niter    = 3000,
+    burnin   = 1000,
+    thin     = 5
+)
 
-# 4. Diagnostic summaries
-print("\\n=== Weighted Model Summary ===")
-summary(weighted_model)
+fit_informed <- bqr.svy(
+    formula  = y ~ x1 + x2,
+    data     = sim_data$data,
+    weights  = sim_data$weights,
+    quantile = 0.5,
+    method   = "ald",
+    prior    = prior_informed,
+    niter    = 3000,
+    burnin   = 1000,
+    thin     = 5
+)
 
-print("\\n=== Unweighted Model Summary ===")  
-summary(unweighted_model)
+fit_mild <- bqr.svy(
+    formula  = y ~ x1 + x2,
+    data     = sim_data$data,
+    weights  = sim_data$weights,
+    quantile = 0.5,
+    method   = "ald",
+    prior    = prior_mild,
+    niter    = 3000,
+    burnin   = 1000,
+    thin     = 5
+)
 
-# 5. Visualization comparison
-plot_quantile.bqr.svy(weighted_model, which_x = "x1", 
-                      main = "Weighted Analysis")
-plot_quantile.bqr.svy(unweighted_model, which_x = "x1", 
-                      main = "Unweighted Analysis")`
+# =====================================================
+# 4. Prior Sensitivity Analysis
+# =====================================================
+cat("=== Prior Sensitivity Analysis ===\n")
+cat("True coefficients:    ", sim_data$true_betas, "\n")
+cat("Vague prior:          ", round(summary(fit_vague)$coefficients[,"Mean"], 3), "\n")
+cat("Informed prior:       ", round(summary(fit_informed)$coefficients[,"Mean"], 3), "\n")
+cat("Mildly informed:      ", round(summary(fit_mild)$coefficients[,"Mean"], 3), "\n")
+
+# Calculate posterior standard deviations
+cat("\nPosterior Standard Deviations:\n")
+cat("Vague prior:          ", round(summary(fit_vague)$coefficients[,"SD"], 3), "\n")
+cat("Informed prior:       ", round(summary(fit_informed)$coefficients[,"SD"], 3), "\n")
+cat("Mildly informed:      ", round(summary(fit_mild)$coefficients[,"SD"], 3), "\n")
+
+# =====================================================
+# 5. Method Comparison (same prior)
+# =====================================================
+cat("\n=== Method Comparison (mild prior) ===\n")
+
+fit_score_mild <- bqr.svy(
+    formula  = y ~ x1 + x2,
+    data     = sim_data$data,
+    weights  = sim_data$weights,
+    quantile = 0.5,
+    method   = "score",
+    prior    = prior_mild,
+    niter    = 3000,
+    burnin   = 1000,
+    thin     = 5
+)
+
+fit_approx_mild <- bqr.svy(
+    formula  = y ~ x1 + x2,
+    data     = sim_data$data,
+    weights  = sim_data$weights,
+    quantile = 0.5,
+    method   = "approximate",
+    prior    = prior_mild,
+    niter    = 3000,
+    burnin   = 1000,
+    thin     = 5
+)
+
+cat("ALD method:           ", round(summary(fit_mild)$coefficients[,"Mean"], 3), "\n")
+cat("Score method:         ", round(summary(fit_score_mild)$coefficients[,"Mean"], 3), "\n")
+cat("Approximate method:   ", round(summary(fit_approx_mild)$coefficients[,"Mean"], 3), "\n")
+
+# =====================================================
+# 6. Visualization
+# =====================================================
+par(mfrow = c(2, 2))
+plot(fit_vague, main = "Vague Prior")
+plot(fit_informed, main = "Informed Prior")
+plot(fit_mild, main = "Mildly Informed Prior")
+
+# Compare posterior densities
+if (require(coda)) {
+    par(mfrow = c(1, 3))
+    for (i in 1:3) {
+        coef_name <- c("Intercept", "x1", "x2")[i]
+        plot(density(fit_vague$beta[,i]), main = paste("Posterior:", coef_name),
+             col = "blue", lwd = 2, xlim = range(c(fit_vague$beta[,i], 
+             fit_informed$beta[,i], fit_mild$beta[,i])))
+        lines(density(fit_informed$beta[,i]), col = "red", lwd = 2)
+        lines(density(fit_mild$beta[,i]), col = "green", lwd = 2)
+        abline(v = sim_data$true_betas[i], lty = 2, col = "black", lwd = 2)
+        legend("topright", c("Vague", "Informed", "Mild", "True"), 
+               col = c("blue", "red", "green", "black"), 
+               lty = c(1, 1, 1, 2), lwd = 2, cex = 0.8)
+    }
+}
+`
 
   return (
     <div className="min-h-screen bg-background">
@@ -243,7 +378,7 @@ plot_quantile.bqr.svy(unweighted_model, which_x = "x1",
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="basic">Basic Workflow</TabsTrigger>
               <TabsTrigger value="multiple">Multiple Quantiles</TabsTrigger>
-              <TabsTrigger value="survey">Survey Weights</TabsTrigger>
+              <TabsTrigger value="priors">Prior Specification</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic" className="space-y-6">
@@ -304,27 +439,27 @@ plot_quantile.bqr.svy(unweighted_model, which_x = "x1",
               </Card>
             </TabsContent>
 
-            <TabsContent value="survey" className="space-y-6">
+            <TabsContent value="priors" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Database className="h-5 w-5 text-purple-500" />
-                    Survey Weights Implementation
+                    <FileText className="h-5 w-5 text-orange-500" />
+                    Prior Specification and Model Comparison
                   </CardTitle>
                   <CardDescription>
-                    Handling complex survey designs with informative sampling and weights
+                    Advanced prior specification techniques and sensitivity analysis across different methods
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="relative">
                     <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm max-h-96">
-                      <code>{surveyWeightsCode}</code>
+                      <code>{priorSpecificationCode}</code>
                     </pre>
                     <Button
                       size="sm"
                       variant="outline"
                       className="absolute top-2 right-2"
-                      onClick={() => copyToClipboard(surveyWeightsCode)}
+                      onClick={() => copyToClipboard(priorSpecificationCode)}
                     >
                       {copied ? "Copied!" : <Copy className="h-4 w-4" />}
                     </Button>

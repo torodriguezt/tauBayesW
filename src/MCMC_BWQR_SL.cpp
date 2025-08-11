@@ -1,4 +1,3 @@
-// src/MCMC_BWQR_SL.cpp
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::plugins(cpp14)]]
 
@@ -8,7 +7,6 @@ using namespace arma;
 
 constexpr double PI = 3.14159265358979323846;
 
-/* ------------------ utilities ------------------ */
 inline arma::vec rmvnorm(const arma::vec& m, const arma::mat& L) {
   return m + L * randn<vec>(m.n_elem);
 }
@@ -27,7 +25,7 @@ static double log_post_SL(const arma::vec& beta,
   arma::vec res = y - X * beta;
   arma::vec ind = tau - conv_to<vec>::from(res < 0);
 
-  arma::vec w_un = mean(w) * w;                  // w_uf * w_i
+  arma::vec w_un = mean(w) * w;
   arma::vec s_tau = X.t() * (w_un % ind);
 
   arma::mat XtW2X = X.t() * (X.each_col() % square(w));
@@ -39,7 +37,6 @@ static double log_post_SL(const arma::vec& beta,
   return lp - quad - ld;
 }
 
-/* ------------------ MCMC BWQR - SL (internal) ------------------ */
 Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              const arma::mat& X,
                              const arma::vec& w,
@@ -57,7 +54,6 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
 
   const int p = X.n_cols;
 
-  /* ----- prior -------------------------------------------------- */
   arma::vec b0;
   if (b_prior_mean.isNotNull()) {
     b0 = as<arma::vec>(b_prior_mean);
@@ -76,17 +72,15 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
     B_inv = arma::eye<mat>(p, p) / 1000.0;
   }
 
-  /* ----- base proposal Sigma_prop --------------------------------- */
   arma::mat XtWX = X.t() * (X.each_col() % square(w));
   arma::mat Sigma_prop = (tau * (1.0 - tau) / y.n_elem) * inv_sympd(XtWX);
   arma::mat L_prop = chol(Sigma_prop, "lower");
 
-  /* ----- output ------------------------------------------------ */
   const int n_keep = (n_mcmc - burnin) / thin;
   arma::mat beta_out(n_keep, p, fill::none);
   int accept = 0, k_out = 0;
 
-  arma::vec beta_curr = solve(X, y);   // initial OLS
+  arma::vec beta_curr = solve(X, y);
   double ct = 1.0;
 
   for (int k = 0; k < n_mcmc; ++k) {

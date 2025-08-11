@@ -1,11 +1,6 @@
-// src/wrappers.cpp
 #include <RcppArmadillo.h>
 #include <RcppEigen.h>
 using namespace Rcpp;
-
-// --------- Declaraciones de funciones internas ----------
-
-// EM (Eigen)
 Rcpp::List _bwqr_weighted_em_cpp(
     const Eigen::MatrixXd& y,
     const Eigen::MatrixXd& x,
@@ -22,7 +17,6 @@ Rcpp::List _bwqr_weighted_em_cpp(
     bool verbose
 );
 
-// ALD MCMC
 Rcpp::List _mcmc_bwqr_al_cpp(const arma::vec& y,
                              const arma::mat& X,
                              const arma::vec& w,
@@ -35,7 +29,6 @@ Rcpp::List _mcmc_bwqr_al_cpp(const arma::vec& y,
                              double c0,
                              double C0);
 
-// Approximate MCMC
 Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
                              const arma::mat& X,
                              const arma::vec& w,
@@ -46,7 +39,6 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
                              Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean,
                              Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec);
 
-// Score-like MCMC
 Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              const arma::mat& X,
                              const arma::vec& w,
@@ -57,9 +49,6 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean,
                              Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec);
 
-// --------- Wrappers exportados a R ----------
-
-// EM
 // [[Rcpp::export(name = ".bwqr_weighted_em_cpp")]]
 Rcpp::List bwqr_weighted_em_cpp_wrap(
     const Eigen::MatrixXd& y,
@@ -81,7 +70,6 @@ Rcpp::List bwqr_weighted_em_cpp_wrap(
                                a0, b0, eps, max_iter, verbose);
 }
 
-// ALD MCMC
 // [[Rcpp::export(name = ".MCMC_BWQR_AL")]]
 Rcpp::List MCMC_BWQR_AL_wrap(const arma::vec& y,
                              const arma::mat& X,
@@ -98,7 +86,6 @@ Rcpp::List MCMC_BWQR_AL_wrap(const arma::vec& y,
                            b_prior_mean, B_prior_prec, c0, C0);
 }
 
-// Approximate MCMC
 // [[Rcpp::export(name = ".MCMC_BWQR_AP")]]
 Rcpp::List MCMC_BWQR_AP_wrap(const arma::vec& y,
                              const arma::mat& X,
@@ -112,7 +99,6 @@ Rcpp::List MCMC_BWQR_AP_wrap(const arma::vec& y,
   return _mcmc_bwqr_ap_cpp(y, X, w, n_mcmc, burnin, thin, tau, b_prior_mean, B_prior_prec);
 }
 
-// Score-like MCMC
 // [[Rcpp::export(name = ".MCMC_BWQR_SL")]]
 Rcpp::List MCMC_BWQR_SL_wrap(const arma::vec& y,
                              const arma::mat& X,

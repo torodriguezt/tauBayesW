@@ -129,21 +129,85 @@ print.bqr_prior <- function(x, ...) {
 #' three MCMC kernels implemented in C++:
 #' \itemize{
 #'   \item \code{.MCMC_BWQR_AL} – Asymmetric Laplace Distribution
-#'   \item \code{.MCMC_BWQR_SL} – Score likelihood
+#'   \item \code{.MCMC_BWQR_SL} – Score likelihood  
 #'   \item \code{.MCMC_BWQR_AP} – Approximate likelihood
 #' }
 #' Only a single quantile can be estimated at a time.
 #'
+#' Survey weights are handled differently by each method:
+#' \itemize{
+#'   \item \code{"ald"} and \code{"score"}: weights are normalized (divided by their mean)
+#'   \item \code{"approximate"}: weights are used as provided (raw weights)
+#' }
+#'
 #' @param formula A \code{\link{formula}} specifying the model.
 #' @param weights Optional survey weights (numeric vector or one-sided formula).
+#'   Weights are passed directly to the underlying C++ algorithms without any
+#'   preprocessing like scaling.
 #' @param data Optional \code{data.frame} for variables in the model.
 #' @param quantile Numeric scalar in (0, 1): target quantile \eqn{\tau}.
 #' @param method One of \code{"ald"}, \code{"score"}, \code{"approximate"}.
-#' @param prior Unified \code{bqr_prior} (see \code{\link{prior_default}}). For
-#'   \code{"ald"}: uses \code{b0}, \code{B0}, \code{c0}, \code{C0}. For \code{"score"}:
-#'   uses \code{b0}, \code{B0}. For \code{"approximate"}: uses \code{b0}, \code{B0}.
+#' @param prior Prior specification. Can be:
+#'   \itemize{
+#'     \item A \code{bqr_prior} object from \code{\link{prior_default}}
+#'     \item A list with components \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}
+#'     \item \code{NULL} (uses default vague priors)
+#'   }
+#'   For \code{"ald"}: uses \code{b0}, \code{B0}, \code{c0}, \code{C0}. 
+#'   For \code{"score"} and \code{"approximate"}: uses \code{b0}, \code{B0} only.
 #' @param niter, burnin, thin MCMC settings.
+#'
+#' @details
+#' \strong{Prior Specification:}
+#' 
+#' The prior can be specified in several ways:
+#' \enumerate{
+#'   \item Using \code{\link{prior_default}} (recommended):
+#'   \preformatted{
+#'   prior <- prior_default(
+#'     p     = 3,                          # number of coefficients
+#'     b0    = c(0, 1.5, -0.8),            # prior means
+#'     B0    = diag(c(1, 0.5, 0.5)),       # prior covariance matrix
+#'     c0    = 2,                          # ALD: sigma^2 IG shape
+#'     C0    = 1,                          # ALD: sigma^2 IG rate
+#'     names = c("(Intercept)", "x1", "x2")
+#'   )}
+#'   
+#'   \item As a list:
+#'   \preformatted{
+#'   prior <- list(
+#'     b0 = c(0, 1.5, -0.8),
+#'     B0 = diag(c(1, 0.5, 0.5)),
+#'     c0 = 2,    # only used by "ald" method
+#'     C0 = 1     # only used by "ald" method
+#'   )}
+#'   
+#'   \item \code{NULL} for default vague priors
+#' }
+#'
 #' @return An object of class \code{"bqr.svy"} and \code{"bwqr_fit"}.
+#'
+#' @examples
+#' # Basic usage with default priors
+#' sim <- simulate_bqr_data(n = 100, betas = c(2, 1.5, -0.8))
+#' fit1 <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights)
+#' 
+#' # With informative priors
+#' prior <- prior_default(
+#'   p  = 3,
+#'   b0 = c(2, 1.5, -0.8),           # close to true values
+#'   B0 = diag(c(0.25, 0.25, 0.25)), # small variances = concentrated prior
+#'   c0 = 3, C0 = 2                  # for ALD method
+#' )
+#' fit2 <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
+#'                method = "ald", prior = prior)
+#'
+#' # Compare different methods
+#' fit_score <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
+#'                     method = "score", prior = prior)
+#' fit_approx <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
+#'                      method = "approximate", prior = prior)
+#'
 #' @importFrom stats model.frame model.matrix model.response terms
 #' @export
 bqr.svy <- function(formula,

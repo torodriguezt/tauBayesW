@@ -22,40 +22,100 @@ export default function BqrSvyPage() {
   const exampleCode = `# Single quantile Bayesian regression
 library(tauBayesW)
 
+library(tauBayesW)
+
+# =====================================================
 # Simulate data
+# =====================================================
 set.seed(123)
 n <- 200
 x1 <- rnorm(n)
 x2 <- runif(n)
 y <- 1 + 2*x1 - 0.5*x2 + rnorm(n)
 weights <- runif(n, 0.5, 2)
-data <- data.frame(y, x1, x2)
+data_single <- data.frame(y, x1, x2)
 
-# Fit single quantile model
-model <- bqr.svy(y ~ x1 + x2, 
-                 data = data,
-                 weights = weights,
-                 quantile = 0.5,
-                 method = "ALD",
-                 n_mcmc = 5000,
-                 burnin = 1000)
+# =====================================================
+# Informative prior
+# =====================================================
+prior_info <- prior_default(
+  p     = 3,                                     # intercept + 2 slopes
+  b0    = c(0.5, 1.8, -0.8),                     # prior means
+  B0    = diag(c(0.3, 0.2, 0.2)),                # small variances -> concentrated prior
+  c0    = 2,                                     # ALD hyperparameter (more informative)
+  C0    = 1,
+  names = c("(Intercept)", "x1", "x2")
+)
 
-# Print results
-print(model)
+# =====================================================
+# Fit: ALD method
+# =====================================================
+fit_ald <- bqr.svy(
+  y ~ x1 + x2,
+  data     = data_single,
+  weights  = weights,
+  quantile = 0.5,
+  method   = "ald",
+  prior    = prior_info,
+  niter    = 5000,
+  burnin   = 1000
+)
 
-# Summary with detailed diagnostics
-summary(model)
+# =====================================================
+# Fit: Score method
+# =====================================================
+fit_score <- bqr.svy(
+  y ~ x1 + x2,
+  data     = data_single,
+  weights  = weights,
+  quantile = 0.5,
+  method   = "score",
+  prior    = prior_info,
+  niter    = 5000,
+  burnin   = 1000
+)
 
-# Plot results
-plot(model)`
+# =====================================================
+# Fit: Approximate method
+# =====================================================
+fit_ap <- bqr.svy(
+  y ~ x1 + x2,
+  data     = data_single,
+  weights  = weights,
+  quantile = 0.5,
+  method   = "approximate",
+  prior    = prior_info,
+  niter    = 5000,
+  burnin   = 1000
+)
+
+# =====================================================
+# Results
+# =====================================================
+cat("\n--- ALD ---\n")
+print(fit_ald)
+summary(fit_ald)
+
+cat("\n--- Score ---\n")
+print(fit_score)
+summary(fit_score)
+
+cat("\n--- Approximate ---\n")
+print(fit_ap)
+summary(fit_ap)
+`
 
   const summaryCode = `# Summary methods for bqr.svy objects
 
 # Basic summary
-summary(model)
-
+summary(fit_ald)
+summary(fit_score)
+summary(fit_ap)
 # Print method with convergence diagnostics
-print(model)`
+print(fit_ald)
+print(fit_score)
+print(fit_ap)
+`
 
   return (
     <div className="min-h-screen bg-background">

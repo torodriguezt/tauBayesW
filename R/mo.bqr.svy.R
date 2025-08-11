@@ -157,17 +157,23 @@ print.mo_bqr_prior <- function(x, ...) {
 #'
 #' Fits a multiple-output Bayesian quantile regression model under complex survey
 #' weights using the Expectation-Maximization (EM) algorithm implemented in C++.
-#' Currently only the \code{"em"} algorithm is supported.
+#' Currently only the \code{"em"} algorithm is supported. Survey weights are 
+#' normalized internally (divided by their mean).
 #'
 #' @param formula An object of class \code{\link{formula}} specifying the model.
 #' @param weights Optional survey weights. Can be a numeric vector of length equal
-#'   to the number of observations.
+#'   to the number of observations. Weights are normalized internally and do not
+#'   require any preprocessing.
 #' @param data A \code{data.frame} containing the variables in the model.
 #' @param quantile Numeric vector of quantiles in (0, 1) to estimate. Multiple
 #'   quantiles can be passed.
 #' @param algorithm Character string; currently only \code{"em"} is implemented.
-#' @param prior A \code{mo_bqr_prior} created by \code{\link{mo_prior_default}}
-#'   (or a compatible list; it will be coerced via \code{\link{as_mo_bqr_prior}}).
+#' @param prior Prior specification. Can be:
+#'   \itemize{
+#'     \item A \code{mo_bqr_prior} object from \code{\link{mo_prior_default}}
+#'     \item A list with components \code{beta_mean}, \code{beta_cov}, \code{sigma_shape}, \code{sigma_rate}
+#'     \item \code{NULL} (uses default vague priors)
+#'   }
 #'   Contains:
 #'   \describe{
 #'     \item{\code{beta_mean}}{Prior mean vector for regression coefficients.}
@@ -201,17 +207,56 @@ print.mo_bqr_prior <- function(x, ...) {
 #' The EM algorithm iteratively maximizes the posterior mode under the specified
 #' prior distribution. For each quantile \eqn{\tau}, the weighted check loss is
 #' minimized under Bayesian regularization.
+#' 
+#' \strong{Prior Specification:}
+#' 
+#' The prior can be specified in several ways:
+#' \enumerate{
+#'   \item Using \code{\link{mo_prior_default}} (recommended):
+#'   \preformatted{
+#'   prior <- mo_prior_default(
+#'     p            = 3,                             # number of coefficients
+#'     beta_mean    = c(0, 1.4, -0.7),               # prior means
+#'     beta_cov     = diag(c(0.25, 0.25, 0.25)),     # prior covariance matrix
+#'     sigma_shape  = 2,                             # IG shape parameter
+#'     sigma_rate   = 1,                             # IG rate parameter
+#'     names        = c("(Intercept)", "x1", "x2")
+#'   )}
+#'   
+#'   \item As a list:
+#'   \preformatted{
+#'   prior <- list(
+#'     beta_mean    = c(0, 1.4, -0.7),
+#'     beta_cov     = diag(c(0.25, 0.25, 0.25)),
+#'     sigma_shape  = 2,
+#'     sigma_rate   = 1
+#'   )}
+#'   
+#'   \item \code{NULL} for default vague priors
+#' }
 #'
 #' @seealso \code{\link{mo_prior_default}}, \code{\link{as_mo_bqr_prior}},
 #'   \code{\link{bqr.svy}}, \code{\link{simulate_mo_bqr_data}}
 #'
 #' @examples
+#' # Basic usage with default priors
 #' sim <- simulate_mo_bqr_data(n = 50, p = 2)
-#' pr  <- mo_prior_default(p = 3)  # intercept + two slopes in the example below
-#' fit <- mo.bqr.svy(y ~ x1 + x2, weights = sim$weights, data = sim$data,
-#'                   quantile = c(0.1, 0.5, 0.9), algorithm = "em",
-#'                   max_iter = 200, prior = pr)
-#' print(fit)
+#' fit1 <- mo.bqr.svy(y ~ x1 + x2, weights = sim$weights, data = sim$data,
+#'                    quantile = c(0.1, 0.5, 0.9), algorithm = "em",
+#'                    max_iter = 200)
+#'
+#' # With informative priors  
+#' prior <- mo_prior_default(
+#'   p            = 3,  # intercept + two slopes
+#'   beta_mean    = c(1, 1, 2),                    # prior means
+#'   beta_cov     = diag(c(1, 0.5, 0.5)),          # prior covariances
+#'   sigma_shape  = 3,                             # more concentrated IG
+#'   sigma_rate   = 2
+#' )
+#' fit2 <- mo.bqr.svy(y ~ x1 + x2, weights = sim$weights, data = sim$data,
+#'                    quantile = c(0.25, 0.5, 0.75), algorithm = "em",
+#'                    prior = prior, max_iter = 300, verbose = TRUE)
+#'
 #'
 #' @export
 #' @importFrom stats model.frame model.matrix model.response

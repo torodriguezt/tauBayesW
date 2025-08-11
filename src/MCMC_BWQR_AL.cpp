@@ -1,4 +1,3 @@
-// src/MCMC_BWQR_AL.cpp
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::plugins(cpp14)]]
 
@@ -9,9 +8,6 @@
 using namespace Rcpp;
 using namespace arma;
 
-// ---------------------------------------------------------
-// 1. Inverse-Gaussian sampler IG(mu, lambda)
-// ---------------------------------------------------------
 inline double rinvgauss(double mu, double lambda) {
   const double z  = R::rnorm(0.0, 1.0);
   const double y  = z * z;
@@ -22,9 +18,6 @@ inline double rinvgauss(double mu, double lambda) {
   return (u <= mu / (mu + x1)) ? x1 : (mu * mu / x1);
 }
 
-// ---------------------------------------------------------
-// 2. beta | (sigma, v, ...)
-// ---------------------------------------------------------
 static arma::vec draw_beta(const arma::mat& X,
                            const arma::vec& w,
                            const arma::vec& v,
@@ -79,9 +72,6 @@ static arma::vec draw_beta(const arma::mat& X,
   return mu + L * arma::randn<arma::vec>(b_zero.n_elem);
 }
 
-// ---------------------------------------------------------
-// 3. sigma | (beta, v, ...)
-// ---------------------------------------------------------
 inline double draw_sigma(const arma::mat& X,
                          const arma::vec& w,
                          const arma::vec& beta,
@@ -101,9 +91,6 @@ inline double draw_sigma(const arma::mat& X,
   return 1.0 / R::rgamma(alpha1, 1.0 / beta1);
 }
 
-// ---------------------------------------------------------
-// 4. v | (beta, sigma, ...)
-// ---------------------------------------------------------
 static void update_v(arma::vec& v, const arma::mat& X,
                      const arma::vec& w, const arma::vec& beta,
                      const arma::vec& y,
@@ -122,9 +109,6 @@ static void update_v(arma::vec& v, const arma::mat& X,
   }
 }
 
-// ---------------------------------------------------------
-// 5. Gibbs sampler con prior configurable
-// ---------------------------------------------------------
 Rcpp::List _mcmc_bwqr_al_cpp(const arma::vec& y,
                              const arma::mat& X,
                              const arma::vec& w,
@@ -143,7 +127,6 @@ Rcpp::List _mcmc_bwqr_al_cpp(const arma::vec& y,
 
   const int n = y.n_elem, p = X.n_cols;
 
-  // Prior desde Nullable o defaults
   arma::vec b_mean = b_prior_mean.isNotNull()
     ? Rcpp::as<arma::vec>(b_prior_mean)
       : arma::zeros<arma::vec>(p);
@@ -156,7 +139,6 @@ Rcpp::List _mcmc_bwqr_al_cpp(const arma::vec& y,
   if (B_prec.n_rows != (unsigned)p || B_prec.n_cols != (unsigned)p)
     stop("B_prior_prec must be a p x p matrix.");
 
-  // Almacenamiento de cadenas
   arma::mat beta_chain(n_mcmc, p, arma::fill::zeros);
   arma::vec sigma_chain(n_mcmc, arma::fill::zeros);
 
@@ -176,7 +158,6 @@ Rcpp::List _mcmc_bwqr_al_cpp(const arma::vec& y,
     sigma_chain[k] = draw_sigma(X, w, beta_k, v, y, tau2, theta, c0, C0);
   }
 
-  // Submuestreo
   arma::uvec keep = arma::regspace<arma::uvec>(burnin + thin, thin, n_mcmc - 1);
   const int   M   = keep.n_elem;
 
