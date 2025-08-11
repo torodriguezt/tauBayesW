@@ -292,9 +292,9 @@ plot_quantile_with_points.mo.bqr.svy(
             <TabsContent value="advanced" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Advanced Plotting Options</CardTitle>
+                  <CardTitle>Fitted Model Plotting Options</CardTitle>
                   <CardDescription>
-                    Customization and advanced visualization techniques
+                    Visualization functions
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -318,19 +318,6 @@ plot_quantile_with_points.mo.bqr.svy(
                       main, xlab, ylab, col, lwd, etc. for complete customization.
                     </AlertDescription>
                   </Alert>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Plot Types for Multiple Quantiles</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="list-disc list-inside space-y-2">
-                    <li><strong>quantiles:</strong> Shows all fitted quantile curves together</li>
-                    <li><strong>coefficients:</strong> Coefficient paths across quantiles</li>
-                    <li><strong>convergence:</strong> EM algorithm convergence diagnostics</li>
-                  </ul>
                 </CardContent>
               </Card>
             </TabsContent>

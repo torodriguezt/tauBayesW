@@ -43,7 +43,7 @@ sim_multi <- simulate_mo_bqr_data(
 )
 
 # Check simulation results
-print(sim_multi$beta_true)
+print(sim_multi$true_betas)
 summary(sim_multi$data)`
 
   const priorCode = `# Prior specification functions
