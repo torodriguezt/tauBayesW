@@ -127,8 +127,8 @@ print(model)`
                 <CardContent>
                   <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
                     <code>{`mo.bqr.svy(formula, data, weights = NULL, 
-           quantiles = c(0.1, 0.25, 0.5, 0.75, 0.9),
-           max_iter = 100, tol = 1e-4, verbose = TRUE, ...)`}</code>
+           quantiles = c(0.1, 0.25, 0.5, 0.75, 0.9), algorithm = "em",
+           prior = NULL, epsilon = 1e-6, max_iter = 1000, verbose = TRUE, ...)`}</code>
                   </pre>
                 </CardContent>
               </Card>
@@ -159,11 +159,15 @@ print(model)`
                         <p className="text-sm text-muted-foreground">Vector of quantiles to estimate</p>
                       </div>
                       <div>
+                        <h4 className="font-semibold">algorithm</h4>
+                        <p className="text-sm text-muted-foreground">Expected-Maximization algorithm</p>
+                      </div>
+                      <div>
                         <h4 className="font-semibold">max_iter</h4>
                         <p className="text-sm text-muted-foreground">Maximum number of EM iterations</p>
                       </div>
                       <div>
-                        <h4 className="font-semibold">tol</h4>
+                        <h4 className="font-semibold">epsilon</h4>
                         <p className="text-sm text-muted-foreground">Convergence tolerance</p>
                       </div>
                       <div>

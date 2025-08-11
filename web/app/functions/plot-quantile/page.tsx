@@ -22,55 +22,110 @@ export default function PlotQuantilePage() {
   const exampleCode = `# Plotting quantile regression results
 library(tauBayesW)
 
-# Fit a model first
+## 1) Simulate data
 set.seed(123)
 n <- 200
 x1 <- rnorm(n)
 x2 <- runif(n)
-y <- 1 + 2*x1 - 0.5*x2 + rnorm(n)
+y  <- 1 + 2*x1 - 0.5*x2 + rnorm(n)
 weights <- runif(n, 0.5, 2)
 data <- data.frame(y, x1, x2)
 
-# Single quantile model
-model_single <- bqr.svy(y ~ x1 + x2, 
-                        data = data,
-                        weights = weights,
-                        quantile = 0.5)
+## 2) Informative prior for bqr.svy (single-output)
+prior_info <- prior_default(
+  p     = 3,                     # (Intercept), x1, x2
+  b0    = c(0.8, 1.9, -0.4),     # prior means (near the DGP)
+  B0    = diag(0.5, 3),          # smaller variances => more informative
+  c0    = 2,                     # IG(shape) for ALD scale
+  C0    = 1,                     # IG(rate)  for ALD scale
+  names = c("(Intercept)", "x1", "x2")
+)
 
-# Multiple quantile model
-model_multi <- mo.bqr.svy(y ~ x1 + x2, 
-                          data = data,
-                          weights = weights,
-                          quantiles = c(0.1, 0.25, 0.5, 0.75, 0.9))
+## 3) Fit bqr.svy with the three methods
+niter  <- 5000
+burnin <- 1000
+thin   <- 5
+tau    <- 0.5
 
-# Basic plotting
-plot(model_single)
-plot(model_multi)
+fit_ald <- bqr.svy(
+  y ~ x1 + x2,
+  data     = data,
+  weights  = weights,
+  quantile = tau,
+  method   = "ald",
+  prior    = prior_info,
+  niter    = niter, burnin = burnin, thin = thin
+)
 
-# Advanced plotting with plot_quantile functions
-plot_quantile.bqr.svy(model_single, which_x = "x1")
-plot_quantile_with_points(model_single, which_x = "x1", alpha = 0.6)`
+fit_score <- bqr.svy(
+  y ~ x1 + x2,
+  data     = data,
+  weights  = weights,
+  quantile = tau,
+  method   = "score",
+  prior    = prior_info,
+  niter    = niter, burnin = burnin, thin = thin
+)
 
-  const advancedCode = `# Advanced plotting options
+fit_aprx <- bqr.svy(
+  y ~ x1 + x2,
+  data     = data,
+  weights  = weights,
+  quantile = tau,
+  method   = "approximate",
+  prior    = prior_info,
+  niter    = niter, burnin = burnin, thin = thin
+)
 
-# Plot against specific covariate
-plot_quantile.bqr.svy(model_single, 
-                      which_x = "x1",
-                      main = "Custom Title",
-                      xlab = "X1 Variable",
-                      ylab = "Response Y")
+## 4) Informative prior for mo.bqr.svy (multi-output uses its own prior format)
+mo_prior_info <- list(
+  beta_mean   = c(0.8, 1.9, -0.4),
+  beta_cov    = diag(0.5, 3),
+  sigma_shape = 2,
+  sigma_rate  = 1
+)
 
-# Plot with custom points and transparency
-plot_quantile_with_points(model_single,
-                          which_x = "x1",
-                          alpha = 0.5,
-                          point_size = 1.2,
-                          line_color = "blue")
+## 5) Fit mo.bqr.svy (EM by default)
+fit_multi <- mo.bqr.svy(
+  y ~ x1 + x2,
+  data      = data,
+  weights   = weights,
+  quantiles = c(0.10, 0.25, 0.50, 0.75, 0.90),
+  algorithm = "em",
+  prior     = mo_prior_info,
+  epsilon   = 1e-6,
+  max_iter  = 500,
+  verbose   = FALSE
+)
 
-# Multiple quantiles comparison
-plot(model_multi, type = "quantiles")
-plot(model_multi, type = "coefficients")
-plot(model_multi, type = "convergence")`
+## 6) Quick coefficient comparison
+res <- rbind(
+  "True (sim)" = c(1, 2, -0.5),
+  "ALD"        = round(fit_ald$beta,   3),
+  "Score"      = round(fit_score$beta, 3),
+  "Approx"     = round(fit_aprx$beta,  3)
+)
+print(res)
+
+## 7) Base plots (your S3 plot methods)
+plot(fit_ald)
+plot(fit_multi)`
+
+  const advancedCode = `# Quantile regression plotting options
+
+plot_quantile_with_points.bqr.svy(
+  object    = fit_ald,
+  data      = data,
+  predictor = "x1",
+  alpha     = 0.6
+)
+
+plot_quantile_with_points.mo.bqr.svy(
+  object    = fit_multi,
+  data      = data,
+  predictor = "x1",
+  alpha     = 0.6
+)`
 
   return (
     <div className="min-h-screen bg-background">

@@ -22,8 +22,6 @@ export default function BqrSvyPage() {
   const exampleCode = `# Single quantile Bayesian regression
 library(tauBayesW)
 
-library(tauBayesW)
-
 # =====================================================
 # Simulate data
 # =====================================================
@@ -88,6 +86,9 @@ fit_ap <- bqr.svy(
   niter    = 5000,
   burnin   = 1000
 )
+`
+
+  const summaryCode = `# Summary methods for bqr.svy objects
 
 # =====================================================
 # Results
@@ -103,18 +104,6 @@ summary(fit_score)
 cat("\n--- Approximate ---\n")
 print(fit_ap)
 summary(fit_ap)
-`
-
-  const summaryCode = `# Summary methods for bqr.svy objects
-
-# Basic summary
-summary(fit_ald)
-summary(fit_score)
-summary(fit_ap)
-# Print method with convergence diagnostics
-print(fit_ald)
-print(fit_score)
-print(fit_ap)
 `
 
   return (
@@ -191,7 +180,7 @@ print(fit_ap)
                 <CardContent>
                   <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
                     <code>{`bqr.svy(formula, data, weights = NULL, quantile = 0.5, 
-        method = c("ALD", "Score", "Approximate"), 
+        method = c("ald", "score", "approximate"), prior = NULL,
         n_mcmc = 10000, burnin = 2000, verbose = TRUE, ...)`}</code>
                   </pre>
                 </CardContent>
@@ -225,6 +214,10 @@ print(fit_ap)
                       <div>
                         <h4 className="font-semibold">method</h4>
                         <p className="text-sm text-muted-foreground">MCMC method: "ALD", "Score", or "Approximate"</p>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">prior</h4>
+                        <p className="text-sm text-muted-foreground">Object created using prior_default specifiying prior distribution for parameters</p>
                       </div>
                       <div>
                         <h4 className="font-semibold">n_mcmc</h4>
