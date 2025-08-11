@@ -179,6 +179,159 @@ print(round(coef_comparison, 4))
 
 ```
 
+
+### 2. Prior information
+
+We can also use informative prior distributions
+
+For the MCMC case
+
+```{r}
+# ---------------------
+# Example data
+# ---------------------
+set.seed(123)
+n  <- 200
+x1 <- rnorm(n)
+x2 <- rnorm(n)
+w  <- runif(n, 0.5, 2)   # weights
+tau <- 0.5               # target quantile
+
+y <- 1 + 2 * x1 - 1.5 * x2 + rnorm(n)
+
+data_ex <- data.frame(y, x1, x2, w)
+
+# ---------------------
+# Informative prior
+# ---------------------
+prior_info <- prior_default(
+  p     = 3,
+  b0    = c(0, 1.5, -1.0),          # prior means
+  B0    = diag(c(0.5, 0.25, 0.25)), # small variances => more concentrated prior
+  c0    = 2,                        # hyperparameter for ALD (more informative than 0.001)
+  C0    = 1,
+  names = c("(Intercept)", "x1", "x2")
+)
+
+# ---------------------
+# Fit with the 3 methods
+# ---------------------
+
+# ALD method
+fit_ald <- bqr.svy(
+  formula  = y ~ x1 + x2,
+  weights  = w,
+  data     = data_ex,
+  quantile = tau,
+  method   = "ald",
+  prior    = prior_info,
+  niter    = 2000,
+  burnin   = 500,
+  thin     = 5
+)
+
+# Score method
+fit_score <- bqr.svy(
+  formula  = y ~ x1 + x2,
+  weights  = w,
+  data     = data_ex,
+  quantile = tau,
+  method   = "score",
+  prior    = prior_info,
+  niter    = 2000,
+  burnin   = 500,
+  thin     = 5
+)
+
+# Approximate method
+fit_ap <- bqr.svy(
+  formula  = y ~ x1 + x2,
+  weights  = w,
+  data     = data_ex,
+  quantile = tau,
+  method   = "approximate",
+  prior    = prior_info,
+  niter    = 2000,
+  burnin   = 500,
+  thin     = 5
+)
+
+# ---------------------
+# Results
+# ---------------------
+cat("\n--- ALD ---\n")
+print(fit_ald$beta)
+
+cat("\n--- Score ---\n")
+print(fit_score$beta)
+
+cat("\n--- Approximate ---\n")
+print(fit_ap$beta)
+
+```
+
+For the EM algorithm
+
+
+```{r}
+# ---------------------
+# Example data
+# ---------------------
+set.seed(456)
+n <- 150
+p <- 2  # number of predictors (excluding intercept)
+
+# Simulated predictors
+x1 <- rnorm(n)
+x2 <- rnorm(n)
+w  <- runif(n, 0.5, 2)   # survey weights
+
+# True model: intercept + slopes
+y <- 1 + 1.8 * x1 - 1.2 * x2 + rnorm(n, 0, 1)
+
+data_ex <- data.frame(y, x1, x2, w)
+
+# ---------------------
+# Informative prior for mo.bqr.svy
+# ---------------------
+prior_info <- mo_prior_default(
+  p           = 3,                             # intercept + 2 slopes
+  beta_mean   = c(0.5, 1.5, -1.0),              # prior means
+  beta_cov    = diag(c(0.2, 0.15, 0.15)),       # small variances -> concentrated prior
+  sigma_shape = 2,                              # more informative than 0.001
+  sigma_rate  = 1,
+  names       = c("(Intercept)", "x1", "x2")
+)
+
+# ---------------------
+# Fit model with EM algorithm
+# ---------------------
+fit_mo <- mo.bqr.svy(
+  formula   = y ~ x1 + x2,
+  weights   = w,
+  data      = data_ex,
+  quantile  = c(0.25, 0.5, 0.75),  # multiple quantiles
+  algorithm = "em",
+  prior     = prior_info,
+  max_iter  = 200,
+  epsilon   = 1e-6,
+  verbose   = FALSE
+)
+
+# ---------------------
+# Results
+# ---------------------
+print(fit_mo)
+
+# Access coefficients for each quantile
+for (q in seq_along(fit_mo$quantile)) {
+  cat(sprintf("\nQuantile %.2f coefficients:\n", fit_mo$quantile[q]))
+  print(fit_mo$fit[[q]]$beta)
+}
+
+```
+
+
 ### 2. Complex Survey Designs
 
 ```{r survey-design}
