@@ -2,13 +2,13 @@
 % Please edit documentation in R/bqr.svy.R
 \name{as_bqr_prior}
 \alias{as_bqr_prior}
-\title{Coerce to a \code{bqr_prior} object}
+\title{Coerce to a \code{bqr_prior} object (unified)}
 \usage{
 as_bqr_prior(x, p, names = NULL, method = c("ald", "score", "approximate"))
 }
 \arguments{
 \item{x}{A \code{bqr_prior} or a list with components \code{b0}, \code{B0},
-and optionally \code{w_scale}.}
+and optionally \code{c0}, \code{C0}.}
 
 \item{p}{Number of coefficients.}
 
@@ -22,7 +22,6 @@ A \code{bqr_prior} object.
 \description{
 Allows passing legacy list priors to \code{\link{bqr.svy}}. A valid list must
 contain at least \code{b0} and \code{B0}. Scalars/vectors are expanded as in
-\code{\link{prior_default}}. When \code{method = "approximate"} and
-\code{w_scale} is missing, it defaults to 2; otherwise \code{w_scale} is set
-to \code{NULL}.
+\code{\link{prior_default}}. Optional fields \code{c0}, \code{C0} are relevant
+for \code{method = "ald"} and ignored otherwise.
 }

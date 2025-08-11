@@ -47,35 +47,34 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              int n_mcmc  = 10000,
                              int burnin  = 2000,
                              int thin    = 10,
-                             Rcpp::Nullable<Rcpp::NumericVector> b0_ = R_NilValue,
-                             Rcpp::Nullable<Rcpp::NumericMatrix> B0_ = R_NilValue) {
+                             Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean = R_NilValue,
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue) {
 
   if (y.n_elem != X.n_rows || w.n_elem != y.n_elem)
     stop("Incompatible dimensions between y, X and w");
   if (burnin >= n_mcmc) stop("burnin must be < n_mcmc");
   if (thin <= 0)        stop("thin must be positive");
 
-  const int p = X.n_cols;           // <- dynamic number of covariates
+  const int p = X.n_cols;
 
   /* ----- prior -------------------------------------------------- */
   arma::vec b0;
-  if (b0_.isNotNull()) {
-    b0 = as<arma::vec>(b0_);
+  if (b_prior_mean.isNotNull()) {
+    b0 = as<arma::vec>(b_prior_mean);
     if (b0.n_elem != p)
-      stop("b0 must have length equal to ncol(X)");
+      stop("b_prior_mean must have length equal to ncol(X)");
   } else {
     b0 = arma::zeros<vec>(p);
   }
 
-  arma::mat B0;
-  if (B0_.isNotNull()) {
-    B0 = as<arma::mat>(B0_);
-    if (B0.n_rows != p || B0.n_cols != p)
-      stop("B0 must be a pxp matrix");
+  arma::mat B_inv;
+  if (B_prior_prec.isNotNull()) {
+    B_inv = as<arma::mat>(B_prior_prec);
+    if (B_inv.n_rows != p || B_inv.n_cols != p)
+      stop("B_prior_prec must be a pxp matrix");
   } else {
-    B0 = 1000.0 * arma::eye<mat>(p, p);
+    B_inv = arma::eye<mat>(p, p) / 1000.0;
   }
-  arma::mat B_inv = inv_sympd(B0);
 
   /* ----- base proposal Sigma_prop --------------------------------- */
   arma::mat XtWX = X.t() * (X.each_col() % square(w));
@@ -115,3 +114,4 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
     _["call"]        = "MCMC_BWQR_SL"
   );
 }
+

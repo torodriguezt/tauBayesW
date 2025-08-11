@@ -8,7 +8,8 @@ prior_default(
   p,
   b0 = rep(0, p),
   B0 = diag(1e+06, p),
-  w_scale = 2,
+  c0 = 0.001,
+  C0 = 0.001,
   names = NULL
 )
 }
@@ -18,31 +19,24 @@ prior_default(
 \item{b0}{Numeric vector of prior means (length \code{p}). If a scalar is
 supplied, it is expanded to length \code{p}.}
 
-\item{B0}{Prior covariance. May be:
-\itemize{
-\item a \code{p x p} matrix,
-\item a scalar (expanded to \code{diag(scalar, p)}), or
-\item a length-\code{p} numeric vector (expanded to \code{diag(vector)}).
-}}
+\item{B0}{Prior covariance. May be a \code{p x p} matrix, a scalar
+(expanded to \code{diag(scalar, p)}), or a length-\code{p} vector
+(expanded to \code{diag(vector)}).}
 
-\item{w_scale}{Positive scalar weight-scale parameter (used by the
-\code{"approximate"} kernel; stored in the object regardless).}
+\item{c0}{Shape parameter of the Inverse-Gamma prior for \eqn{\sigma^2} (ALD).}
+
+\item{C0}{Scale parameter of the Inverse-Gamma prior for \eqn{\sigma^2} (ALD).}
 
 \item{names}{Optional coefficient names to attach to \code{b0} and \code{B0}.}
 }
 \value{
 An object of class \code{"bqr_prior"} with components \code{b0},
-\code{B0}, and optionally \code{w_scale}.
+\code{B0}, and optionally \code{c0}, \code{C0}.
 }
 \description{
-Creates a prior object (class \code{"bqr_prior"}) ready to be passed to
-\code{\link{bqr.svy}} (or \code{mo.bqr.svy}). The prior is a multivariate
-normal prior on the regression coefficients and, for the
-\code{method = "approximate"} kernel, it can also carry a weight-scale
-parameter \code{w_scale}.
-}
-\examples{
-pr <- prior_default(p = 3, b0 = 0, B0 = 1000)
-pr
-
+Creates a unified prior object (class \code{"bqr_prior"}) to be passed to
+\code{\link{bqr.svy}} (or \code{mo.bqr.svy}). It stores a multivariate normal
+prior on the regression coefficients and, for the \code{"ald"} kernel, optional
+Inverse-Gamma hyperparameters \code{c0}, \code{C0} for \eqn{\sigma^2}.
+Methods that do not use some fields simply ignore them.
 }

@@ -1,10 +1,11 @@
-// Wrappers internos: exponen a R con nombre "oculto" (empieza por punto)
-
+// src/wrappers.cpp
 #include <RcppArmadillo.h>
 #include <RcppEigen.h>
 using namespace Rcpp;
 
-// --------- Declaraciones de funciones internas (no exportadas) ----------
+// --------- Declaraciones de funciones internas ----------
+
+// EM (Eigen)
 Rcpp::List _bwqr_weighted_em_cpp(
     const Eigen::MatrixXd& y,
     const Eigen::MatrixXd& x,
@@ -21,14 +22,20 @@ Rcpp::List _bwqr_weighted_em_cpp(
     bool verbose
 );
 
+// ALD MCMC
 Rcpp::List _mcmc_bwqr_al_cpp(const arma::vec& y,
                              const arma::mat& X,
                              const arma::vec& w,
                              double tau,
                              int n_mcmc,
                              int burnin,
-                             int thin);
+                             int thin,
+                             Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean,
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec,
+                             double c0,
+                             double C0);
 
+// Approximate MCMC
 Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
                              const arma::mat& X,
                              const arma::vec& w,
@@ -36,10 +43,10 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
                              int burnin,
                              int thin,
                              double tau,
-                             double w_scale,
-                             Rcpp::Nullable<Rcpp::NumericVector> b0_,
-                             Rcpp::Nullable<Rcpp::NumericMatrix> B0_);
+                             Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean,
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec);
 
+// Score-like MCMC
 Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              const arma::mat& X,
                              const arma::vec& w,
@@ -47,12 +54,12 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              int n_mcmc,
                              int burnin,
                              int thin,
-                             Rcpp::Nullable<Rcpp::NumericVector> b0_,
-                             Rcpp::Nullable<Rcpp::NumericMatrix> B0_);
+                             Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean,
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec);
 
-// --------- Wrappers exportados a R (internos, empiezan por ".") ----------
+// --------- Wrappers exportados a R ----------
 
-// EM interno
+// EM
 // [[Rcpp::export(name = ".bwqr_weighted_em_cpp")]]
 Rcpp::List bwqr_weighted_em_cpp_wrap(
     const Eigen::MatrixXd& y,
@@ -82,8 +89,13 @@ Rcpp::List MCMC_BWQR_AL_wrap(const arma::vec& y,
                              double tau = 0.5,
                              int n_mcmc = 50000,
                              int burnin = 10000,
-                             int thin   = 10) {
-  return _mcmc_bwqr_al_cpp(y, X, w, tau, n_mcmc, burnin, thin);
+                             int thin   = 10,
+                             Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean = R_NilValue,
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue,
+                             double c0 = 0.001,
+                             double C0 = 0.001) {
+  return _mcmc_bwqr_al_cpp(y, X, w, tau, n_mcmc, burnin, thin,
+                           b_prior_mean, B_prior_prec, c0, C0);
 }
 
 // Approximate MCMC
@@ -95,10 +107,9 @@ Rcpp::List MCMC_BWQR_AP_wrap(const arma::vec& y,
                              int burnin,
                              int thin,
                              double tau = 0.5,
-                             double w_scale = 2.0,
-                             Rcpp::Nullable<Rcpp::NumericVector> b0_ = R_NilValue,
-                             Rcpp::Nullable<Rcpp::NumericMatrix> B0_ = R_NilValue) {
-  return _mcmc_bwqr_ap_cpp(y, X, w, n_mcmc, burnin, thin, tau, w_scale, b0_, B0_);
+                             Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean = R_NilValue,
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue) {
+  return _mcmc_bwqr_ap_cpp(y, X, w, n_mcmc, burnin, thin, tau, b_prior_mean, B_prior_prec);
 }
 
 // Score-like MCMC
@@ -110,7 +121,7 @@ Rcpp::List MCMC_BWQR_SL_wrap(const arma::vec& y,
                              int n_mcmc = 10000,
                              int burnin = 2000,
                              int thin   = 10,
-                             Rcpp::Nullable<Rcpp::NumericVector> b0_ = R_NilValue,
-                             Rcpp::Nullable<Rcpp::NumericMatrix> B0_ = R_NilValue) {
-  return _mcmc_bwqr_sl_cpp(y, X, w, tau, n_mcmc, burnin, thin, b0_, B0_);
+                             Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean = R_NilValue,
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue) {
+  return _mcmc_bwqr_sl_cpp(y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec);
 }

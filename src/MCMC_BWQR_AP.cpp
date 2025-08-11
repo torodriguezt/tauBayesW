@@ -18,7 +18,7 @@ inline arma::vec rmvnorm(const arma::vec& m, const arma::mat& L)
   return m + L * randn<vec>(m.n_elem);
 }
 
-// Non-normalized log-posterior (identical to R reference)
+// Non-normalized log-posterior (NO re-escalado de pesos)
 static double log_post(const arma::vec& beta,
                        const arma::vec& b0,
                        const arma::mat& B_inv,
@@ -26,7 +26,6 @@ static double log_post(const arma::vec& beta,
                        const arma::mat& X,
                        const arma::vec& w,
                        double tau,
-                       double w_scale,
                        // buffers - se reutilizan en cada llamada
                        arma::mat& S,
                        arma::mat& wcA,
@@ -36,20 +35,22 @@ static double log_post(const arma::vec& beta,
   double lp = -0.5 * dot(diff, B_inv * diff);      // prior
 
   // Weighted "check-loss" likelihood (Wang & He, 2007)
-  double wuf = mean(w) * w_scale;
+  // Usamos w tal cual viene de R (sin w_scale, sin mean(w))
   arma::vec res = y - X * beta;
   arma::vec ind = tau - conv_to<vec>::from(res < 0);
 
-  arma::vec tmp = wuf * w % ind;                   // wuf*w*ind
-  arma::vec s_tau = X.t() * tmp;                   // Sum wuf w_i ind_i x_i
+  arma::vec tmp   = w % ind;                       // w_i * ind_i
+  arma::vec s_tau = X.t() * tmp;                   // Sum w_i ind_i x_i
 
   // S = diag(w_i ind_i) X (vectorized)
   S.each_col() = w % ind;
   S %= X;
 
-  arma::vec invw = 1.0 / (wuf * w);
-  arma::vec fac  = (1.0 - invw) / square(invw);
-  wcA = (S.each_col() % fac).t() * S;              // Sum fac_i x_i x_iT
+  // Términos de la aproximación: invw = 1 / w
+  arma::vec invw = 1.0 / w;
+  arma::vec fac  = (1.0 - invw) / square(invw);    // = (1 - 1/w) * w^2 = w^2 - w
+
+  wcA = (S.each_col() % fac).t() * S;              // Sum fac_i x_i x_i^T
 
   bool ok = inv_sympd(wc, wcA);
   if (!ok) wc = pinv(wcA, 1e-12);
@@ -65,15 +66,14 @@ static double log_post(const arma::vec& beta,
 /* ================================================================== */
 
 Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,           // respuesta (n)
-                             const arma::mat& X,           // diseno (nxp)
-                             const arma::vec& w,           // pesos (n)
+                             const arma::mat& X,           // diseño (nxp)
+                             const arma::vec& w,           // pesos (n) -> se usan tal cual vienen
                              int n_mcmc,                   // iteraciones totales
                              int burnin,                   // descarte inicial
                              int thin,                     // thinning
-                             double tau = 0.5,             // cuantil objetivo
-                             double w_scale = 2.0,         // escala-weights
-                             Rcpp::Nullable<Rcpp::NumericVector> b0_ = R_NilValue,
-                             Rcpp::Nullable<Rcpp::NumericMatrix> B0_ = R_NilValue)
+                             double tau = 0.5,              // cuantil objetivo
+                             Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean = R_NilValue,
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue)
 {
   if (y.n_elem != X.n_rows || w.n_elem != y.n_elem)
     stop("Dimensions of y, X and w must match.");
@@ -87,16 +87,20 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,           // respuesta (n)
   const int n = y.n_elem;
 
   /* --- Prior ----------------------------------------------------- */
-  arma::vec b0 = b0_.isNotNull() ? Rcpp::as<arma::vec>(b0_) : arma::zeros<vec>(p);
+  arma::vec b0 = b_prior_mean.isNotNull() ? Rcpp::as<arma::vec>(b_prior_mean) : arma::zeros<vec>(p);
   if (b0.n_elem != p)
-    stop("b0 must have length equal to ncol(X)");
+    stop("b_prior_mean must have length equal to ncol(X)");
 
-  arma::mat B0 = B0_.isNotNull() ? Rcpp::as<arma::mat>(B0_) : 100.0 * eye<mat>(p, p);
-  if (B0.n_rows != p || B0.n_cols != p)
-    stop("B0 must be a %dx%d matrix", p, p);
-  arma::mat B_inv = inv_sympd(B0);
+  arma::mat B_inv;
+  if (B_prior_prec.isNotNull()) {
+    B_inv = Rcpp::as<arma::mat>(B_prior_prec);
+    if (B_inv.n_rows != p || B_inv.n_cols != p)
+      stop("B_prior_prec must be a pxp matrix");
+  } else {
+    B_inv = arma::eye<mat>(p, p) / 100.0;
+  }
 
-  /* --- Base proposal Sigma_prop ~ (tau(1-tau)/n)(XT W^2 X)^-1 ----------- */
+  /* --- Base proposal Sigma_prop ~ (tau(1-tau)/n)(X^T W^2 X)^{-1} ----------- */
   arma::mat XtWX = X.t() * (X.each_col() % square(w));
   arma::mat Sigma_prop = (tau * (1.0 - tau) / n) * inv_sympd(XtWX);
   arma::mat L_prop = chol(Sigma_prop, "lower");
@@ -120,12 +124,10 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,           // respuesta (n)
     // Proposal β* = β + √ct·L·z
     arma::vec beta_prop = rmvnorm(beta_curr, std::sqrt(ct) * L_prop);
 
-    double logp_prop = log_post(beta_prop, b0, B_inv, y, X, w, tau, w_scale,
-                                S, wcA, wc);
-    double logp_curr = log_post(beta_curr, b0, B_inv, y, X, w, tau, w_scale,
-                                S, wcA, wc);
+    double logp_prop = log_post(beta_prop, b0, B_inv, y, X, w, tau, S, wcA, wc);
+    double logp_curr = log_post(beta_curr, b0, B_inv, y, X, w, tau, S, wcA, wc);
 
-    double log_acc = std::min(0.0, logp_prop - logp_curr);
+    double log_acc  = std::min(0.0, logp_prop - logp_curr);
     double acc_prob = std::exp(log_acc);
 
     if (R::runif(0.0, 1.0) < acc_prob) {
@@ -151,3 +153,4 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,           // respuesta (n)
     _["n_samples"]   = n_keep,
     _["call"]        = "MCMC_BWQR_AP") ;
 }
+

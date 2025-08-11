@@ -18,51 +18,24 @@ bqr.svy(
 )
 }
 \arguments{
-\item{formula}{An object of class \code{\link{formula}} specifying the model.}
+\item{formula}{A \code{\link{formula}} specifying the model.}
 
-\item{weights}{Optional survey weights. Can be a numeric vector of length equal
-to the number of observations, or a one-sided formula referring to a variable
-in \code{data}.}
+\item{weights}{Optional survey weights (numeric vector or one-sided formula).}
 
-\item{data}{An optional \code{data.frame} containing the variables in the model.
-If not supplied, variables are taken from \code{\link{environment}(formula)}.}
+\item{data}{Optional \code{data.frame} for variables in the model.}
 
-\item{quantile}{Numeric scalar in (0, 1) giving the quantile level \eqn{\tau}.}
+\item{quantile}{Numeric scalar in (0, 1): target quantile \eqn{\tau}.}
 
-\item{method}{Character string; one of \code{"ald"}, \code{"score"}, or
-\code{"approximate"} indicating which MCMC kernel to use.}
+\item{method}{One of \code{"ald"}, \code{"score"}, \code{"approximate"}.}
 
-\item{prior}{A \code{bqr_prior} object created by \code{\link{prior_default}}
-(or a compatible list; it will be coerced via \code{\link{as_bqr_prior}}).
-For \code{"approximate"}, \code{w_scale} can be stored in the prior.}
+\item{prior}{Unified \code{bqr_prior} (see \code{\link{prior_default}}). For
+\code{"ald"}: uses \code{b0}, \code{B0}, \code{c0}, \code{C0}. For \code{"score"}:
+uses \code{b0}, \code{B0}. For \code{"approximate"}: uses \code{b0}, \code{B0}.}
 
-\item{niter}{Integer; total number of MCMC iterations.}
-
-\item{burnin}{Integer; number of burn-in iterations to discard.}
-
-\item{thin}{Integer; thinning interval for MCMC samples.}
-
-\item{...}{Additional arguments passed to internal functions (currently unused).}
+\item{niter, }{burnin, thin MCMC settings.}
 }
 \value{
-An object of class \code{"bqr.svy"} and \code{"bwqr_fit"}, which is a
-list containing:
-\describe{
-\item{\code{beta}}{Posterior mean estimates of regression coefficients.}
-\item{\code{draws}}{Matrix of posterior draws.}
-\item{\code{accept_rate}}{Average acceptance rate (if available).}
-\item{\code{n_chains}}{Number of MCMC chains.}
-\item{\code{warmup}}{Number of warmup iterations.}
-\item{\code{thin}}{Thinning interval.}
-\item{\code{runtime}}{Elapsed runtime in seconds.}
-\item{\code{call}}{Matched call.}
-\item{\code{method}}{Method used.}
-\item{\code{quantile}}{Quantile level estimated.}
-\item{\code{prior}}{Prior specification used.}
-\item{\code{terms}}{Model terms object.}
-\item{\code{model}}{Model frame.}
-\item{\code{formula}}{Model formula.}
-}
+An object of class \code{"bqr.svy"} and \code{"bwqr_fit"}.
 }
 \description{
 Fits a Bayesian quantile regression model with survey weights using one of
@@ -73,26 +46,4 @@ three MCMC kernels implemented in C++:
 \item \code{.MCMC_BWQR_AP} – Approximate likelihood
 }
 Only a single quantile can be estimated at a time.
-}
-\details{
-This function is a high-level interface to compiled C++ MCMC routines for
-Bayesian quantile regression under complex survey weights. The \code{"ald"} and
-\code{"score"} kernels use normalized weights; the \code{"approximate"} kernel
-uses raw weights and may rely on an additional \code{w_scale} parameter stored
-in the prior object (if not provided, it defaults to 2 in the call).
-}
-\examples{
-set.seed(1)
-sim <- simulate_bqr_data(n = 50)
-pr  <- prior_default(p = 3) # intercept + two slopes in the example below
-fit <- bqr.svy(y ~ x1 + x2, weights = sim$weights, data = sim$data,
-               quantile = 0.5, method = "ald", niter = 2000, burnin = 500,
-               prior = pr)
-summary(fit)
-
-}
-\seealso{
-\code{\link{prior_default}}, \code{\link{as_bqr_prior}},
-\code{\link{mo.bqr.svy}} for multiple-output quantile regression,
-\code{\link{simulate_bqr_data}} for data simulation.
 }
