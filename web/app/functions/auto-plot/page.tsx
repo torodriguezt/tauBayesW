@@ -52,8 +52,7 @@ mcmc_result <- MCMC_BWQR_AP(
   n_mcmc = 20000,
   burnin = 5000,
   thin = 5,
-  tau = 0.75,
-  w_scale = 2.0
+  tau = 0.75
 )
 
 beta_samples <- mcmc_result$beta
@@ -197,13 +196,13 @@ print(beta_ci)`
               <div className="relative">
                 <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
                   <code>{`MCMC_BWQR_AP(y, X, w, n_mcmc, burnin, thin, 
-             tau = 0.5, w_scale = 2.0, b0 = NULL, B0 = NULL)`}</code>
+             tau = 0.5, b0 = NULL, B0 = NULL)`}</code>
                 </pre>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="absolute top-2 right-2"
-                  onClick={() => copyToClipboard("MCMC_BWQR_AP(y, X, w, n_mcmc, burnin, thin, tau = 0.5, w_scale = 2.0, b0 = NULL, B0 = NULL)")}
+                  onClick={() => copyToClipboard("MCMC_BWQR_AP(y, X, w, n_mcmc, burnin, thin, tau = 0.5, b0 = NULL, B0 = NULL)")}
                 >
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
@@ -267,13 +266,6 @@ print(beta_ci)`
                     <code className="bg-muted px-2 py-1 rounded text-sm font-medium">tau</code>
                     <p className="text-sm text-muted-foreground">
                       Quantile level (default: 0.5).
-                    </p>
-                    <Badge variant="secondary" className="text-xs">Optional</Badge>
-                  </div>
-                  <div className="space-y-2">
-                    <code className="bg-muted px-2 py-1 rounded text-sm font-medium">w_scale</code>
-                    <p className="text-sm text-muted-foreground">
-                      Weight scaling factor (default: 2.0).
                     </p>
                     <Badge variant="secondary" className="text-xs">Optional</Badge>
                   </div>

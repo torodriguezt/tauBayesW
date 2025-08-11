@@ -60,8 +60,7 @@ prior_single <- prior_default(
 prior_custom <- prior_default(
   p = 3,
   b0 = c(0, 1, -0.5),           # different prior means
-  B0 = diag(c(100, 50, 200)),   # different prior variances
-  w_scale = 2                   # weight scale for approximate method
+  B0 = diag(c(100, 50, 200))    # different prior variances
 )
 
 # Multiple quantile priors
@@ -72,7 +71,7 @@ prior_multi <- mo_prior_default(
 )
 
 # Convert priors
-as_bqr_prior(prior_multi, method = "ALD")
+as_bqr_prior(prior_multi, method = "ald")
 as_mo_bqr_prior(prior_single)`
 
   const convergenceCode = `# Convergence diagnostics
@@ -81,7 +80,7 @@ library(tauBayesW)
 # Simulate and fit a model
 sim <- simulate_bqr_data(n = 100, betas = c(1, 0.5, -0.3))
 model <- bqr.svy(y ~ ., data = sim$data, weights = sim$weights, 
-                 quantile = 0.5, method = "ALD")
+                 quantile = 0.5, method = "ald")
 
 # Check convergence
 conv_diagnostics <- convergence_check(model, 
@@ -243,9 +242,6 @@ convergence_check(multi_model)`
                     </p>
                     <ul className="text-sm list-disc list-inside space-y-1">
                       <li>Creates design matrix with specified number of covariates</li>
-                      <li>Generates response variable with controlled noise level</li>
-                      <li>Includes realistic survey weights</li>
-                      <li>Returns data frame ready for modeling</li>
                     </ul>
                   </div>
 
@@ -256,9 +252,6 @@ convergence_check(multi_model)`
                     </p>
                     <ul className="text-sm list-disc list-inside space-y-1">
                       <li>Designed for testing multiple quantile algorithms</li>
-                      <li>Includes heteroscedastic error structures</li>
-                      <li>Provides ground truth for validation</li>
-                      <li>Supports complex survey design simulation</li>
                     </ul>
                   </div>
                 </CardContent>
@@ -290,37 +283,13 @@ convergence_check(multi_model)`
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Prior Types and Usage</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Multivariate Normal Priors</h4>
-                    <p className="text-sm text-muted-foreground">
-                      All methods use multivariate normal priors on regression coefficients:
-                      β ~ N(b₀, B₀)
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Method-Specific Parameters</h4>
-                    <ul className="text-sm space-y-2">
-                      <li><strong>ALD and Score methods:</strong> Only require b₀ and B₀</li>
-                      <li><strong>Approximate method:</strong> Additionally uses w_scale parameter</li>
-                      <li><strong>EM algorithms:</strong> Support hierarchical prior structures</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Prior Conversion</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Convert between single and multiple quantile prior formats using 
-                      as_bqr_prior() and as_mo_bqr_prior() functions.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              <Alert>
+                <AlertDescription>
+                  Prior specification is crucial for Bayesian inference. Use prior_default() 
+                  and mo_prior_default() to create well-structured priors, and conversion 
+                  functions to adapt between different model types.
+                </AlertDescription>
+              </Alert>
             </TabsContent>
 
             <TabsContent value="diagnostics" className="space-y-6">
@@ -344,45 +313,6 @@ convergence_check(multi_model)`
                     >
                       {copied ? "Copied!" : <Copy className="h-4 w-4" />}
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Diagnostic Metrics</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">R-hat Statistic (Gelman-Rubin)</h4>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Measures convergence of MCMC chains. Values close to 1.0 indicate convergence.
-                    </p>
-                    <ul className="text-sm list-disc list-inside space-y-1">
-                      <li>R̂ &lt; 1.01: Excellent convergence</li>
-                      <li>R̂ &lt; 1.1: Good convergence</li>
-                      <li>R̂ &gt; 1.1: Poor convergence, consider more iterations</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Effective Sample Size (ESS)</h4>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Measures the effective number of independent samples.
-                    </p>
-                    <ul className="text-sm list-disc list-inside space-y-1">
-                      <li>ESS ratio &gt; 0.1: Good efficiency</li>
-                      <li>ESS ratio &gt; 0.01: Acceptable efficiency</li>
-                      <li>ESS ratio &lt; 0.01: Consider thinning or more iterations</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">EM Algorithm Diagnostics</h4>
-                    <p className="text-sm text-muted-foreground">
-                      For mo.bqr.svy models, diagnostics focus on EM convergence criteria,
-                      iteration counts, and final parameter stability.
-                    </p>
                   </div>
                 </CardContent>
               </Card>

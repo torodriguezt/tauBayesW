@@ -161,9 +161,9 @@ print(fit_ap)
                     The function implements three MCMC approaches:
                   </p>
                   <ul className="list-disc list-inside space-y-2 ml-4">
-                    <li><strong>ALD (Asymmetric Laplace Distribution):</strong> Uses asymmetric Laplace likelihood</li>
-                    <li><strong>Score:</strong> Uses score-based approach for faster computation</li>
-                    <li><strong>Approximate:</strong> Uses approximate methods for very large datasets</li>
+                    <li><strong>ALD (Asymmetric Laplace Distribution)</strong></li>
+                    <li><strong>Score</strong></li>
+                    <li><strong>Approximate</strong></li>
                   </ul>
                 </CardContent>
               </Card>
