@@ -15,12 +15,92 @@ mo.bqr.svy(
   epsilon = 1e-06,
   max_iter = 1000,
   verbose = FALSE,
+  em_mode = c("joint", "separable"),
+  gamma_prior_var = 1e+06,
   niter = NULL,
   burnin = NULL,
   thin = NULL,
   ...
 )
 }
+\arguments{
+\item{formula}{A formula object specifying the model.}
+
+\item{weights}{Optional vector of sampling weights. If \code{NULL}, equal weights are used.}
+
+\item{data}{A data frame containing the variables in the model.}
+
+\item{quantile}{Numeric vector of quantile levels (between 0 and 1, exclusive).}
+
+\item{algorithm}{Character string specifying the algorithm. Currently only \code{"em"} is supported.}
+
+\item{prior}{Prior specification. Can be:
+\itemize{
+\item \code{NULL}: Default priors are used for all quantiles
+\item A single \code{mo_bqr_prior} object: Recycled for all quantiles
+\item A list of \code{mo_bqr_prior} objects: One prior per quantile
+\item A function \code{f(tau, p, names)}: Generates quantile-specific priors
+}}
+
+\item{n_dir}{Number of search directions (currently not used).}
+
+\item{epsilon}{Convergence tolerance for the EM algorithm.}
+
+\item{max_iter}{Maximum number of EM iterations.}
+
+\item{verbose}{Logical indicating whether to print progress messages.}
+
+\item{niter}{Deprecated. Use \code{max_iter} instead.}
+
+\item{burnin}{Ignored for EM algorithm.}
+
+\item{thin}{Ignored for EM algorithm.}
+
+\item{...}{Additional arguments (currently unused).}
+}
+\value{
+An object of class \code{"mo.bqr.svy"} containing:
+\item{call}{The matched call}
+\item{formula}{The model formula}
+\item{terms}{The terms object}
+\item{quantile}{Vector of fitted quantiles}
+\item{algorithm}{Algorithm used}
+\item{prior}{List of priors used for each quantile}
+\item{fit}{List of fitted results for each quantile}
+\item{coefficients}{Coefficients from the first quantile}
+\item{n_dir}{Number of directions}
+}
 \description{
-Multiple-Output Bayesian Quantile Regression for Complex Surveys (EM)
+Fits Bayesian quantile regression models for multiple quantiles simultaneously
+using the EM algorithm. Supports complex survey designs through sampling weights
+and allows for quantile-specific prior distributions.
+}
+\details{
+This function allows for flexible prior specification across quantiles. When a list
+of priors is provided, elements can be named using either \code{"q0.1"} format or
+\code{"0.1"} format to match specific quantiles. When a function is provided, it
+will be called with \code{(tau, p, names)} for each quantile level.
+}
+\examples{
+# Basic usage with default priors
+fit1 <- mo.bqr.svy(y ~ x1 + x2, data = mydata, quantile = c(0.1, 0.5, 0.9))
+
+# Using quantile-specific priors via function
+prior_fn <- function(tau, p, names) {
+  # More concentrated priors for extreme quantiles
+  variance <- ifelse(tau < 0.2 | tau > 0.8, 0.1, 1.0)
+  mo_prior_default(p = p, beta_cov = diag(variance, p), names = names)
+}
+fit2 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
+                   quantile = c(0.1, 0.5, 0.9), prior = prior_fn)
+
+# Using a list of quantile-specific priors
+priors <- list(
+  q0.1 = mo_prior_default(p = 3, beta_mean = c(0, 0.8, -0.3)),
+  q0.5 = mo_prior_default(p = 3, beta_mean = c(0, 1.0, -0.5)),
+  q0.9 = mo_prior_default(p = 3, beta_mean = c(0, 1.2, -0.7))
+)
+fit3 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
+                   quantile = c(0.1, 0.5, 0.9), prior = priors)
+
 }

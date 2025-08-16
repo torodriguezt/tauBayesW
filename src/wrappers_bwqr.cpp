@@ -1,12 +1,14 @@
 #include <RcppArmadillo.h>
 #include <RcppEigen.h>
 using namespace Rcpp;
-Rcpp::List _bwqr_weighted_em_cpp(
+
+// Firmas (debes tener ambas implementaciones en tu .cpp principal)
+Rcpp::List _bwqr_weighted_em_cpp(      // CONJUNTA (comparte beta_X)
     const Eigen::MatrixXd& y,
     const Eigen::MatrixXd& x,
     const Eigen::VectorXd& w,
-    const Eigen::VectorXd& u,
-    const Eigen::VectorXd& gamma_u,
+    const Eigen::MatrixXd& u,
+    const Eigen::MatrixXd& gamma_u,
     double tau,
     const Eigen::VectorXd& mu0,
     const Eigen::MatrixXd& sigma0,
@@ -17,6 +19,24 @@ Rcpp::List _bwqr_weighted_em_cpp(
     bool verbose
 );
 
+// NUEVO: SEPARABLE (igual a R por dirección)
+Rcpp::List _bwqr_weighted_em_cpp_sep(  // SEPARABLE (por dirección)
+    const Eigen::MatrixXd& y,
+    const Eigen::MatrixXd& x,
+    const Eigen::VectorXd& w,
+    const Eigen::MatrixXd& u,
+    const Eigen::MatrixXd& gamma_u,
+    double tau,
+    const Eigen::VectorXd& mu0,        // (p+r)  o  K*(p+r)
+    const Eigen::MatrixXd& sigma0,     // (p+r)x(p+r)  o  (K*(p+r))x(K*(p+r))
+    double a0,
+    double b0,
+    double eps,
+    int max_iter,
+    bool verbose
+);
+
+// MCMC (sin cambios)
 Rcpp::List _mcmc_bwqr_al_cpp(const arma::vec& y,
                              const arma::mat& X,
                              const arma::vec& w,
@@ -49,16 +69,21 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean,
                              Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec);
 
+// ============================
+// Exportadas a R
+// ============================
+
+// CONJUNTA
 // [[Rcpp::export(name = ".bwqr_weighted_em_cpp")]]
 Rcpp::List bwqr_weighted_em_cpp_wrap(
     const Eigen::MatrixXd& y,
     const Eigen::MatrixXd& x,
     const Eigen::VectorXd& w,
-    const Eigen::VectorXd& u,
-    const Eigen::VectorXd& gamma_u,
+    const Eigen::MatrixXd& u,
+    const Eigen::MatrixXd& gamma_u,
     double tau,
-    const Eigen::VectorXd& mu0,
-    const Eigen::MatrixXd& sigma0,
+    const Eigen::VectorXd& mu0,      // longitud p + G
+    const Eigen::MatrixXd& sigma0,   // (p+G) x (p+G)
     double a0,
     double b0,
     double eps      = 1e-6,
@@ -70,6 +95,29 @@ Rcpp::List bwqr_weighted_em_cpp_wrap(
                                a0, b0, eps, max_iter, verbose);
 }
 
+// SEPARABLE (igual a R por dirección)
+// [[Rcpp::export(name = ".bwqr_weighted_em_cpp_sep")]]
+Rcpp::List bwqr_weighted_em_cpp_sep_wrap(
+    const Eigen::MatrixXd& y,
+    const Eigen::MatrixXd& x,
+    const Eigen::VectorXd& w,
+    const Eigen::MatrixXd& u,        // d x K
+    const Eigen::MatrixXd& gamma_u,  // d x (K*r), puede tener 0 cols
+    double tau,
+    const Eigen::VectorXd& mu0,      // (p+r) o K*(p+r)
+    const Eigen::MatrixXd& sigma0,   // (p+r)x(p+r) o (K*(p+r))x(K*(p+r))
+    double a0,
+    double b0,
+    double eps      = 1e-6,
+    int    max_iter = 1000,
+    bool   verbose  = false
+) {
+  return _bwqr_weighted_em_cpp_sep(y, x, w, u, gamma_u,
+                                   tau, mu0, sigma0,
+                                   a0, b0, eps, max_iter, verbose);
+}
+
+// MCMC (igual)
 // [[Rcpp::export(name = ".MCMC_BWQR_AL")]]
 Rcpp::List MCMC_BWQR_AL_wrap(const arma::vec& y,
                              const arma::mat& X,

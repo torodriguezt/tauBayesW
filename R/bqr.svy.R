@@ -129,7 +129,7 @@ print.bqr_prior <- function(x, ...) {
 #' three MCMC kernels implemented in C++:
 #' \itemize{
 #'   \item \code{.MCMC_BWQR_AL} – Asymmetric Laplace Distribution
-#'   \item \code{.MCMC_BWQR_SL} – Score likelihood  
+#'   \item \code{.MCMC_BWQR_SL} – Score likelihood
 #'   \item \code{.MCMC_BWQR_AP} – Approximate likelihood
 #' }
 #' Only a single quantile can be estimated at a time.
@@ -153,13 +153,13 @@ print.bqr_prior <- function(x, ...) {
 #'     \item A list with components \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}
 #'     \item \code{NULL} (uses default vague priors)
 #'   }
-#'   For \code{"ald"}: uses \code{b0}, \code{B0}, \code{c0}, \code{C0}. 
+#'   For \code{"ald"}: uses \code{b0}, \code{B0}, \code{c0}, \code{C0}.
 #'   For \code{"score"} and \code{"approximate"}: uses \code{b0}, \code{B0} only.
 #' @param niter, burnin, thin MCMC settings.
 #'
 #' @details
 #' \strong{Prior Specification:}
-#' 
+#'
 #' The prior can be specified in several ways:
 #' \enumerate{
 #'   \item Using \code{\link{prior_default}} (recommended):
@@ -172,7 +172,7 @@ print.bqr_prior <- function(x, ...) {
 #'     C0    = 1,                          # ALD: sigma^2 IG rate
 #'     names = c("(Intercept)", "x1", "x2")
 #'   )}
-#'   
+#'
 #'   \item As a list:
 #'   \preformatted{
 #'   prior <- list(
@@ -181,7 +181,7 @@ print.bqr_prior <- function(x, ...) {
 #'     c0 = 2,    # only used by "ald" method
 #'     C0 = 1     # only used by "ald" method
 #'   )}
-#'   
+#'
 #'   \item \code{NULL} for default vague priors
 #' }
 #'
@@ -191,7 +191,7 @@ print.bqr_prior <- function(x, ...) {
 #' # Basic usage with default priors
 #' sim <- simulate_bqr_data(n = 100, betas = c(2, 1.5, -0.8))
 #' fit1 <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights)
-#' 
+#'
 #' # With informative priors
 #' prior <- prior_default(
 #'   p  = 3,
@@ -225,8 +225,15 @@ bqr.svy <- function(formula,
   method <- match.arg(method)
   cl <- match.call()
 
-  if (length(quantile) != 1 || quantile <= 0 || quantile >= 1)
-    stop("'quantile' must be a scalar in (0,1).", call. = FALSE)
+  # --- NEW: allow one or multiple taus ---
+  if (!is.numeric(quantile) || any(!is.finite(quantile)))
+    stop("'quantile' must be numeric and finite.", call. = FALSE)
+  if (any(quantile <= 0 | quantile >= 1))
+    stop("All elements of 'quantile' must be in (0,1).", call. = FALSE)
+  taus <- sort(unique(as.numeric(quantile)))
+  if (length(taus) < length(quantile))
+    warning("Duplicated quantiles were provided; using unique sorted values.")
+
   if (niter <= 0 || burnin < 0 || thin <= 0)
     stop("'niter' and 'thin' must be > 0, and 'burnin' >= 0.", call. = FALSE)
 
@@ -241,6 +248,7 @@ bqr.svy <- function(formula,
   coef_names <- colnames(X)
   mt <- attr(mf, "terms")
 
+  # Weights
   w <- if (is.null(weights)) {
     rep(1, length(y))
   } else if (is.numeric(weights)) {
@@ -253,99 +261,139 @@ bqr.svy <- function(formula,
 
   p <- ncol(X)
 
-  # Unified prior
+  # Prior
   prior <- if (is.null(prior)) {
     prior_default(p, names = coef_names)
   } else {
     as_bqr_prior(prior, p = p, names = coef_names, method = method)
   }
 
-  # Pesos: ALD y Score usan w normalizado; Approximate usa w crudo
+  # ALD/Score use normalized weights; Approximate uses raw weights
   w_norm <- w / mean(w)
+  w_un <- sum(w) / n * w
 
-  draws <- switch(method,
-                  "ald" = .MCMC_BWQR_AL(
-                    y, X, w_norm,
-                    tau           = quantile,
-                    n_mcmc        = niter,
-                    burnin        = burnin,
-                    thin          = thin,
-                    b_prior_mean  = prior$b0,
-                    B_prior_prec  = solve(prior$B0),
-                    c0            = prior$c0 %||% 0.001,
-                    C0            = prior$C0 %||% 0.001
-                  ),
-                  "score" = .MCMC_BWQR_SL(
-                    y, X, w_norm,
-                    tau           = quantile,
-                    n_mcmc        = niter,
-                    burnin        = burnin,
-                    thin          = thin,
-                    b_prior_mean  = prior$b0,
-                    B_prior_prec  = solve(prior$B0)
-                  ),
-                  "approximate" = .MCMC_BWQR_AP(
-                    y, X, w,
-                    n_mcmc        = niter,
-                    burnin        = burnin,
-                    thin          = thin,
-                    tau           = quantile,
-                    b_prior_mean  = prior$b0,
-                    B_prior_prec  = solve(prior$B0)
-                  )
-  )
+  # --- helper to run backend for a single tau ---
+  run_backend_one <- function(tau_i) {
+    draws_i <- switch(method,
+                      "ald" = .MCMC_BWQR_AL(
+                        y, X, w_norm,
+                        tau           = tau_i,
+                        n_mcmc        = niter,
+                        burnin        = burnin,
+                        thin          = thin,
+                        b_prior_mean  = prior$b0,
+                        B_prior_prec  = solve(prior$B0),
+                        c0            = prior$c0 %||% 0.001,
+                        C0            = prior$C0 %||% 0.001
+                      ),
+                      "score" = .MCMC_BWQR_SL(
+                        y, X, w_norm,
+                        tau           = tau_i,
+                        n_mcmc        = niter,
+                        burnin        = burnin,
+                        thin          = thin,
+                        b_prior_mean  = prior$b0,
+                        B_prior_prec  = solve(prior$B0)
+                      ),
+                      "approximate" = .MCMC_BWQR_AP(
+                        y, X, w_un,
+                        n_mcmc        = niter,
+                        burnin        = burnin,
+                        thin          = thin,
+                        tau           = tau_i,
+                        b_prior_mean  = prior$b0,
+                        B_prior_prec  = solve(prior$B0)
+                      )
+    )
 
-  # Coerción y limpieza de draws
-  if (is.list(draws) && !is.data.frame(draws)) {
-    draws <- lapply(draws, function(x) if (is.numeric(x) || is.matrix(x)) x)
-    draws <- draws[!vapply(draws, is.null, logical(1))]
-    draws <- do.call(cbind, draws)
+    # coerce/clean draws
+    if (is.list(draws_i) && !is.data.frame(draws_i)) {
+      draws_i <- lapply(draws_i, function(x) if (is.numeric(x) || is.matrix(x)) x)
+      draws_i <- draws_i[!vapply(draws_i, is.null, logical(1))]
+      draws_i <- do.call(cbind, draws_i)
+    }
+    if (is.data.frame(draws_i))
+      draws_i <- data.matrix(draws_i[vapply(draws_i, is.numeric, logical(1))])
+
+    draws_i <- as.matrix(draws_i)
+    storage.mode(draws_i) <- "numeric"
+    if (anyNA(draws_i))
+      stop("Backend returned non-numeric values; cannot summarize.", call. = FALSE)
+
+    diag_cols <- c("accept_rate", "n_mcmc", "burnin", "thin", "n_samples")
+    keep_idx  <- !colnames(draws_i) %in% diag_cols
+    accept_rate_i <- if ("accept_rate" %in% colnames(draws_i))
+      mean(draws_i[, "accept_rate"]) else NA_real_
+    draws_i <- draws_i[, keep_idx, drop = FALSE]
+
+    if (ncol(draws_i) >= p)
+      colnames(draws_i)[1:p] <- coef_names
+    idx_blank <- which(is.na(colnames(draws_i)) | colnames(draws_i) == "")
+    if (length(idx_blank))
+      colnames(draws_i)[idx_blank] <- sprintf("V%d", idx_blank)
+
+    beta_hat_i <- if (ncol(draws_i) >= p) colMeans(draws_i[, seq_len(p), drop = FALSE]) else numeric(0)
+    names(beta_hat_i) <- if (length(beta_hat_i) > 0) coef_names else character(0)
+
+    list(draws = draws_i, beta = beta_hat_i, accept_rate = accept_rate_i)
   }
-  if (is.data.frame(draws))
-    draws <- data.matrix(draws[vapply(draws, is.numeric, logical(1))])
 
-  draws <- as.matrix(draws)
-  storage.mode(draws) <- "numeric"
-  if (anyNA(draws))
-    stop("Backend returned non-numeric values; cannot summarize.", call. = FALSE)
-
-  diag_cols <- c("accept_rate", "n_mcmc", "burnin", "thin", "n_samples")
-  keep_idx  <- !colnames(draws) %in% diag_cols
-  accept_rate <- if ("accept_rate" %in% colnames(draws))
-    mean(draws[, "accept_rate"]) else NA_real_
-  draws <- draws[, keep_idx, drop = FALSE]
-
-  if (ncol(draws) >= p)
-    colnames(draws)[1:p] <- coef_names
-  idx_blank <- which(is.na(colnames(draws)) | colnames(draws) == "")
-  if (length(idx_blank))
-    colnames(draws)[idx_blank] <- sprintf("V%d", idx_blank)
-
-  beta_hat <- if (ncol(draws) >= p) colMeans(draws[, seq_len(p), drop = FALSE]) else numeric(0)
-  names(beta_hat) <- if (length(beta_hat) > 0) coef_names else character(0)
+  # run for all taus
+  fits <- lapply(taus, run_backend_one)
+  names(fits) <- paste0("tau=", formatC(taus, format = "f", digits = 3))
 
   runtime <- proc.time()[["elapsed"]] - tic
 
-  out <- list(
-    beta         = beta_hat,
-    draws        = draws,
-    accept_rate  = accept_rate,
-    n_chains     = 1L,
-    warmup       = burnin,
-    thin         = thin,
-    runtime      = runtime,
-    call         = cl,
-    method       = method,
-    quantile     = quantile,
-    prior        = prior,
-    terms        = mt,
-    model        = mf,
-    formula      = formula
-  )
-  out$call$formula <- formula
-  class(out) <- c("bwqr_fit", "bqr.svy")
-  out
+  # --- return single- or multi-tau object ---
+  if (length(taus) == 1L) {
+    out <- list(
+      beta         = fits[[1]]$beta,
+      draws        = fits[[1]]$draws,
+      accept_rate  = fits[[1]]$accept_rate,
+      n_chains     = 1L,
+      warmup       = burnin,
+      thin         = thin,
+      runtime      = runtime,
+      call         = cl,
+      method       = method,
+      quantile     = taus,
+      prior        = prior,
+      terms        = mt,
+      model        = mf,
+      formula      = formula
+    )
+    out$call$formula <- formula
+    class(out) <- c("bwqr_fit", "bqr.svy")
+    return(out)
+  } else {
+    beta_mat <- do.call(cbind, lapply(fits, `[[`, "beta"))    # p × K
+    colnames(beta_mat) <- names(fits)
+    draws_list <- lapply(fits, `[[`, "draws")                 # list of matrices
+    acc_vec    <- vapply(fits, `[[`, numeric(1), "accept_rate")
+    names(acc_vec) <- names(fits)
+
+    out <- list(
+      beta         = beta_mat,
+      draws        = draws_list,
+      accept_rate  = acc_vec,
+      n_chains     = 1L,
+      warmup       = burnin,
+      thin         = thin,
+      runtime      = runtime,
+      call         = cl,
+      method       = method,
+      quantile     = taus,
+      prior        = prior,
+      terms        = mt,
+      model        = mf,
+      formula      = formula
+    )
+    out$call$formula <- formula
+    class(out) <- c("bwqr_fit_multi", "bqr.svy")
+    return(out)
+  }
 }
+
 
 
 # ==== DATA SIMULATION ==========================================================

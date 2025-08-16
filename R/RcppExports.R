@@ -5,6 +5,10 @@
     .Call(`_tauBayesW_bwqr_weighted_em_cpp_wrap`, y, x, w, u, gamma_u, tau, mu0, sigma0, a0, b0, eps, max_iter, verbose)
 }
 
+.bwqr_weighted_em_cpp_sep <- function(y, x, w, u, gamma_u, tau, mu0, sigma0, a0, b0, eps = 1e-6, max_iter = 1000L, verbose = FALSE) {
+    .Call(`_tauBayesW_bwqr_weighted_em_cpp_sep_wrap`, y, x, w, u, gamma_u, tau, mu0, sigma0, a0, b0, eps, max_iter, verbose)
+}
+
 .MCMC_BWQR_AL <- function(y, X, w, tau = 0.5, n_mcmc = 50000L, burnin = 10000L, thin = 10L, b_prior_mean = NULL, B_prior_prec = NULL, c0 = 0.001, C0 = 0.001) {
     .Call(`_tauBayesW_MCMC_BWQR_AL_wrap`, y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec, c0, C0)
 }

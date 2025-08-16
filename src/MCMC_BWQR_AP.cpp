@@ -22,31 +22,50 @@ static double log_post(const arma::vec& beta,
                        arma::mat& wcA,
                        arma::mat& wc)
 {
+  const double ridge = 1e-8;
+
   arma::vec diff = beta - b0;
   double lp = -0.5 * dot(diff, B_inv * diff);
 
   arma::vec res = y - X * beta;
-  arma::vec ind = tau - conv_to<vec>::from(res < 0);
+  arma::vec ind = tau - arma::conv_to<arma::vec>::from(res < 0);
 
-  arma::vec tmp   = w % ind;
-  arma::vec s_tau = X.t() * tmp;
+  arma::vec tmp   = w % ind;        // w ⊙ ind
+  arma::vec s_tau = X.t() * tmp;    // X' (w ⊙ ind)
 
   S.each_col() = w % ind;
   S %= X;
 
-  arma::vec invw = 1.0 / w;
-  arma::vec fac  = (1.0 - invw) / square(invw);
+  bool w_all_one = arma::approx_equal(w, arma::ones<arma::vec>(w.n_elem), "absdiff", 1e-12);
 
-  wcA = (S.each_col() % fac).t() * S;
+  if (w_all_one) {
+    wcA = tau * (1.0 - tau) * (X.t() * X);
+  } else {
+    arma::vec invw = 1.0 / w;
+    arma::vec fac  = (1.0 - invw) / arma::square(invw); // = w^2 - w
+    wcA = (S.each_col() % fac).t() * S;
 
-  bool ok = inv_sympd(wc, wcA);
-  if (!ok) wc = pinv(wcA, 1e-12);
+    // Guard extra por si el fac produce casi-cero:
+    if (!wcA.is_finite() || wcA.max() < 1e-12) {
+      wcA = tau * (1.0 - tau) * (X.t() * X); // fallback estable
+    }
+  }
 
+  // Asegurar SPD
+  wcA.diag() += ridge;
+
+  bool ok = arma::inv_sympd(wc, wcA);
+  if (!ok) wc = arma::pinv(wcA, 1e-12);
+
+  // Log det estable para SPD
+  double ld = arma::log_det_sympd(wcA);
+
+  // Término cuadrático y normalización
   double quad = dot(s_tau, wc * s_tau);
-  double ld   = log_det(wcA).real();
   lp += -0.5 * quad - 0.5 * (std::log(2.0 * PI) + ld);
   return lp;
 }
+
 
 Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
                              const arma::mat& X,
@@ -126,4 +145,3 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
     _["n_samples"]   = n_keep,
     _["call"]        = "MCMC_BWQR_AP") ;
 }
-

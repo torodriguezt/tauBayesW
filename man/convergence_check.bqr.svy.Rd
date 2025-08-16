@@ -2,7 +2,7 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{convergence_check.bqr.svy}
 \alias{convergence_check.bqr.svy}
-\title{Convergence diagnostics for bqr.svy objects}
+\title{Convergence diagnostics for \code{bqr.svy} objects (single or multi-τ)}
 \usage{
 \method{convergence_check}{bqr.svy}(
   object,
@@ -26,12 +26,32 @@ Default is \code{TRUE}.}
 
 \item{...}{Additional arguments passed to specific methods.}
 }
+\value{
+If a \emph{single} \eqn{\tau} is present: a list with components \code{rhat}, \code{neff},
+\code{ess_ratio}, \code{not_converged}, \code{low_ess}, and \code{converged}.
+If \emph{multiple} \eqn{\tau} values are present: a named list where each element corresponds
+to a \eqn{\tau} and has the same structure as above.
+}
 \description{
-Computes \eqn{\hat{R}} (Gelman-Rubin statistic) and Effective Sample Size (ESS)
-ratio for parameters from MCMC output of \code{\link{bqr.svy}} models.
+Computes the rank-normalized \eqn{\hat{R}} (Gelman–Rubin) and Effective Sample Size (ESS)
+for parameters from MCMC output produced by \code{\link{bqr.svy}}.
+Works with both single-quantile fits (one \eqn{\tau}) and multi-quantile fits.
 }
 \details{
-This method assumes that \code{object$draws} contains MCMC samples
-in a numeric matrix or data frame, with rows corresponding to iterations and
-columns to parameters.
+For single-quantile fits, \code{object$draws} must be a numeric matrix or data frame with
+rows = iterations and columns = parameters.
+For multi-quantile fits, \code{object$draws} must be a list of such matrices (one per \eqn{\tau}).
+Diagnostics are computed via \code{\link{summarise_draws_custom}} following Vehtari et al. (2021).
+}
+\examples{
+\dontrun{
+set.seed(1)
+dat <- data.frame(y = rnorm(50), x = rnorm(50))
+fit1 <- bqr.svy(y ~ x, data = dat, quantile = 0.5, method = "ald")
+convergence_check(fit1)
+
+fitk <- bqr.svy(y ~ x, data = dat, quantile = c(0.25, 0.5, 0.75), method = "ald")
+convergence_check(fitk)
+}
+
 }

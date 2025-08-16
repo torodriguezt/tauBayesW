@@ -57,21 +57,21 @@ new_mo_bqr_prior <- function(beta_mean, beta_cov, sigma_shape, sigma_rate, names
 #' @examples
 #' # Create a single prior (will be recycled for all quantiles)
 #' prior1 <- mo_prior_default(p = 3, beta_mean = c(0, 1, -0.5))
-#' 
+#'
 #' # Create quantile-specific priors using a list
 #' priors_list <- list(
 #'   q0.1 = mo_prior_default(p = 3, beta_mean = c(0, 0.8, -0.3)),
 #'   q0.5 = mo_prior_default(p = 3, beta_mean = c(0, 1.0, -0.5)),
 #'   q0.9 = mo_prior_default(p = 3, beta_mean = c(0, 1.2, -0.7))
 #' )
-#' 
+#'
 #' # Create quantile-specific priors using a function
 #' prior_fn <- function(tau, p, names) {
 #'   # More informative priors for extreme quantiles
 #'   variance <- ifelse(tau < 0.2 | tau > 0.8, 0.5, 1.0)
 #'   mo_prior_default(p = p, beta_cov = diag(variance, p), names = names)
 #' }
-#' 
+#'
 #' @export
 mo_prior_default <- function(p,
                              beta_mean   = rep(0, p),
@@ -273,23 +273,23 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
 #' @examples
 #' # Basic usage with default priors
 #' fit1 <- mo.bqr.svy(y ~ x1 + x2, data = mydata, quantile = c(0.1, 0.5, 0.9))
-#' 
+#'
 #' # Using quantile-specific priors via function
 #' prior_fn <- function(tau, p, names) {
 #'   # More concentrated priors for extreme quantiles
 #'   variance <- ifelse(tau < 0.2 | tau > 0.8, 0.1, 1.0)
 #'   mo_prior_default(p = p, beta_cov = diag(variance, p), names = names)
 #' }
-#' fit2 <- mo.bqr.svy(y ~ x1 + x2, data = mydata, 
+#' fit2 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
 #'                    quantile = c(0.1, 0.5, 0.9), prior = prior_fn)
-#' 
+#'
 #' # Using a list of quantile-specific priors
 #' priors <- list(
 #'   q0.1 = mo_prior_default(p = 3, beta_mean = c(0, 0.8, -0.3)),
 #'   q0.5 = mo_prior_default(p = 3, beta_mean = c(0, 1.0, -0.5)),
 #'   q0.9 = mo_prior_default(p = 3, beta_mean = c(0, 1.2, -0.7))
 #' )
-#' fit3 <- mo.bqr.svy(y ~ x1 + x2, data = mydata, 
+#' fit3 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
 #'                    quantile = c(0.1, 0.5, 0.9), prior = priors)
 #'
 #' @export
@@ -304,103 +304,284 @@ mo.bqr.svy <- function(formula,
                        epsilon  = 1e-6,
                        max_iter = 1000,
                        verbose  = FALSE,
+                       # NUEVO:
+                       em_mode  = c("joint","separable"),
+                       gamma_prior_var = 1e6,  # var. no-informativa para gammas si es separable
                        niter    = NULL,
                        burnin   = NULL,
                        thin     = NULL,
                        ...) {
 
-  if (algorithm != "em")
-    stop("Only 'em' is implemented.")
-  if (missing(data))
-    stop("'data' must be provided.")
+  em_mode <- match.arg(em_mode)
 
-  if (!is.null(niter)) {
-    warning("'niter' ignored for EM; using as 'max_iter' instead.")
-    max_iter <- niter
-  }
+  if (algorithm != "em") stop("Only 'em' is implemented.")
+  if (missing(data))     stop("'data' must be provided.")
+
+  if (!is.null(niter)) { warning("'niter' ignored for EM; using as 'max_iter' instead."); max_iter <- niter }
   if (!is.null(burnin)) warning("'burnin' ignored for EM.")
   if (!is.null(thin))   warning("'thin' ignored for EM.")
-
-  if (length(quantile) == 0)
-    stop("'quantile' cannot be empty.")
-  if (any(!is.finite(quantile)))
-    stop("'quantile' must be numeric and finite.")
-  if (any(quantile <= 0 | quantile >= 1))
-    stop("'quantile' must be between 0 and 1 (exclusive).")
-
+  if (length(quantile) == 0) stop("'quantile' cannot be empty.")
+  if (any(!is.finite(quantile))) stop("'quantile' must be numeric and finite.")
+  if (any(quantile <= 0 | quantile >= 1)) stop("'quantile' must be in (0,1).")
   quantile <- sort(quantile)
 
   mf <- model.frame(formula, data)
   y  <- model.response(mf)
+  if (is.vector(y)) y <- matrix(y, ncol = 1)     # asegurar n x d
+  if (!is.matrix(y)) stop("'y' must be a numeric matrix or vector.")
+  if (any(!is.finite(y))) stop("Response 'y' contains non-finite values.")
+  n <- nrow(y); d <- ncol(y)
+
   X  <- model.matrix(attr(mf, "terms"), mf)
-  n  <- length(y)
+  if (nrow(X) != n) stop("nrow(X) must match nrow(y).")
+  p  <- ncol(X)
   coef_names <- colnames(X)
 
   wts <- if (is.null(weights)) rep(1, n) else as.numeric(weights)
   if (length(wts) != n)  stop("'weights' must have length n.")
   if (any(!is.finite(wts)) || any(wts <= 0)) stop("Invalid weights.")
   wts <- wts / mean(wts)
-  if (any(!is.finite(y))) stop("Response 'y' contains non-finite values.")
 
-  p <- ncol(X)
+  # --- Direcciones: permitir pasar via ... o construir desde n_dir ---
+  `%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
+  dots <- list(...)
+  U_user     <- dots$U      %||% NULL
+  Gamma_user <- dots$Gamma  %||% NULL
+  r_user     <- dots$r      %||% NULL  # nº de columnas de Gamma por dirección (0..d-1)
 
-  # ---- NUEVO: normalizar 'prior' a lista por tau ----
-  prior_list <- as_prior_list_per_tau(
-    prior  = prior,
-    p      = p,
-    names  = coef_names,
-    taus   = quantile
-  )
+  .build_U_Gamma <- function(d, K, r = NULL) {
+    if (d == 1) return(list(U = matrix(1, 1, 1), Gamma = matrix(numeric(0), 1, 0), r = 0))
+    if (is.null(r)) r <- 1L
+    r <- as.integer(max(0, min(r, d - 1)))
+
+    if (d == 2) {
+      angles <- (0:(K - 1)) * 2 * pi / K
+      U      <- rbind(cos(angles),  sin(angles))
+      Gamma  <- if (r == 0) matrix(numeric(0), 2, 0) else rbind(-sin(angles), cos(angles))
+      return(list(U = U, Gamma = Gamma, r = r))
+    }
+
+    # d >= 3
+    U <- matrix(NA_real_, d, K)
+    Gamma <- if (r == 0) matrix(numeric(0), d, 0) else matrix(NA_real_, d, K * r)
+    for (k in seq_len(K)) {
+      v <- rnorm(d); v <- v / sqrt(sum(v^2))
+      Q <- qr.Q(qr(matrix(v, ncol = 1), complete = TRUE))  # d x d, Q[,1] ~ v
+      U[, k] <- Q[, 1]
+      if (r > 0) Gamma[, ((k - 1) * r + 1):(k * r)] <- Q[, 2:(1 + r), drop = FALSE]
+    }
+    list(U = U, Gamma = Gamma, r = r)
+  }
+
+  if (!is.null(U_user)) {
+    U <- as.matrix(U_user)
+    if (nrow(U) != d) stop("U must have d rows.")
+    K <- ncol(U)
+    if (!is.null(Gamma_user)) {
+      Gamma <- as.matrix(Gamma_user)
+      if (nrow(Gamma) != d) stop("Gamma must have d rows.")
+      if (ncol(Gamma) %% K != 0) stop("ncol(Gamma) must be a multiple of ncol(U).")
+      r <- ncol(Gamma) / K
+    } else {
+      tmp <- .build_U_Gamma(d, K, r = r_user)
+      r <- tmp$r
+      if (r == 0) {
+        Gamma <- matrix(numeric(0), d, 0)
+      } else {
+        Gamma <- matrix(NA_real_, d, K * r)
+        for (k in seq_len(K)) {
+          v <- U[, k] / sqrt(sum(U[, k]^2))
+          B <- diag(d); B[, 1] <- v
+          Q <- qr.Q(qr(B), complete = TRUE)
+          Gamma[, ((k - 1) * r + 1):(k * r)] <- Q[, 2:(1 + r), drop = FALSE]
+        }
+      }
+    }
+  } else {
+    K <- max(1L, as.integer(n_dir))
+    built <- .build_U_Gamma(d, K, r = r_user)
+    U     <- built$U
+    Gamma <- built$Gamma
+    r     <- built$r
+  }
+
+  G <- ncol(Gamma)  # puede ser 0
+
+  # --- Priors por cuantil (siempre en términos de beta_X) ---
+  as_prior_list_per_tau <- function(prior, p, names, taus) {
+    if (is.null(prior)) {
+      priors <- replicate(length(taus),
+                          list(beta_mean = rep(0, p),
+                               beta_cov  = diag(1e6, p),
+                               sigma_shape = 1e-3,
+                               sigma_rate  = 1e-3),
+                          simplify = FALSE)
+      names(priors) <- paste0("q", taus)
+      return(priors)
+    }
+    if (is.function(prior)) {
+      priors <- lapply(taus, function(tau) {
+        pr <- prior(tau, p, names)
+        if (is.list(pr) && all(c("beta_mean","beta_cov","sigma_shape","sigma_rate") %in% names(pr))) pr else
+          stop("prior(tau,...) must return list with beta_mean,beta_cov,sigma_shape,sigma_rate")
+      })
+      names(priors) <- paste0("q", taus)
+      return(priors)
+    }
+    if (is.list(prior) && !is.null(prior$beta_mean)) {
+      priors <- replicate(length(taus), prior, simplify = FALSE)
+      names(priors) <- paste0("q", taus)
+      return(priors)
+    }
+    if (is.list(prior)) {
+      if (!is.null(names(prior))) {
+        priors <- vector("list", length(taus))
+        for (i in seq_along(taus)) {
+          key1 <- paste0("q", taus[i]); key2 <- as.character(laus[i])
+          pr <- prior[[key1]] %||% prior[[key2]] %||% prior[[i]]
+          if (is.null(pr)) stop("Missing prior for tau=", taus[i])
+          priors[[i]] <- pr
+        }
+        names(priors) <- paste0("q", taus)
+        return(priors)
+      }
+      if (length(prior) != length(taus)) stop("Length of prior list must match 'quantile'.")
+      names(prior) <- paste0("q", taus)
+      return(prior)
+    }
+    stop("Invalid 'prior'.")
+  }
+
+  prior_list <- as_prior_list_per_tau(prior, p = p, names = coef_names, taus = quantile)
+
+  # Nombres coef conjunto (modo joint)
+  if (G > 0) {
+    stopifnot(G %% ncol(U) == 0)
+    r_eff <- G / ncol(U)
+    gamma_names_joint <- paste0("gamma_k", rep(seq_len(ncol(U)), each = r_eff),
+                                "_c", sequence(rep(r_eff, ncol(U))))
+  } else gamma_names_joint <- character(0)
+  all_coef_names_joint <- c(coef_names, gamma_names_joint)
+
+  # Nombres coef separable (modo separable: X por dirección)
+  x_names_by_dir <- as.vector(t(outer(coef_names, paste0("_k", seq_len(ncol(U))), paste0)))
+  gamma_names_sep <- if (r > 0) gamma_names_joint else character(0)
+  all_coef_names_sep <- c(x_names_by_dir, gamma_names_sep)
 
   results <- vector("list", length(quantile))
   names(results) <- paste0("q", quantile)
 
   for (qi in seq_along(quantile)) {
-    q <- quantile[qi]
-    pr_q <- prior_list[[qi]]   # prior específico de este cuantil
+    q  <- quantile[qi]
+    pr <- prior_list[[qi]]
 
-    # Estos objetos son 1x1 en la implementación actual
-    y_matrix <- matrix(y, ncol = 1)
-    u        <- matrix(1.0, 1, 1)
-    gamma_u  <- matrix(0.0, 1, 1)
+    if (verbose) message(sprintf("Fitting tau = %.3f (mode=%s, d=%d, K=%d, r=%d, G=%d)",
+                                 q, em_mode, d, ncol(U), r, G))
 
-    # Aumentar prior al param. C++ (p + 1)
-    m      <- p + 1
-    mu0    <- c(pr_q$beta_mean, 0)
-    sigma0 <- diag(1e6, m)
-    sigma0[1:p, 1:p] <- pr_q$beta_cov
+    if (em_mode == "joint") {
+      # ---- PRIOR conjunto: m = p + G
+      m      <- p + G
+      mu0    <- c(pr$beta_mean, rep(0, G))
+      sigma0 <- diag(1e6, m)
+      sigma0[1:p, 1:p] <- pr$beta_cov
+      # llamar wrapper conjunta
+      cpp_result <- .bwqr_weighted_em_cpp(
+        y        = y,
+        x        = X,
+        w        = wts,
+        u        = U,
+        gamma_u  = Gamma,
+        tau      = q,
+        mu0      = mu0,
+        sigma0   = sigma0,
+        a0       = pr$sigma_shape,
+        b0       = pr$sigma_rate,
+        eps      = epsilon,
+        max_iter = max_iter,
+        verbose  = verbose
+      )
+      beta_final <- as.numeric(cpp_result$beta)  # length p+G
+      names(beta_final) <- all_coef_names_joint
 
-    if (verbose) message(sprintf("Fitting tau = %.3f", q))
+      results[[qi]] <- list(
+        beta        = beta_final,                    # vector p+G
+        sigma       = as.numeric(cpp_result$sigma),  # escalar
+        iter        = cpp_result$iter,
+        converged   = cpp_result$converged,
+        prior       = pr,
+        mode        = "joint",
+        U           = U,
+        Gamma       = Gamma
+      )
 
-    cpp_result <- .bwqr_weighted_em_cpp(
-      y        = y_matrix,
-      x        = X,
-      w        = wts,
-      u        = u,
-      gamma_u  = gamma_u,
-      tau      = q,
-      mu0      = mu0,
-      sigma0   = sigma0,
-      a0       = pr_q$sigma_shape,
-      b0       = pr_q$sigma_rate,
-      eps      = epsilon,
-      max_iter = max_iter,
-      verbose  = verbose
-    )
+    } else {
+      # ---- PRIOR separable por bloque: m_blk = p + r (replicado en K direcciones)
+      m_blk   <- p + r
+      mu0_blk <- c(pr$beta_mean, rep(0, r))
+      sigma0_blk <- diag(1e-6, m_blk)  # empezamos pequeño para rellenar:
+      # IMPORTANTE: prior en X:
+      sigma0_blk[1:p, 1:p] <- pr$beta_cov
+      # prior en gammas (r x r):
+      if (r > 0) sigma0_blk[(p+1):(p+r), (p+1):(p+r)] <- diag(gamma_prior_var, r)
 
-    beta_final  <- cpp_result$beta[1:p]
-    sigma_final <- cpp_result$sigma
+      cpp_result <- .bwqr_weighted_em_cpp_sep(
+        y        = y,
+        x        = X,
+        w        = wts,
+        u        = U,
+        gamma_u  = Gamma,
+        tau      = q,
+        mu0      = mu0_blk,     # por-bloque (el C++ replica por K)
+        sigma0   = sigma0_blk,  # por-bloque
+        a0       = pr$sigma_shape,
+        b0       = pr$sigma_rate,
+        eps      = epsilon,
+        max_iter = max_iter,
+        verbose  = verbose
+      )
 
-    results[[qi]] <- list(
-      beta      = as.numeric(beta_final),
-      sigma     = as.numeric(sigma_final),
-      iter      = cpp_result$iter,
-      converged = cpp_result$converged,
-      prior     = pr_q  # guardamos el prior usado por cuantil
-    )
+      # cpp_result$beta: K x (p+r)
+      beta_dir <- as.matrix(cpp_result$beta)
+      colnames(beta_dir) <- c(coef_names, if (r>0) paste0("gamma_c", seq_len(r)))
+      rownames(beta_dir) <- paste0("k", seq_len(ncol(U)))
+
+      # armar un vector "flat" con nombres expandidos (X por dir + todas gammas por dir):
+      beta_x_by_dir <- beta_dir[, 1:p, drop = FALSE]  # K x p
+      beta_gamma_by_dir <- if (r>0) beta_dir[, (p+1):(p+r), drop = FALSE] else NULL
+
+      beta_flat <- as.numeric(t(beta_x_by_dir))  # X por dir apilado por filas
+      names(beta_flat) <- as.vector(t(outer(coef_names, paste0("_k", seq_len(ncol(U))), paste0)))
+
+      if (r > 0) {
+        # añadir gammas en el mismo orden de gamma_names_joint (k1_c1, k1_c2, ... kK_c_r)
+        gam_vec <- as.numeric(t(beta_gamma_by_dir))
+        names(gam_vec) <- paste0("gamma_k", rep(seq_len(ncol(U)), each = r),
+                                 "_c", sequence(rep(r, ncol(U))))
+        beta_flat <- c(beta_flat, gam_vec)
+      }
+
+      results[[qi]] <- list(
+        beta_dir    = beta_dir,                # K x (p+r)
+        beta        = beta_flat,               # vector con nombres expandidos (útil para coef())
+        sigma_by_dir= as.numeric(cpp_result$sigma), # K
+        iter        = cpp_result$iter,
+        converged   = cpp_result$converged,
+        prior       = pr,
+        mode        = "separable",
+        U           = U,
+        Gamma       = Gamma
+      )
+    }
   }
 
-  coefficients_all <- as.numeric(results[[1]]$beta)
+  # coefficients (para compatibilidad con métodos que esperan vector)
+  if (em_mode == "joint") {
+    coefficients_all <- as.numeric(results[[1]]$beta)
+    names(coefficients_all) <- names(results[[1]]$beta)
+  } else {
+    coefficients_all <- as.numeric(results[[1]]$beta)
+    names(coefficients_all) <- names(results[[1]]$beta)
+  }
 
   structure(list(
     call         = match.call(),
@@ -408,14 +589,16 @@ mo.bqr.svy <- function(formula,
     terms        = attr(mf, "terms"),
     quantile     = quantile,
     algorithm    = algorithm,
-    prior        = prior_list,   # guardar la lista completa de priors por tau
+    prior        = prior_list,
     fit          = results,
     coefficients = coefficients_all,
-    n_dir        = n_dir
+    n_dir        = ncol(U),
+    U            = U,
+    Gamma        = Gamma,
+    mode         = em_mode
   ), class = "mo.bqr.svy")
 }
 
-rho_q <- function(u, q) u * (q - as.numeric(u < 0))
 
 #' Print method for mo.bqr.svy objects
 #'

@@ -38,5 +38,31 @@ An object of class \code{"mo_bqr_prior"} with fields \code{beta_mean},
 \description{
 Creates a prior object (class \code{"mo_bqr_prior"}) for \code{\link{mo.bqr.svy}}.
 The regression coefficients have a multivariate normal prior, and the noise
-variance has an inverse-gamma prior specified via shape/rate.
+variance has an inverse-gamma prior specified via shape/rate. This function
+can be used to create individual priors that can then be assigned to specific
+quantiles, allowing for quantile-specific prior distributions.
+}
+\details{
+When used with \code{\link{mo.bqr.svy}}, you can specify different priors for each quantile
+by providing a list of \code{mo_bqr_prior} objects, a function that takes (tau, p, names)
+as arguments, or use a single prior that will be recycled across all quantiles.
+}
+\examples{
+# Create a single prior (will be recycled for all quantiles)
+prior1 <- mo_prior_default(p = 3, beta_mean = c(0, 1, -0.5))
+
+# Create quantile-specific priors using a list
+priors_list <- list(
+  q0.1 = mo_prior_default(p = 3, beta_mean = c(0, 0.8, -0.3)),
+  q0.5 = mo_prior_default(p = 3, beta_mean = c(0, 1.0, -0.5)),
+  q0.9 = mo_prior_default(p = 3, beta_mean = c(0, 1.2, -0.7))
+)
+
+# Create quantile-specific priors using a function
+prior_fn <- function(tau, p, names) {
+  # More informative priors for extreme quantiles
+  variance <- ifelse(tau < 0.2 | tau > 0.8, 0.5, 1.0)
+  mo_prior_default(p = p, beta_cov = diag(variance, p), names = names)
+}
+
 }

@@ -231,6 +231,32 @@ print.bwqr_fit <- function(x, digits = 3, ...) {
 print.bqr.svy <- function(x, digits = 3, ...) {
   cat("\nBayesian Quantile Regression (class 'bqr.svy')\n")
   cat("Method    :", x$method, "\n")
+
+  # --- Caso multi-tau: draws es lista ---
+  if (is.list(x$draws)) {
+    taus <- x$quantile
+    nm   <- names(x$draws)
+    if (is.null(nm)) nm <- paste0("tau=", formatC(taus, format = "f", digits = 3))
+    cat("Quantiles :", paste(taus, collapse = ", "), "\n")
+    cat("Draws     :\n")
+    for (i in seq_along(x$draws)) {
+      n_i <- tryCatch(nrow(x$draws[[i]]), error = function(e) NA_integer_)
+      cat("  ", nm[i], ":", n_i, "draws")
+      if (!is.null(x$accept_rate) && length(x$accept_rate) >= i && !is.na(x$accept_rate[i])) {
+        cat(", accept rate:", sprintf("%.3f", x$accept_rate[i]))
+      }
+      cat("\n")
+    }
+    if (!is.null(x$beta) && is.matrix(x$beta)) {
+      cat("\nPosterior means (by tau):\n")
+      print(round(x$beta, digits))
+    } else {
+      cat("\n(Use summary() para estadísticas detalladas.)\n")
+    }
+    return(invisible(x))
+  }
+
+  # --- Caso single-tau (comportamiento previo) ---
   cat("Quantile  :", x$quantile, "\n")
   cat("Draws     :", nrow(x$draws), "\n")
   if (!is.null(x$accept_rate) && !is.na(x$accept_rate)) {
@@ -242,6 +268,7 @@ print.bqr.svy <- function(x, digits = 3, ...) {
   cat("\nUse summary() for detailed posterior statistics and diagnostics.\n")
   invisible(x)
 }
+
 
 #' Print method for mo.bqr.svy objects
 #'
@@ -396,6 +423,56 @@ summary.bqr.svy <- function(object,
   if (!inherits(object, "bqr.svy"))
     stop("Object must be of class 'bqr.svy'")
 
+  # --- Caso multi-tau: lista de matrices ---
+  if (is.list(object$draws)) {
+    taus <- object$quantile
+    draws_list <- object$draws
+    nm <- names(draws_list)
+    if (is.null(nm)) nm <- paste0("tau=", formatC(taus, format = "f", digits = 3))
+
+    per_tau <- lapply(seq_along(draws_list), function(i) {
+      d <- draws_list[[i]]
+      if (is.data.frame(d)) d <- data.matrix(d)
+      d <- as.matrix(d)
+      storage.mode(d) <- "numeric"
+      if (nrow(d) == 0L || ncol(d) == 0L)
+        stop("'object$draws[[", i, "]]' empty or not numeric.", call. = FALSE)
+
+      stats <- summarise_draws_custom(d)
+      stats$lower_ci <- round(apply(d, 2, quantile, probs = probs[1], na.rm = TRUE), digits)
+      stats$upper_ci <- round(apply(d, 2, quantile, probs = probs[2], na.rm = TRUE), digits)
+      stats$tau <- rep(taus[i], nrow(stats))
+      stats
+    })
+
+    ps <- do.call(rbind, per_tau)
+    rownames(ps) <- NULL
+    # Reordenar columnas: tau primero
+    cols <- c("tau","variable","mean","sd","lower_ci","upper_ci","rhat","ess_bulk","ess_tail")
+    cols <- intersect(cols, names(ps))
+    ps <- ps[, cols, drop = FALSE]
+
+    n_draws_vec <- vapply(draws_list, nrow, integer(1))
+
+    summary_obj <- list(
+      call              = object$call %||% NULL,
+      method            = object$method %||% NA_character_,
+      quantile          = taus,
+      n_draws           = n_draws_vec,               # ahora vector por tau
+      n_chains          = object$n_chains %||% 1L,
+      warmup            = object$warmup   %||% 0L,
+      thin              = object$thin     %||% 1L,
+      accept_rate       = object$accept_rate %||% NA_real_,  # puede ser vector
+      runtime           = object$runtime  %||% NA_real_,
+      posterior_summary = ps,              # df con columna 'tau'
+      probs             = probs,
+      digits            = digits
+    )
+    class(summary_obj) <- "summary.bqr.svy"
+    return(summary_obj)
+  }
+
+  # --- Caso single-tau (igual que tu versión actual) ---
   draws <- object$draws
   if (is.data.frame(draws)) draws <- data.matrix(draws)
   draws <- as.matrix(draws)
@@ -431,6 +508,7 @@ summary.bqr.svy <- function(object,
   summary_obj
 }
 
+
 #' Print method for summary.bqr.svy objects
 #'
 #' @param x An object of class \code{"summary.bqr.svy"}.
@@ -441,21 +519,45 @@ print.summary.bqr.svy <- function(x, ...) {
   cat("====================================\n\n")
   cat("Model Information:\n")
   cat("  Method           :", x$method, "\n")
-  # Additional line for compatibility with test that looks for "Quantile: 0.5"
-  cat("  Quantile (tau)   :", x$quantile, "\n")
 
-  n_chains_val <- if (is.null(x$n_chains) || is.na(x$n_chains)) 1L else as.integer(x$n_chains)
-  warmup_val   <- if (is.null(x$warmup)   || is.na(x$warmup))   0L else as.integer(x$warmup)
-  thin_val     <- if (is.null(x$thin)     || is.na(x$thin))     1L else as.integer(x$thin)
+  # ¿multi o single?
+  is_multi <- length(x$quantile) > 1L || ("tau" %in% names(as.data.frame(x$posterior_summary)))
 
-  cat("  Chains           :", n_chains_val, "\n")
-  cat("  Post-warmup draws:", x$n_draws, "per chain\n")
+  if (!is_multi) {
+    cat("  Quantile (tau)   :", x$quantile, "\n")
+  } else {
+    cat("  Quantiles (tau)  :", paste(x$quantile, collapse = ", "), "\n")
+  }
+
+  n_chains_val <- if (is.null(x$n_chains) || anyNA(x$n_chains)) 1L else as.integer(x$n_chains)
+  warmup_val   <- if (is.null(x$warmup)   || anyNA(x$warmup))   0L else as.integer(x$warmup)
+  thin_val     <- if (is.null(x$thin)     || anyNA(x$thin))     1L else as.integer(x$thin)
+
+  if (!is_multi) {
+    cat("  Chains           :", n_chains_val, "\n")
+    cat("  Post-warmup draws:", x$n_draws, "per chain\n")
+  } else {
+    cat("  Chains           :", n_chains_val, "\n")
+    nd <- x$n_draws
+    if (length(nd) > 1L) {
+      cat("  Post-warmup draws (by tau):", paste(nd, collapse = ", "), "\n")
+    } else {
+      cat("  Post-warmup draws:", nd, "per chain\n")
+    }
+  }
+
   cat("  Warmup           :", warmup_val, "draws\n")
   cat("  Thinning         :", thin_val, "\n")
-  if (!is.null(x$accept_rate) && !is.na(x$accept_rate))
-    cat("  Accept rate      :", sprintf("%.3f", x$accept_rate), "\n")
-  if (!is.null(x$runtime) && !is.na(x$runtime))
-    cat("  Runtime          :", sprintf("%.2f", x$runtime), "seconds\n")
+
+  if (!is.null(x$accept_rate) && length(x$accept_rate) > 0 && !all(is.na(x$accept_rate))) {
+    if (length(x$accept_rate) == 1L) {
+      cat("  Accept rate      :", sprintf("%.3f", x$accept_rate), "\n")
+    } else {
+      cat("  Accept rate (by tau):", paste(sprintf("%.3f", x$accept_rate), collapse = ", "), "\n")
+    }
+  }
+  if (!is.null(x$runtime) && !all(is.na(x$runtime)))
+    cat("  Runtime          :", paste(sprintf("%.2f", x$runtime), collapse = ", "), "seconds\n")
 
   ps <- as.data.frame(x$posterior_summary, stringsAsFactors = FALSE)
   needed <- c("variable","mean","sd","lower_ci","upper_ci","rhat","ess_bulk","ess_tail")
@@ -468,29 +570,52 @@ print.summary.bqr.svy <- function(x, ...) {
 
   fmt_num <- function(v, d) ifelse(is.na(v), "---", sprintf(paste0("%.", d, "f"), as.numeric(v)))
 
-  display_table <- data.frame(
-    Variable = ps$variable,
-    Mean     = fmt_num(ps$mean,     x$digits),
-    SD       = fmt_num(ps$sd,       x$digits),
-    CI_Lower = fmt_num(ps$lower_ci, x$digits),
-    CI_Upper = fmt_num(ps$upper_ci, x$digits),
-    Rhat     = ifelse(is.na(ps$rhat),     "---", sprintf("%.3f", ps$rhat)),
-    ESS_bulk = ifelse(is.na(ps$ess_bulk), "---", sprintf("%.0f", ps$ess_bulk)),
-    ESS_tail = ifelse(is.na(ps$ess_tail), "---", sprintf("%.0f", ps$ess_tail)),
-    check.names = FALSE
-  )
-  names(display_table) <- c("Variable", "Mean", "SD",
-                            paste0(prob_lower, " CI"), paste0(prob_upper, " CI"),
-                            "Rhat", "ESS_bulk", "ESS_tail")
-  print(display_table, row.names = FALSE, right = FALSE)
+  if (!is_multi) {
+    display_table <- data.frame(
+      Variable = ps$variable,
+      Mean     = fmt_num(ps$mean,     x$digits),
+      SD       = fmt_num(ps$sd,       x$digits),
+      CI_Lower = fmt_num(ps$lower_ci, x$digits),
+      CI_Upper = fmt_num(ps$upper_ci, x$digits),
+      Rhat     = ifelse(is.na(ps$rhat),     "---", sprintf("%.3f", ps$rhat)),
+      ESS_bulk = ifelse(is.na(ps$ess_bulk), "---", sprintf("%.0f", ps$ess_bulk)),
+      ESS_tail = ifelse(is.na(ps$ess_tail), "---", sprintf("%.0f", ps$ess_tail)),
+      check.names = FALSE
+    )
+    names(display_table) <- c("Variable", "Mean", "SD",
+                              paste0(prob_lower, " CI"), paste0(prob_upper, " CI"),
+                              "Rhat", "ESS_bulk", "ESS_tail")
+    print(display_table, row.names = FALSE, right = FALSE)
+  } else {
+    # ordenar por tau y variable para lectura
+    if (!("tau" %in% names(ps))) ps$tau <- NA_real_
+    ps <- ps[order(ps$tau, ps$variable), , drop = FALSE]
+    display_table <- data.frame(
+      Tau      = fmt_num(ps$tau, 3),
+      Variable = ps$variable,
+      Mean     = fmt_num(ps$mean,     x$digits),
+      SD       = fmt_num(ps$sd,       x$digits),
+      CI_Lower = fmt_num(ps$lower_ci, x$digits),
+      CI_Upper = fmt_num(ps$upper_ci, x$digits),
+      Rhat     = ifelse(is.na(ps$rhat),     "---", sprintf("%.3f", ps$rhat)),
+      ESS_bulk = ifelse(is.na(ps$ess_bulk), "---", sprintf("%.0f", ps$ess_bulk)),
+      ESS_tail = ifelse(is.na(ps$ess_tail), "---", sprintf("%.0f", ps$ess_tail)),
+      check.names = FALSE
+    )
+    names(display_table)[which(names(display_table) %in% c("CI_Lower","CI_Upper"))] <-
+      c(paste0(prob_lower, " CI"), paste0(prob_upper, " CI"))
+    print(display_table, row.names = FALSE, right = FALSE)
+  }
 
-  .check_convergence_and_warn(ps, x$n_draws)
+  # chequeo silencioso (si lo tienes definido)
+  .check_convergence_and_warn(ps, if (length(x$n_draws) > 1) max(x$n_draws, na.rm = TRUE) else x$n_draws)
 
   cat("Methods: Rank-normalization R-hat and ESS (Vehtari et al., 2021).\n")
   cat("Note: ESS_bulk measures center of distribution, ESS_tail measures tails.\n")
   cat("      Convergence diagnostics computed for all parameters including sigma.\n")
   invisible(x)
 }
+
 
 
 #' Summary method for Multiple-Output Bayesian Quantile Regression
@@ -656,16 +781,36 @@ convergence_check <- function(object,
   UseMethod("convergence_check")
 }
 
-#' Convergence diagnostics for bqr.svy objects
+#' Convergence diagnostics for `bqr.svy` objects (single or multi-τ)
 #'
-#' Computes \eqn{\hat{R}} (Gelman-Rubin statistic) and Effective Sample Size (ESS)
-#' ratio for parameters from MCMC output of \code{\link{bqr.svy}} models.
+#' Computes the rank-normalized \eqn{\hat{R}} (Gelman–Rubin) and Effective Sample Size (ESS)
+#' for parameters from MCMC output produced by \code{\link{bqr.svy}}.
+#' Works with both single-quantile fits (one \eqn{\tau}) and multi-quantile fits.
 #'
 #' @inheritParams convergence_check
 #'
-#' @details This method assumes that \code{object$draws} contains MCMC samples
-#'   in a numeric matrix or data frame, with rows corresponding to iterations and
-#'   columns to parameters.
+#' @details
+#' For single-quantile fits, \code{object$draws} must be a numeric matrix or data frame with
+#' rows = iterations and columns = parameters.
+#' For multi-quantile fits, \code{object$draws} must be a list of such matrices (one per \eqn{\tau}).
+#' Diagnostics are computed via \code{\link{summarise_draws_custom}} following Vehtari et al. (2021).
+#'
+#' @return
+#' If a \emph{single} \eqn{\tau} is present: a list with components \code{rhat}, \code{neff},
+#' \code{ess_ratio}, \code{not_converged}, \code{low_ess}, and \code{converged}.
+#' If \emph{multiple} \eqn{\tau} values are present: a named list where each element corresponds
+#' to a \eqn{\tau} and has the same structure as above.
+#'
+#' @examples
+#' \dontrun{
+#' set.seed(1)
+#' dat <- data.frame(y = rnorm(50), x = rnorm(50))
+#' fit1 <- bqr.svy(y ~ x, data = dat, quantile = 0.5, method = "ald")
+#' convergence_check(fit1)
+#'
+#' fitk <- bqr.svy(y ~ x, data = dat, quantile = c(0.25, 0.5, 0.75), method = "ald")
+#' convergence_check(fitk)
+#' }
 #'
 #' @export
 convergence_check.bqr.svy <- function(object,
@@ -676,61 +821,90 @@ convergence_check.bqr.svy <- function(object,
   if (is.null(object$draws))
     stop("No MCMC draws found in object.")
 
-  draws <- as.matrix(object$draws)
-  n_samples <- nrow(draws)
+  # --- Helper: diagnósticos para una matriz de draws ---
+  .diag_one <- function(d) {
+    if (is.data.frame(d)) d <- data.matrix(d)
+    d <- as.matrix(d)
+    storage.mode(d) <- "numeric"
+    n_samples <- nrow(d)
+    if (!is.finite(n_samples) || n_samples <= 1)
+      stop("Not enough samples to compute convergence diagnostics.")
 
-  # --- Calculate R-hat ---
-  if (n_samples <= 1) stop("Not enough samples to compute convergence diagnostics.")
+    stats <- summarise_draws_custom(d)  # usa R-hat rank-normalized y ESS (Vehtari)
+    # Asegurar nombres
+    var_names <- stats$variable
+    rhat_vals <- stats$rhat;     names(rhat_vals) <- var_names
+    neff_vals <- stats$ess_bulk; names(neff_vals) <- var_names
 
-  # If single chain, set R-hat = 1
-  if (ncol(draws) == length(object$coefficients) + 1) {
-    rhat_vals <- rep(1.0, ncol(draws))
-    names(rhat_vals) <- colnames(draws)
-  } else {
-    rhat_vals <- apply(draws, 2, function(param) {
-      # Basic Gelman-Rubin computation
-      # Replace with 1 if single chain
-      1.0
-    })
+    ess_ratio <- neff_vals / n_samples
+    not_conv  <- names(rhat_vals)[which(!is.na(rhat_vals) & rhat_vals > rhat_threshold)]
+    low_ess   <- names(ess_ratio)[which(ess_ratio < ess_ratio_threshold)]
+    conv_vec  <- !(names(rhat_vals) %in% union(not_conv, low_ess))
+    names(conv_vec) <- names(rhat_vals)
+
+    list(
+      rhat          = rhat_vals,
+      neff          = neff_vals,          # nombre conservado por compatibilidad
+      ess_ratio     = ess_ratio,
+      not_converged = not_conv,
+      low_ess       = low_ess,
+      converged     = conv_vec
+    )
   }
 
-  # --- ESS values ---
-  ess_vals <- apply(draws, 2, function(param) {
-    acf_vals <- acf(param, plot = FALSE)$acf[-1]
-    tau <- 1 + 2 * sum(acf_vals)
-    max(1, n_samples / tau)
-  })
-  names(ess_vals) <- colnames(draws)
+  # --- Multi-tau: lista por tau ---
+  if (is.list(object$draws)) {
+    taus <- object$quantile
+    dl   <- object$draws
+    nm   <- names(dl)
+    if (is.null(nm)) nm <- paste0("tau=", formatC(taus, format = "f", digits = 3))
 
-  ess_ratio <- ess_vals / n_samples
+    out_list <- vector("list", length(dl))
+    names(out_list) <- nm
 
-  not_converged <- names(rhat_vals)[which(!is.na(rhat_vals) & rhat_vals > rhat_threshold)]
-  low_ess <- names(ess_ratio)[which(ess_ratio < ess_ratio_threshold)]
+    for (i in seq_along(dl)) {
+      res_i <- .diag_one(dl[[i]])
+      out_list[[i]] <- res_i
 
-  # --- Verbose output ---
-  if (verbose) {
+      if (isTRUE(verbose)) {
+        cat("=== Convergence diagnostics (bqr.svy) — ", nm[i], " ===\n", sep = "")
+        if (length(res_i$not_converged)) {
+          cat("Parameters with R-hat >", rhat_threshold, ":\n",
+              paste(res_i$not_converged, collapse = ", "), "\n")
+        } else {
+          cat("All parameters meet R-hat threshold.\n")
+        }
+        if (length(res_i$low_ess)) {
+          cat("Parameters with ESS ratio <", ess_ratio_threshold, ":\n",
+              paste(res_i$low_ess, collapse = ", "), "\n")
+        } else {
+          cat("All parameters meet ESS ratio threshold.\n")
+        }
+      }
+    }
+    return(out_list)
+  }
+
+  # --- Tau único: comportamiento previo (pero usando Vehtari) ---
+  res <- .diag_one(object$draws)
+  if (isTRUE(verbose)) {
     cat("=== Convergence diagnostics (bqr.svy) ===\n")
-    if (length(not_converged) > 0) {
-      cat("Parameters with R-hat >", rhat_threshold, ":\n", paste(not_converged, collapse = ", "), "\n")
+    if (length(res$not_converged)) {
+      cat("Parameters with R-hat >", rhat_threshold, ":\n",
+          paste(res$not_converged, collapse = ", "), "\n")
     } else {
       cat("All parameters meet R-hat threshold.\n")
     }
-    if (length(low_ess) > 0) {
-      cat("Parameters with ESS ratio <", ess_ratio_threshold, ":\n", paste(low_ess, collapse = ", "), "\n")
+    if (length(res$low_ess)) {
+      cat("Parameters with ESS ratio <", ess_ratio_threshold, ":\n",
+          paste(res$low_ess, collapse = ", "), "\n")
     } else {
       cat("All parameters meet ESS ratio threshold.\n")
     }
   }
-
-  list(
-    rhat         = rhat_vals,
-    neff         = ess_vals,              # <- required by tests
-    ess_ratio    = ess_ratio,
-    not_converged = not_converged,
-    low_ess      = low_ess,
-    converged    = !(names(rhat_vals) %in% not_converged) # <- boolean vector
-  )
+  res
 }
+
 
 #' Convergence diagnostics for mo.bqr.svy objects
 #'
