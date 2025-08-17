@@ -87,7 +87,6 @@ fit_ap_multi <- bqr.svy(
   burnin   = 1000
 )
 `
-`
 
   const summaryCode = `# Summary methods for single and multiple quantiles
 
