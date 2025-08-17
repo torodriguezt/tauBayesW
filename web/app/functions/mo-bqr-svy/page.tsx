@@ -19,32 +19,56 @@ export default function MoBqrSvyPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const exampleCode = `# Multiple quantile Bayesian regression
+  const exampleCode = `# Multiple quantile Bayesian regression with multidirectional estimation
 library(tauBayesW)
 
-# Simulate data
+# Simulate multivariate data
 set.seed(123)
-sim_data <- simulate_mo_bqr_data(n = 200, 
-                                 beta = c(1, 2, -0.5), 
+sim_data <- simulate_mo_bqr_data(n = 200, p = 2,
+                                 beta_true = c(1, 2, -0.5), 
                                  seed = 123)
 
-# Fit multiple quantile model
-model <- mo.bqr.svy(y ~ x1 + x2, 
-                    data = sim_data$data,
-                    weights = sim_data$weights,
-                    quantiles = c(0.1, 0.25, 0.5, 0.75, 0.9),
-                    max_iter = 100,
-                    tol = 1e-4,
-                    verbose = TRUE)
+# Example 1: Joint estimation mode (default)
+model_joint <- mo.bqr.svy(y ~ x1 + x2, 
+                          data = sim_data$data,
+                          weights = sim_data$weights,
+                          quantile = c(0.1, 0.25, 0.5, 0.75, 0.9),
+                          em_mode = "joint",
+                          n_dir = 3,
+                          max_iter = 100,
+                          verbose = TRUE)
+
+# Example 2: Separable estimation mode
+model_sep <- mo.bqr.svy(y ~ x1 + x2, 
+                        data = sim_data$data,
+                        weights = sim_data$weights,
+                        quantile = c(0.1, 0.5, 0.9),
+                        em_mode = "separable",
+                        n_dir = 2,
+                        max_iter = 100)
+
+# Example 3: With quantile-specific priors
+# Define priors per quantile using a function
+prior_fn <- function(tau, p, names) {
+  # More concentrated priors for extreme quantiles
+  variance <- ifelse(tau < 0.2 | tau > 0.8, 0.1, 1.0)
+  mo_prior_default(p = p, 
+                   beta_cov = diag(variance, p), 
+                   names = names)
+}
+
+model_priors <- mo.bqr.svy(y ~ x1 + x2,
+                           data = sim_data$data,
+                           quantile = c(0.1, 0.5, 0.9),
+                           prior = prior_fn,
+                           em_mode = "joint")
 
 # Print results
-print(model)
-
-# Summary with detailed results for all quantiles
-summary(model)
+print(model_joint)
+summary(model_joint)
 
 # Plot multiple quantiles
-plot(model)`
+plot(model_joint)`
 
   const summaryCode = `# Summary methods for mo.bqr.svy objects
 
@@ -66,12 +90,14 @@ print(model)`
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-4">mo.bqr.svy()</h1>
             <p className="text-xl text-muted-foreground mb-4">
-              Multiple Output Bayesian Quantile Regression for Complex Surveys
+              Multidirectional Bayesian Quantile Regression for Complex Surveys with Multiple Quantiles
             </p>
             <div className="flex gap-2 mb-4">
               <Badge variant="secondary">EM Algorithm</Badge>
               <Badge variant="secondary">Multiple Quantiles</Badge>
+              <Badge variant="secondary">Multidirectional</Badge>
               <Badge variant="secondary">Survey Weights</Badge>
+              <Badge variant="outline">Joint/Separable Modes</Badge>
             </div>
           </div>
 
@@ -92,13 +118,19 @@ print(model)`
                 <CardContent className="space-y-4">
                   <p>
                     Fits Bayesian quantile regression models for multiple quantiles simultaneously using 
-                    an Expectation-Maximization (EM) algorithm, accounting for complex survey designs 
-                    with observation weights.
+                    an Expectation-Maximization (EM) algorithm with multidirectional capabilities, 
+                    accounting for complex survey designs with observation weights.
                   </p>
                   <p>
-                    Although the quantiles are estimated individually, this function is efficient when you need to estimate several quantiles 
-                    from the same model, as it leverages the EM algorithm to adjust all 
-                    quantiles in a single run by passing multiple quantiles at once.
+                    The function supports two estimation modes: <strong>joint</strong> estimation (all directions 
+                    estimated simultaneously) and <strong>separable</strong> estimation (each direction estimated 
+                    independently). This enables modeling of multivariate responses with configurable search 
+                    directions and flexible prior specification per quantile and direction.
+                  </p>
+                  <p>
+                    Multiple quantiles can be estimated efficiently in a single function call, with automatic 
+                    convergence monitoring and comprehensive summary methods adapted for both single and 
+                    multiple quantile scenarios.
                   </p>
                 </CardContent>
               </Card>
@@ -110,10 +142,13 @@ print(model)`
                 <CardContent>
                   <ul className="list-disc list-inside space-y-2">
                     <li>Simultaneous estimation of multiple quantiles</li>
-                    <li>EM algorithm for computational efficiency</li>
+                    <li>Multidirectional EM algorithm with joint/separable modes</li>
+                    <li>Support for multivariate responses</li>
+                    <li>Configurable search directions (n_dir parameter)</li>
+                    <li>Flexible prior specification per quantile and direction</li>
                     <li>Survey weights integration</li>
                     <li>Automatic convergence monitoring</li>
-                    <li>Fast C++ implementation</li>
+                    <li>Fast C++ implementation (769× speedup)</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -127,8 +162,10 @@ print(model)`
                 <CardContent>
                   <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
                     <code>{`mo.bqr.svy(formula, data, weights = NULL, 
-           quantiles = c(0.1, 0.25, 0.5, 0.75, 0.9), algorithm = "em",
-           prior = NULL, epsilon = 1e-6, max_iter = 1000, verbose = TRUE, ...)`}</code>
+           quantile = c(0.1, 0.25, 0.5, 0.75, 0.9), 
+           algorithm = "em", prior = NULL, n_dir = 1,
+           em_mode = c("joint", "separable"),
+           epsilon = 1e-6, max_iter = 1000, verbose = FALSE, ...)`}</code>
                   </pre>
                 </CardContent>
               </Card>
@@ -155,16 +192,24 @@ print(model)`
                         <p className="text-sm text-muted-foreground">Survey weights (numeric vector or formula)</p>
                       </div>
                       <div>
-                        <h4 className="font-semibold">quantiles</h4>
-                        <p className="text-sm text-muted-foreground">Vector of quantiles to estimate</p>
+                        <h4 className="font-semibold">quantile</h4>
+                        <p className="text-sm text-muted-foreground">Vector of quantiles to estimate (0, 1)</p>
                       </div>
                       <div>
                         <h4 className="font-semibold">algorithm</h4>
-                        <p className="text-sm text-muted-foreground">Expected-Maximization algorithm</p>
+                        <p className="text-sm text-muted-foreground">EM algorithm for multiple quantiles</p>
                       </div>
                       <div>
                         <h4 className="font-semibold">prior</h4>
-                        <p className="text-sm text-muted-foreground">Object created using mo_prior_default specifiying prior distribution for parameters</p>
+                        <p className="text-sm text-muted-foreground">Prior specification (mo_bqr_prior object, function, or list)</p>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">n_dir</h4>
+                        <p className="text-sm text-muted-foreground">Number of search directions for multidirectional estimation</p>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">em_mode</h4>
+                        <p className="text-sm text-muted-foreground">"joint" (simultaneous) or "separable" (independent by direction)</p>
                       </div>
                       <div>
                         <h4 className="font-semibold">max_iter</h4>

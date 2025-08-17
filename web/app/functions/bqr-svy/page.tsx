@@ -19,7 +19,7 @@ export default function BqrSvyPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const exampleCode = `# Single quantile Bayesian regression
+  const exampleCode = `# Single and Multiple Quantile Bayesian Regression
 library(tauBayesW)
 
 # =====================================================
@@ -46,13 +46,13 @@ prior_info <- prior_default(
 )
 
 # =====================================================
-# Fit: ALD method
+# Fit: Single quantile (ALD method)
 # =====================================================
 fit_ald <- bqr.svy(
   y ~ x1 + x2,
   data     = data_single,
   weights  = weights,
-  quantile = 0.5,
+  quantile = 0.5,                               # single quantile
   method   = "ald",
   prior    = prior_info,
   niter    = 5000,
@@ -60,13 +60,13 @@ fit_ald <- bqr.svy(
 )
 
 # =====================================================
-# Fit: Score method
+# Fit: Multiple quantiles (Score method)
 # =====================================================
-fit_score <- bqr.svy(
+fit_score_multi <- bqr.svy(
   y ~ x1 + x2,
   data     = data_single,
   weights  = weights,
-  quantile = 0.5,
+  quantile = c(0.25, 0.5, 0.75),               # multiple quantiles
   method   = "score",
   prior    = prior_info,
   niter    = 5000,
@@ -74,36 +74,53 @@ fit_score <- bqr.svy(
 )
 
 # =====================================================
-# Fit: Approximate method
+# Fit: Multiple quantiles (Approximate method)
 # =====================================================
-fit_ap <- bqr.svy(
+fit_ap_multi <- bqr.svy(
   y ~ x1 + x2,
   data     = data_single,
   weights  = weights,
-  quantile = 0.5,
+  quantile = c(0.1, 0.25, 0.5, 0.75, 0.9),     # five quantiles
   method   = "approximate",
   prior    = prior_info,
   niter    = 5000,
   burnin   = 1000
 )
 `
+`
 
-  const summaryCode = `# Summary methods for bqr.svy objects
+  const summaryCode = `# Summary methods for single and multiple quantiles
 
 # =====================================================
-# Results
+# Single quantile results
 # =====================================================
-cat("\n--- ALD ---\n")
+cat("\n--- Single Quantile (ALD) ---\n")
 print(fit_ald)
 summary(fit_ald)
 
-cat("\n--- Score ---\n")
-print(fit_score)
-summary(fit_score)
+# =====================================================
+# Multiple quantiles results 
+# =====================================================
+cat("\n--- Multiple Quantiles (Score) ---\n")
+print(fit_score_multi)
+summary(fit_score_multi)  # Auto-adapted for multiple quantiles
 
-cat("\n--- Approximate ---\n")
-print(fit_ap)
-summary(fit_ap)
+cat("\n--- Five Quantiles (Approximate) ---\n")
+print(fit_ap_multi)
+summary(fit_ap_multi)     # Enhanced summary for multiple quantiles
+
+# =====================================================
+# Plotting
+# =====================================================
+# Single quantile plot
+plot(fit_ald)
+
+# Multiple quantiles plot
+plot(fit_score_multi)     # Shows all quantiles simultaneously
+
+# Quantile-specific plots
+plot_quantile(fit_score_multi, quantile = 0.25)
+plot_quantile(fit_score_multi, quantile = 0.75)
 `
 
   return (
@@ -118,10 +135,11 @@ summary(fit_ap)
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-4">bqr.svy()</h1>
             <p className="text-xl text-muted-foreground mb-4">
-              Single Quantile Bayesian Regression for Complex Surveys
+              Single or Multiple Quantile Bayesian Regression for Complex Surveys
             </p>
             <div className="flex gap-2 mb-4">
               <Badge variant="secondary">MCMC Methods</Badge>
+              <Badge variant="secondary">Multiple Quantiles</Badge>
               <Badge variant="secondary">Survey Weights</Badge>
               <Badge variant="secondary">Asymmetric Laplace</Badge>
             </div>
@@ -143,16 +161,17 @@ summary(fit_ap)
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p>
-                    Fits a Bayesian quantile regression model for a single quantile using MCMC methods,
-                    accounting for complex survey designs with observation weights.
+                    Fits Bayesian quantile regression models for single or multiple quantiles using MCMC methods,
+                    accounting for complex survey designs with observation weights. The function supports efficient
+                    simultaneous estimation of multiple quantiles by passing a vector of target quantiles.
                   </p>
                   <p>
                     The function implements three MCMC approaches:
                   </p>
                   <ul className="list-disc list-inside space-y-2 ml-4">
-                    <li><strong>ALD (Asymmetric Laplace Distribution)</strong></li>
-                    <li><strong>Score</strong></li>
-                    <li><strong>Approximate</strong></li>
+                    <li><strong>ALD (Asymmetric Laplace Distribution):</strong> Gibbs sampler with full posterior inference</li>
+                    <li><strong>Score:</strong> Score-based pseudo-likelihood with adaptive Metropolis-Hastings</li>
+                    <li><strong>Approximate:</strong> Empirical pseudo-likelihood approach for complex surveys</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -163,10 +182,12 @@ summary(fit_ap)
                 </CardHeader>
                 <CardContent>
                   <ul className="list-disc list-inside space-y-2">
-                    <li>Survey weights integration</li>
-                    <li>Multiple MCMC algorithms</li>
-                    <li>Convergence diagnostics</li>
-                    <li>Fast C++ implementation</li>
+                    <li>Single or multiple quantile estimation</li>
+                    <li>Survey weights integration with proper normalization</li>
+                    <li>Three optimized MCMC algorithms (ALD, Score, Approximate)</li>
+                    <li>Comprehensive convergence diagnostics (R-hat, ESS)</li>
+                    <li>Automatic summary methods for multiple quantiles</li>
+                    <li>Fast C++ implementation (760×-1100× speedup)</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -179,9 +200,10 @@ summary(fit_ap)
                 </CardHeader>
                 <CardContent>
                   <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
-                    <code>{`bqr.svy(formula, data, weights = NULL, quantile = 0.5, 
+                    <code>{`bqr.svy(formula, data, weights = NULL, 
+        quantile = 0.5,  # can be vector for multiple quantiles
         method = c("ald", "score", "approximate"), prior = NULL,
-        n_mcmc = 10000, burnin = 2000, verbose = TRUE, ...)`}</code>
+        niter = 50000, burnin = 10000, thin = 1, ...)`}</code>
                   </pre>
                 </CardContent>
               </Card>
@@ -209,7 +231,7 @@ summary(fit_ap)
                       </div>
                       <div>
                         <h4 className="font-semibold">quantile</h4>
-                        <p className="text-sm text-muted-foreground">Quantile to estimate (0 &lt; tau &lt; 1)</p>
+                        <p className="text-sm text-muted-foreground">Single quantile value or vector of quantiles to estimate (0 &lt; tau &lt; 1). For multiple quantiles, use c(0.25, 0.5, 0.75)</p>
                       </div>
                       <div>
                         <h4 className="font-semibold">method</h4>

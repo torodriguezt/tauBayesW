@@ -60,11 +60,11 @@ const translations = {
     clickToView: "Click to view details",
     
     // Function descriptions
-    emDesc: "Weighted Bayesian quantile regression for directional data using the EM algorithm and an asymmetric Laplace representation.",
-    mcmcALDesc: "Gibbs sampler for BWQR using the Asymmetric Laplace distribution.",
-    mcmcAPDesc: "Adaptive Metropolis-Hastings algorithm using empirical pseudo-likelihood for BWQR.",
-    mcmcSLDesc: "Adaptive Metropolis-Hastings algorithm using score-based pseudo-likelihood for BWQR.",
-    nonCrossingDesc: "EM algorithm for BWQR  with constraints for quantile crossing.",
+    bqrSvyDesc: "MCMC methods for single or multiple quantiles with comprehensive posterior inference and diagnostics.",
+    moBqrSvyDesc: "EM algorithm for multiple quantiles with multidirectional estimation (joint or separable modes).",
+    plotQuantileDesc: "Comprehensive visualization tools for quantile regression results with customizable plotting options.",
+    utilitiesDesc: "Data simulation, prior specification, convergence diagnostics, and model comparison tools.",
+    examplesDesc: "Complete end-to-end workflows demonstrating real-world applications and analysis patterns.",
     
     // Comparison
     comparisonTitle: "Comparison between R code and C++ code",
@@ -174,11 +174,11 @@ const translations = {
     clickToView: "Clic para ver detalles",
     
     // Function descriptions
-    emDesc: "Algoritmo EM para Regresión Cuantílica Bayesiana Ponderada con distribución Laplace Asimétrica.",
-    mcmcALDesc: "MCMC para Regresión Cuantílica Bayesiana Ponderada con cuantificación completa de incertidumbre y muestreo posterior.",
-    mcmcAPDesc: "Visualización automática inteligente de datos con múltiples tipos de gráficos: distribuciones, boxplots, gráficos Q-Q e histogramas.",
-    mcmcSLDesc: "Regresión cuantílica bayesiana usando algoritmos EM y MCMC avanzados para modelado estadístico robusto.",
-    nonCrossingDesc: "Comparación avanzada de modelos usando criterios WAIC y DIC para selección óptima de modelos en análisis bayesiano.",
+    bqrSvyDesc: "Métodos MCMC para uno o múltiples cuantiles con inferencia posterior completa y diagnósticos.",
+    moBqrSvyDesc: "Algoritmo EM para múltiples cuantiles con estimación multidireccional (modos conjunto o separable).",
+    plotQuantileDesc: "Herramientas de visualización completas para resultados de regresión cuantílica con opciones de gráficos personalizables.",
+    utilitiesDesc: "Simulación de datos, especificación de priors, diagnósticos de convergencia y herramientas de comparación de modelos.",
+    examplesDesc: "Flujos de trabajo completos que demuestran aplicaciones del mundo real y patrones de análisis.",
     
     // Comparison
     comparisonTitle: "Comparación entre código R y código C++",
@@ -288,11 +288,11 @@ const translations = {
     clickToView: "Clique para ver detalhes",
     
     // Function descriptions
-    emDesc: "Algoritmo EM para Regressão Quantílica Bayesiana Ponderada com distribuição Laplace Assimétrica.",
-    mcmcALDesc: "MCMC para Regressão Quantílica Bayesiana Ponderada com quantificação completa de incerteza e amostragem posterior.",
-    mcmcAPDesc: "Visualização automática inteligente de dados com múltiplos tipos de gráficos: distribuições, boxplots, gráficos Q-Q e histogramas.",
-    mcmcSLDesc: "Regressão quantílica bayesiana usando algoritmos EM e MCMC avançados para modelagem estatística robusta.",
-    nonCrossingDesc: "Comparação avançada de modelos usando critérios WAIC e DIC para seleção ótima de modelos em análise bayesiana.",
+    bqrSvyDesc: "Métodos MCMC para um ou múltiplos quantis com inferência posterior completa e diagnósticos.",
+    moBqrSvyDesc: "Algoritmo EM para múltiplos quantis com estimação multidirecional (modos conjunto ou separável).",
+    plotQuantileDesc: "Ferramentas de visualização abrangentes para resultados de regressão quantílica com opções de gráficos personalizáveis.",
+    utilitiesDesc: "Simulação de dados, especificação de priors, diagnósticos de convergência e ferramentas de comparação de modelos.",
+    examplesDesc: "Fluxos de trabalho completos demonstrando aplicações do mundo real e padrões de análise.",
     
     // Comparison
     comparisonTitle: "Comparação entre código R e código C++",

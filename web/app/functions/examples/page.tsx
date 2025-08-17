@@ -122,7 +122,7 @@ plot_quantile_with_points.bqr.svy(fit_ald,   sim_data$data, "x1", main = "ALD vs
 plot_quantile_with_points.bqr.svy(fit_score, sim_data$data, "x1", main = "Score vs x1")
 plot_quantile_with_points.bqr.svy(fit_ap,    sim_data$data, "x1", main = "Approximate vs x1")`
 
-  const multipleQuantilesCode = `# Multiple quantiles analysis using EM algorithm
+  const multipleQuantilesCode = `# Multiple quantiles analysis using MCMC and EM methods
 library(tauBayesW)
 
 # =====================================================
@@ -149,14 +149,30 @@ prior_mo <- mo_prior_default(
 )
 
 # =====================================================
-# 3. Fit model (multiple quantiles, EM algorithm)
+# 3. Fit models (multiple quantiles)
 # =====================================================
+
+# 3a. MCMC methods also support multiple quantiles
+fit_mcmc <- bqr.svy(
+    formula  = y ~ x1 + x2,
+    data     = sim_data$data,
+    weights  = sim_data$weights,
+    quantile = c(0.25, 0.5, 0.75),       # multiple quantiles
+    method   = "score",                  # ALD, score, or approximate
+    prior    = prior_mo,                 # can use same prior structure
+    niter    = 5000,
+    burnin   = 1000,
+    verbose  = TRUE
+)
+
+# 3b. EM algorithm (multidirectional)
 fit_mo <- mo.bqr.svy(
     formula   = y ~ x1 + x2,
     data      = sim_data$data,
     weights   = sim_data$weights,
     quantile  = c(0.25, 0.5, 0.75),
     algorithm = "em",
+    mode      = "joint",                 # "joint" or "separable"
     prior     = prior_mo,
     max_iter  = 500,
     verbose   = TRUE
