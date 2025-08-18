@@ -462,7 +462,6 @@ mo.bqr.svy <- function(formula,
 
   prior_list <- as_prior_list_per_tau(prior, p = p, names = coef_names, taus = quantile)
 
-  # Nombres coef conjunto (modo joint)
   if (G > 0) {
     stopifnot(G %% ncol(U) == 0)
     r_eff <- G / ncol(U)
@@ -471,7 +470,6 @@ mo.bqr.svy <- function(formula,
   } else gamma_names_joint <- character(0)
   all_coef_names_joint <- c(coef_names, gamma_names_joint)
 
-  # Nombres coef separable (modo separable: X por dirección)
   x_names_by_dir <- as.vector(t(outer(coef_names, paste0("_k", seq_len(ncol(U))), paste0)))
   gamma_names_sep <- if (r > 0) gamma_names_joint else character(0)
   all_coef_names_sep <- c(x_names_by_dir, gamma_names_sep)
@@ -487,12 +485,10 @@ mo.bqr.svy <- function(formula,
                                  q, em_mode, d, ncol(U), r, G))
 
     if (em_mode == "joint") {
-      # ---- PRIOR conjunto: m = p + G
       m      <- p + G
       mu0    <- c(pr$beta_mean, rep(0, G))
       sigma0 <- diag(1e6, m)
       sigma0[1:p, 1:p] <- pr$beta_cov
-      # llamar wrapper conjunta
       cpp_result <- .bwqr_weighted_em_cpp(
         y        = y,
         x        = X,
@@ -523,11 +519,9 @@ mo.bqr.svy <- function(formula,
       )
 
     } else {
-      # ---- PRIOR separable por bloque: m_blk = p + r (replicado en K direcciones)
       m_blk   <- p + r
       mu0_blk <- c(pr$beta_mean, rep(0, r))
-      # matriz de covarianza prior por-bloque:
-      sigma0_blk <- diag(1e-6, m_blk)   # valor "de relleno"; se sobreescribe abajo
+      sigma0_blk <- diag(1e-6, m_blk)  
       sigma0_blk[1:p, 1:p] <- pr$beta_cov
       if (r > 0) sigma0_blk[(p+1):(p+r), (p+1):(p+r)] <- diag(gamma_prior_var, r)
 
@@ -538,8 +532,8 @@ mo.bqr.svy <- function(formula,
         u        = U,
         gamma_u  = Gamma,
         tau      = q,
-        mu0      = mu0_blk,     # por-bloque (el C++ replica por K)
-        sigma0   = sigma0_blk,  # por-bloque
+        mu0      = mu0_blk,    
+        sigma0   = sigma0_blk,  
         a0       = pr$sigma_shape,
         b0       = pr$sigma_rate,
         eps      = epsilon,
@@ -547,12 +541,10 @@ mo.bqr.svy <- function(formula,
         verbose  = verbose
       )
 
-      # cpp_result$beta: K x (p+r)
       beta_dir <- as.matrix(cpp_result$beta)
       colnames(beta_dir) <- c(coef_names, if (r>0) paste0("gamma_c", seq_len(r)))
       rownames(beta_dir) <- paste0("k", seq_len(ncol(U)))
 
-      # armar un vector "flat" con nombres expandidos (X por dir + todas gammas por dir):
       beta_x_by_dir <- beta_dir[, 1:p, drop = FALSE]  # K x p
       beta_gamma_by_dir <- if (r>0) beta_dir[, (p+1):(p+r), drop = FALSE] else NULL
 
@@ -560,7 +552,7 @@ mo.bqr.svy <- function(formula,
       names(beta_flat) <- as.vector(t(outer(coef_names, paste0("_k", seq_len(ncol(U))), paste0)))
 
       if (r > 0) {
-        # añadir gammas en el orden k1_c1, k1_c2, ... kK_c_r
+        # añadir gammas en el mismo orden de gamma_names_joint (k1_c1, k1_c2, ... kK_c_r)
         gam_vec <- as.numeric(t(beta_gamma_by_dir))
         names(gam_vec) <- paste0("gamma_k", rep(seq_len(ncol(U)), each = r),
                                  "_c", sequence(rep(r, ncol(U))))
@@ -568,22 +560,27 @@ mo.bqr.svy <- function(formula,
       }
 
       results[[qi]] <- list(
-        beta_dir     = beta_dir,                     # K x (p+r)
-        beta         = beta_flat,                    # vector con nombres expandidos
-        sigma_by_dir = as.numeric(cpp_result$sigma), # K
-        iter         = cpp_result$iter,
-        converged    = cpp_result$converged,
-        prior        = pr,
-        mode         = "separable",
-        U            = U,
-        Gamma        = Gamma
+        beta_dir    = beta_dir,                # K x (p+r)
+        beta        = beta_flat,               # vector con nombres expandidos (útil para coef())
+        sigma_by_dir= as.numeric(cpp_result$sigma), # K
+        iter        = cpp_result$iter,
+        converged   = cpp_result$converged,
+        prior       = pr,
+        mode        = "separable",
+        U           = U,
+        Gamma       = Gamma
       )
     }
   }
 
   # coefficients (para compatibilidad con métodos que esperan vector)
-  coefficients_all <- as.numeric(results[[1]]$beta)
-  names(coefficients_all) <- names(results[[1]]$beta)
+  if (em_mode == "joint") {
+    coefficients_all <- as.numeric(results[[1]]$beta)
+    names(coefficients_all) <- names(results[[1]]$beta)
+  } else {
+    coefficients_all <- as.numeric(results[[1]]$beta)
+    names(coefficients_all) <- names(results[[1]]$beta)
+  }
 
   structure(list(
     call         = match.call(),
