@@ -3,7 +3,7 @@
 # =====================================================
 
 if (!exists("%||%"))
-  `%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
+  `%||%` <- function(a, b) if (is.null(a)) b else a
 
 
 # =====================================================
@@ -248,9 +248,6 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
 #' @param epsilon Convergence tolerance for the EM algorithm.
 #' @param max_iter Maximum number of EM iterations.
 #' @param verbose Logical indicating whether to print progress messages.
-#' @param niter Deprecated. Use \code{max_iter} instead.
-#' @param burnin Ignored for EM algorithm.
-#' @param thin Ignored for EM algorithm.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @details
@@ -306,10 +303,7 @@ mo.bqr.svy <- function(formula,
                        verbose  = FALSE,
                        # NUEVO:
                        em_mode  = c("joint","separable"),
-                       gamma_prior_var = 1e6,  # var. no-informativa para gammas si es separable
-                       niter    = NULL,
-                       burnin   = NULL,
-                       thin     = NULL,
+                       gamma_prior_var = 1e6,
                        ...) {
 
   em_mode <- match.arg(em_mode)
@@ -317,9 +311,6 @@ mo.bqr.svy <- function(formula,
   if (algorithm != "em") stop("Only 'em' is implemented.")
   if (missing(data))     stop("'data' must be provided.")
 
-  if (!is.null(niter)) { warning("'niter' ignored for EM; using as 'max_iter' instead."); max_iter <- niter }
-  if (!is.null(burnin)) warning("'burnin' ignored for EM.")
-  if (!is.null(thin))   warning("'thin' ignored for EM.")
   if (length(quantile) == 0) stop("'quantile' cannot be empty.")
   if (any(!is.finite(quantile))) stop("'quantile' must be numeric and finite.")
   if (any(quantile <= 0 | quantile >= 1)) stop("'quantile' must be in (0,1).")
@@ -343,11 +334,29 @@ mo.bqr.svy <- function(formula,
   wts <- wts / mean(wts)
 
   # --- Direcciones: permitir pasar via ... o construir desde n_dir ---
-  `%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
+  `%||%` <- function(a, b) {
+    if (is.null(a)) return(b)
+    if (is.atomic(a) && length(a) == 1L && is.na(a)) return(b)
+    a
+  }
   dots <- list(...)
   U_user     <- dots$U      %||% NULL
   Gamma_user <- dots$Gamma  %||% NULL
   r_user     <- dots$r      %||% NULL  # nº de columnas de Gamma por dirección (0..d-1)
+
+  # helper robusto para completar una base ortonormal a partir de v (unitario)
+  .orthobasis_from_v <- function(v, d, r_needed) {
+    v <- v / sqrt(sum(v^2))
+    B <- diag(d); B[, 1] <- v
+    Q <- qr.Q(qr(B), complete = TRUE)
+    # Fallback si por alguna razón faltaran columnas
+    if (ncol(Q) < (1 + r_needed)) {
+      Pperp <- diag(d) - v %*% t(v)
+      sv <- svd(Pperp)
+      Q <- cbind(v, sv$u[, 1:(d-1), drop = FALSE])
+    }
+    Q
+  }
 
   .build_U_Gamma <- function(d, K, r = NULL) {
     if (d == 1) return(list(U = matrix(1, 1, 1), Gamma = matrix(numeric(0), 1, 0), r = 0))
@@ -365,8 +374,8 @@ mo.bqr.svy <- function(formula,
     U <- matrix(NA_real_, d, K)
     Gamma <- if (r == 0) matrix(numeric(0), d, 0) else matrix(NA_real_, d, K * r)
     for (k in seq_len(K)) {
-      v <- rnorm(d); v <- v / sqrt(sum(v^2))
-      Q <- qr.Q(qr(matrix(v, ncol = 1), complete = TRUE))  # d x d, Q[,1] ~ v
+      v <- rnorm(d)
+      Q <- .orthobasis_from_v(v, d = d, r_needed = r)
       U[, k] <- Q[, 1]
       if (r > 0) Gamma[, ((k - 1) * r + 1):(k * r)] <- Q[, 2:(1 + r), drop = FALSE]
     }
@@ -390,9 +399,8 @@ mo.bqr.svy <- function(formula,
       } else {
         Gamma <- matrix(NA_real_, d, K * r)
         for (k in seq_len(K)) {
-          v <- U[, k] / sqrt(sum(U[, k]^2))
-          B <- diag(d); B[, 1] <- v
-          Q <- qr.Q(qr(B), complete = TRUE)
+          v <- U[, k]
+          Q <- .orthobasis_from_v(v, d = d, r_needed = r)
           Gamma[, ((k - 1) * r + 1):(k * r)] <- Q[, 2:(1 + r), drop = FALSE]
         }
       }
@@ -437,7 +445,7 @@ mo.bqr.svy <- function(formula,
       if (!is.null(names(prior))) {
         priors <- vector("list", length(taus))
         for (i in seq_along(taus)) {
-          key1 <- paste0("q", taus[i]); key2 <- as.character(laus[i])
+          key1 <- paste0("q", taus[i]); key2 <- as.character(taus[i])  # <- fix de 'laus'
           pr <- prior[[key1]] %||% prior[[key2]] %||% prior[[i]]
           if (is.null(pr)) stop("Missing prior for tau=", taus[i])
           priors[[i]] <- pr
@@ -518,10 +526,9 @@ mo.bqr.svy <- function(formula,
       # ---- PRIOR separable por bloque: m_blk = p + r (replicado en K direcciones)
       m_blk   <- p + r
       mu0_blk <- c(pr$beta_mean, rep(0, r))
-      sigma0_blk <- diag(1e-6, m_blk)  # empezamos pequeño para rellenar:
-      # IMPORTANTE: prior en X:
+      # matriz de covarianza prior por-bloque:
+      sigma0_blk <- diag(1e-6, m_blk)   # valor "de relleno"; se sobreescribe abajo
       sigma0_blk[1:p, 1:p] <- pr$beta_cov
-      # prior en gammas (r x r):
       if (r > 0) sigma0_blk[(p+1):(p+r), (p+1):(p+r)] <- diag(gamma_prior_var, r)
 
       cpp_result <- .bwqr_weighted_em_cpp_sep(
@@ -553,7 +560,7 @@ mo.bqr.svy <- function(formula,
       names(beta_flat) <- as.vector(t(outer(coef_names, paste0("_k", seq_len(ncol(U))), paste0)))
 
       if (r > 0) {
-        # añadir gammas en el mismo orden de gamma_names_joint (k1_c1, k1_c2, ... kK_c_r)
+        # añadir gammas en el orden k1_c1, k1_c2, ... kK_c_r
         gam_vec <- as.numeric(t(beta_gamma_by_dir))
         names(gam_vec) <- paste0("gamma_k", rep(seq_len(ncol(U)), each = r),
                                  "_c", sequence(rep(r, ncol(U))))
@@ -561,27 +568,22 @@ mo.bqr.svy <- function(formula,
       }
 
       results[[qi]] <- list(
-        beta_dir    = beta_dir,                # K x (p+r)
-        beta        = beta_flat,               # vector con nombres expandidos (útil para coef())
-        sigma_by_dir= as.numeric(cpp_result$sigma), # K
-        iter        = cpp_result$iter,
-        converged   = cpp_result$converged,
-        prior       = pr,
-        mode        = "separable",
-        U           = U,
-        Gamma       = Gamma
+        beta_dir     = beta_dir,                     # K x (p+r)
+        beta         = beta_flat,                    # vector con nombres expandidos
+        sigma_by_dir = as.numeric(cpp_result$sigma), # K
+        iter         = cpp_result$iter,
+        converged    = cpp_result$converged,
+        prior        = pr,
+        mode         = "separable",
+        U            = U,
+        Gamma        = Gamma
       )
     }
   }
 
   # coefficients (para compatibilidad con métodos que esperan vector)
-  if (em_mode == "joint") {
-    coefficients_all <- as.numeric(results[[1]]$beta)
-    names(coefficients_all) <- names(results[[1]]$beta)
-  } else {
-    coefficients_all <- as.numeric(results[[1]]$beta)
-    names(coefficients_all) <- names(results[[1]]$beta)
-  }
+  coefficients_all <- as.numeric(results[[1]]$beta)
+  names(coefficients_all) <- names(results[[1]]$beta)
 
   structure(list(
     call         = match.call(),
@@ -598,6 +600,7 @@ mo.bqr.svy <- function(formula,
     mode         = em_mode
   ), class = "mo.bqr.svy")
 }
+
 
 
 #' Print method for mo.bqr.svy objects

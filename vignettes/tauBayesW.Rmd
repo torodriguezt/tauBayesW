@@ -41,6 +41,11 @@ knitr::opts_chunk$set(
 
 ## Installation
 
+```{r}
+if (!requireNamespace("MASS", quietly = TRUE)) install.packages("MASS")
+```
+
+
 ```{r installation, eval=FALSE}
 # From CRAN (when available)
 #install.packages("tauBayesW")
@@ -66,13 +71,13 @@ citation("tauBayesW")
 
 tauBayesW provides two main functions to fit a bayesian quantile regression model with survey weights using MCMC and EM algorithms, also each of them has a plotting function to visualize the results and a summary method to extract key information:
 
-- **`bqr.svy()`**: 🎯 Bayesian quantile regression for single quantiles with survey weights
-- **`mo.bqr.svy()`**: 📊 Multiple quantile regression using efficient EM algorithms  
+- **`bqr.svy()`**: 🎯 Bayesian quantile regression for multiple quantiles with survey weights using MCMC algorithms
+- **`mo.bqr.svy()`**: 📊 Bayesian multivariate and multidirectional quantile regression for multiple quantiles with survey weights using Expected Maximization algorithm
 - **`plot_quantile()`**: 🎨 Comprehensive visualization functions for quantile regression
 
 ### Basic Usage
 
-Let's start with a simple example using survey data:
+Let's start with a simple example using survey data for the MCMC algorithms:
 
 ```{r basic-example}
 # Simulate survey data with design weights
@@ -89,26 +94,111 @@ model_median <- bqr.svy(y ~ x1 + x2,
                         data = data,
                         weights = weights,
                         quantile = 0.5,
-                        n_mcmc = 2000,
+                        niter = 2000,
+                        burnin = 500,
                         verbose = FALSE)
 
+```
+
+
+```{r}
+print(model_median)
+```
+
+```{r}
 summary(model_median)
 ```
 
-### Multiple Quantile Analysis
+And using the EM algorithm
+
+```{r}
+model_median <- mo.bqr.svy(y ~ x1 + x2, 
+                        data = data,
+                        weights = weights,
+                        quantile = 0.5,
+                        max_iter = 2000,
+                        epsilon = 1e-8,
+                        verbose = FALSE)
+```
+
+
+```{r}
+print(model_median)
+```
+```{r}
+summary(model_median)
+```
+
+
+### Multiple quantiles
+
+tauBayesW implements three different MCMC approaches, all of them allow to fit more than one quantile with only one call:
+
+```{r mcmc-methods}
+n <- 800
+x1 <- runif(n)
+x2 <- rnorm(n)
+y <- 3 + 2*x1 + 1.5*x2 + rnorm(n)
+weights <- rep(1, n)
+data <- data.frame(y, x1, x2)
+
+methods <- c("ald", "score", "approximate")
+results <- list()
+
+model_ald <- bqr.svy(y ~ x1 + x2,
+                               data = data,
+                               weights = weights,
+                               quantile = c(0.5, 0.95),
+                               method = "ald",
+                               n_mcmc = 60000,
+                               burnin = 25000,
+                               verbose = FALSE)
+
+summary(model_ald)
+
+model_score <- bqr.svy(y ~ x1 + x2,
+                               data = data,
+                               weights = weights,
+                               quantile = c(0.5, 0.95),
+                               method = "score",
+                               n_mcmc = 60000,
+                               burnin = 25000,
+                               verbose = FALSE)
+
+summary(model_score)
+
+
+model_approximate <- bqr.svy(y ~ x1 + x2,
+                               data = data,
+                               weights = weights,
+                               quantile = c(0.5, 0.95),
+                               method = "approximate",
+                               n_mcmc = 60000,
+                               burnin = 25000,
+                               verbose = FALSE)
+
+summary(model_approximate)
+
+```
+
+
+
+For the Expected-Maximization Algorithm
 
 ```{r multiple-quantiles}
 # Multiple quantiles simultaneously
 quantiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
 
-model_multi <- mo.bqr.svy(y ~ x1 + x2,
-                          data = data, 
-                          weights = weights,
-                          quantile = quantiles,
-                          max_iter = 100,
-                          verbose = FALSE)
+model_em<- mo.bqr.svy(y ~ x1 + x2,
+                               data = data,
+                               weights = weights,
+                               quantile = c(0.5, 0.95),
+                               method = "approximate",
+                               max_iter = 1500,
+                               epsilon = 1e-6,
+                               verbose = FALSE)
 
-summary(model_multi)
+summary(model_em)
 ```
 
 ### Visualization
@@ -125,7 +215,8 @@ model_vis <- bqr.svy(y ~ x,
                      data = data_vis,
                      weights = weights_vis,
                      quantile = 0.5,
-                     n_mcmc = 2000,
+                     niter = 2000,
+                     burnin = 500,
                      verbose = FALSE)
 
 # Plot quantile regression with data points
@@ -135,52 +226,51 @@ plot_quantile_with_points.bqr.svy(model_vis, data = data_vis, predictor = "x",
 ```
 
 
-### 1. Multiple MCMC Methods
+```{r}
+n_vis <- 300
+x_vis <- seq(-2, 2, length.out = n_vis)
+y_vis <- 1 + 2*x_vis + (0.5 + 0.3*abs(x_vis))*rnorm(n_vis) 
+weights_vis <- rgamma(n_vis, 2, 1)
+data_vis <- data.frame(y = y_vis, x = x_vis)
 
-tauBayesW implements three different MCMC approaches:
+# Fit single quantile for plotting
+model_vis <- mo.bqr.svy(y ~ x, 
+                        data = data_vis,
+                        weights = weights_vis,
+                        quantile = 0.5,
+                        max_iter = 2000,
+                        epsilon = 1e-8,
+                        verbose = FALSE)
 
-```{r mcmc-methods}
-n <- 800
-x1 <- runif(n)
-x2 <- rnorm(n)
-y <- 3 + 2*x1 + 1.5*x2 + rnorm(n)
-weights <- rep(1, n)
-data <- data.frame(y, x1, x2)
+# Plot quantile regression with data points
+plot_quantile_with_points.mo.bqr.svy(model_vis, data = data_vis, predictor = "x",
+                          point_alpha = 0.6,
+                          main = "Bayesian Quantile Regression (τ = 0.5)")
+```
 
-methods <- c("ald", "score", "approximate")
-results <- list()
 
-for(method in methods) {
-  results[[method]] <- bqr.svy(y ~ x1 + x2,
-                               data = data,
-                               weights = weights,
-                               quantile = 0.3,
-                               method = method,
-                               n_mcmc = 60000,
-                               burnin = 25000,
-                               verbose = FALSE)
-}
 
-coef_names <- c("(Intercept)", "x1", "x2")
+#### Multiple Quantile Visualization
 
-coef_comparison <- do.call(rbind, lapply(results, function(mod) {
-  betas <- mod$beta
-  
-  vals <- setNames(rep(NA_real_, length(coef_names)), coef_names)
-  vals[names(betas)] <- betas
-  
-  as.numeric(vals)
-}))
+```{r multi-quantile-viz, fig.width=8, fig.height=6}
+# Fit multiple quantiles for univariate case
+model_multi_vis <- mo.bqr.svy(y ~ x,
+                              data = data_vis,
+                              weights = weights_vis,
+                              quantile = c(0.1, 0.25, 0.5, 0.75, 0.9),
+                              max_iter = 1000,
+                              verbose = FALSE)
 
-colnames(coef_comparison) <- coef_names
-rownames(coef_comparison) <- methods
-print(round(coef_comparison, 4))
+# Plot multiple quantile curves
+plot(model_multi_vis, type = "quantiles")
 
+# Plot coefficient evolution across quantiles  
+plot(model_multi_vis, type = "convergence")
 
 ```
 
 
-### 2. Prior information
+### Prior information
 
 We can also use informative prior distributions
 
@@ -313,7 +403,7 @@ fit_mo <- mo.bqr.svy(
   quantile  = c(0.25, 0.5, 0.75),  # multiple quantiles
   algorithm = "em",
   prior     = prior_info,
-  max_iter  = 200,
+  max_iter  = 1000,
   epsilon   = 1e-6,
   verbose   = FALSE
 )
@@ -331,54 +421,169 @@ for (q in seq_along(fit_mo$quantile)) {
 
 ```
 
+### Multivariate and multidirectional case
 
-### 2. Complex Survey Designs
+The EM algorithm implementation allows to fit a multivariate and multidirectional model passing multiple quantiles
 
-```{r survey-design}
-# Simulate stratified survey data
-n_strata <- 3
-strata_data <- do.call(rbind, lapply(1:n_strata, function(s) {
-  n_s <- 150
-  x1 <- rnorm(n_s, mean = s, sd = 1)
-  x2 <- rbinom(n_s, 1, prob = 0.2 + 0.2*s)
-  y <- 1.5 + 2*x1 + 1.2*x2 + rnorm(n_s, sd = 0.8 + 0.2*s)
-  
-  # Inverse probability weights
-  weights <- 1 / (0.1 + 0.3*s/n_strata)
-  
-  data.frame(y, x1, x2, stratum = s, weights = weights)
-}))
+```{r}
+library(tauBayesW)
 
-# Analyze stratified data
-strata_model <- bqr.svy(y ~ x1 + x2,
-                        data = strata_data,
-                        weights = strata_data$weights,
-                        quantile = 0.5,
-                        n_mcmc = 2000,
-                        verbose = FALSE)
+set.seed(1)
+n  <- 1200
+x1 <- rnorm(n)
+x2 <- rnorm(n)
+X  <- cbind(1, x1, x2)
 
-summary(strata_model)
+# Coeficientes "verdaderos" para cada componente de Y
+B <- rbind(
+  c( 1.00,  2.00, -0.50),  # y1
+  c(-0.50,  1.20,  0.80),  # y2
+  c( 0.30, -1.10,  0.20)   # y3
+)
+
+# Ruido (no tiene que ser ALD para este ejemplo)
+eps <- cbind(rnorm(n, 0, 0.6),
+             rnorm(n, 0, 0.6),
+             rnorm(n, 0, 0.6))
+
+Y <- X %*% t(B) + eps
+colnames(Y) <- c("y1","y2","y3")
+
+data <- data.frame(y1 = Y[,1], y2 = Y[,2], y3 = Y[,3], x1 = x1, x2 = x2)
+
+# Pesos de muestreo (opcionales)
+weights <- rexp(n, rate = 1)
+weights <- weights / mean(weights)  # normalizo por comodidad
+
+# Cuantiles a usar en los ejemplos
+quantiles <- c(0.5, 0.75) 
+```
+
+#### Multivariate unidirectional
+
+```{r}
+model_uni_dir <- mo.bqr.svy(
+  cbind(y1, y2, y3) ~ x1 + x2,
+  data      = data,
+  weights   = weights,
+  quantile  = quantiles,   # aquí 0.5
+  n_dir     = 1,           # UNA dirección
+  r         = 0,           # sin Gamma
+  em_mode   = "separable", # separable: betas por dirección (aquí K=1)
+  max_iter  = 1200,
+  verbose   = FALSE
+)
+
+print(model_uni_dir)
+summary(model_uni_dir)
+```
+
+### Multivariate multidirectional
+
+```{r}
+K_dirs <- 60  # número típico de direcciones en S^2
+
+model_multi_dirs <- mo.bqr.svy(
+  cbind(y1, y2, y3) ~ x1 + x2,
+  data      = data,
+  weights   = weights,
+  quantile  = quantiles,   # 0.5
+  n_dir     = K_dirs,      # muchas direcciones
+  r         = 0,           # sin Gamma (poliedro definido sólo por betas_X)
+  em_mode   = "separable", # estable y rápido
+  max_iter  = 2000,
+  verbose   = FALSE
+)
+
+print(model_multi_dirs)
+summary(model_multi_dirs)
+```
+
+#### Multivariate Multidirectional (r>0)
+
+```{r}
+K_dirs_r <- 50
+
+model_multi_dirs_r <- mo.bqr.svy(
+  cbind(y1, y2, y3) ~ x1 + x2,
+  data      = data,
+  weights   = weights,
+  quantile  = quantiles,    # 0.5 (puedes poner varios)
+  n_dir     = K_dirs_r,     # muchas direcciones
+  r         = 2,            # <-- usa 2 dimensiones ortogonales por dirección
+  em_mode   = "separable",  # betas por dirección + gammas por dirección
+  max_iter  = 2000,
+  verbose   = FALSE
+)
+
+print(model_multi_dirs_r)
+summary(model_multi_dirs_r)
 ```
 
 
-### 4. Multiple Quantile Visualization
+## Joint vs. Separable and the Role of *r*
 
-```{r multi-quantile-viz, fig.width=8, fig.height=6}
-# Fit multiple quantiles for univariate case
-model_multi_vis <- mo.bqr.svy(y ~ x,
-                              data = data_vis,
-                              weights = weights_vis,
-                              quantile = c(0.1, 0.25, 0.5, 0.75, 0.9),
-                              max_iter = 100,
-                              verbose = FALSE)
+In multivariate quantile regression with directional EM estimation, two key modeling choices are:
 
-# Plot multiple quantile curves
-plot(model_multi_vis, type = "quantiles")
+1. **Mode**: whether coefficients are fit in a *separable* way (each direction has its own parameters) or in a *joint* way (a single set of parameters shared across directions).  
+2. **Orthogonal dimension `r`**: how many extra “orthogonal” directions are included per quantile surface, beyond the main projection.
 
-# Plot coefficient evolution across quantiles  
-plot(model_multi_vis, type = "convergence")
+---
 
+### Separable mode
+
+- In *separable* mode, each direction \( u_k \) is fit with its own coefficient vector.  
+- This means the model can flexibly adapt to directional asymmetry.  
+- Since the data live in a \(d\)-dimensional response space, each direction already consumes one dimension. The maximum number of orthogonal components is therefore \( d - 1 \).  
+
+```{r}
+model_joint <- mo.bqr.svy(
+  cbind(y1, y2, y3) ~ x1 + x2,
+  data      = data,
+  weights   = weights,
+  quantile  = 0.5,
+  n_dir     = 40,        
+  r         = 0,        
+  em_mode   = "joint",   
+  max_iter  = 800,
+  verbose   = FALSE
+)
+
+# Ajuste con modo separable
+model_sep <- mo.bqr.svy(
+  cbind(y1, y2, y3) ~ x1 + x2,
+  data      = data,
+  weights   = weights,
+  quantile  = 0.5,
+  n_dir     = 40,        
+  r         = 2,
+  em_mode   = "separable", 
+  max_iter  = 800,
+  verbose   = FALSE
+)
+
+# Comparar resúmenes
+summary(model_joint)
+summary(model_sep)
 ```
+
+
+#### Visualization 3D
+
+```{r}
+p3d <- plot_quantile_body3d.mo.bqr.svy(
+    object       = model_multi_dirs,
+    tau          = 0.5,                     
+    data         = data,                   
+    fixed_values = list(x1 = 0, x2 = 0),     
+    engine       = "plotly",
+    col          = "#1f77b4",
+    opacity      = 0.6,
+    show_points  = TRUE
+  )
+p3d
+```
+
 
 
 ## Methodology
@@ -452,6 +657,7 @@ tauBayesW is designed to be lightweight with minimal dependencies:
 - **Base R packages**: stats, grDevices, graphics
 - **C++ integration**: Rcpp, RcppEigen, RcppArmadillo
 - **Suggested**: survey (for complex survey examples)
+- **plotly**: for interactive 3d graphics
 
 This makes tauBayesW safe to use as a dependency in other packages without dependency conflicts.
 
@@ -469,8 +675,6 @@ This makes tauBayesW safe to use as a dependency in other packages without depen
 
 ## References
 - Nascimento, M. L., & Gonçalves, K. C. M. (2024). Bayesian Quantile Regression Models for Complex Survey Data Under Informative Sampling. Journal of Survey Statistics and Methodology, 12(4), 1105–1130. https://doi.org/10.1093/jssam/smae015
-
-- Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Bürkner, P.-C. (2021). Rank-Normalization, Folding, and Localization: An Improved $\hat{R}$ for Assessing Convergence of MCMC (with Discussion). Bayesian Analysis, 16(2), 667–718. https://doi.org/10.1214/20-BA1221
 
 - Yu, K. and Moyeed, R. A. (2001). Bayesian quantile regression. Statistics & Probability Letters, 54(4), 437-447.
 ---

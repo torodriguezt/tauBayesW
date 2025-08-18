@@ -17,9 +17,6 @@ mo.bqr.svy(
   verbose = FALSE,
   em_mode = c("joint", "separable"),
   gamma_prior_var = 1e+06,
-  niter = NULL,
-  burnin = NULL,
-  thin = NULL,
   ...
 )
 }
@@ -49,12 +46,6 @@ mo.bqr.svy(
 \item{max_iter}{Maximum number of EM iterations.}
 
 \item{verbose}{Logical indicating whether to print progress messages.}
-
-\item{niter}{Deprecated. Use \code{max_iter} instead.}
-
-\item{burnin}{Ignored for EM algorithm.}
-
-\item{thin}{Ignored for EM algorithm.}
 
 \item{...}{Additional arguments (currently unused).}
 }

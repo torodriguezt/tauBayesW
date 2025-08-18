@@ -317,15 +317,16 @@ summary.bwqr_fit <- function(object,
   if (nrow(draws) == 0L || ncol(draws) == 0L)
     stop("'object$draws' empty or not numeric.", call. = FALSE)
 
-  # Base stats + diagnostics
+  # Base stats + diagnostics (usa tu summarise_draws_custom existente)
   stats <- summarise_draws_custom(draws, max_lag = max_lag)
 
   # Credible intervals
   stats$lower_ci <- round(apply(draws, 2, quantile, probs = probs[1], na.rm = TRUE), digits)
   stats$upper_ci <- round(apply(draws, 2, quantile, probs = probs[2], na.rm = TRUE), digits)
 
-  # ---- Back-compat for tests that expect $coefficients with only betas ----
-  coef_df <- stats[stats$variable != "sigma", c("variable","mean","sd","lower_ci","upper_ci")]
+  # Back-compat: tabla de coeficientes sin sigma
+  coef_df <- stats[stats$variable != "sigma",
+                   c("variable","mean","sd","lower_ci","upper_ci")]
   names(coef_df) <- c("Variable","Mean","SD","Lower","Upper")
 
   summary_obj <- list(
@@ -339,13 +340,12 @@ summary.bwqr_fit <- function(object,
     accept_rate       = object$accept_rate %||% NA_real_,
     runtime           = object$runtime  %||% NA_real_,
     posterior_summary = stats,
-    coefficients      = coef_df,   # <-- alias esperado por tus tests
+    coefficients      = coef_df,
     probs             = probs,
     digits            = digits
   )
 
-  # Include both classes so that `inherits(x, "summary.bqr.svy")` is TRUE
-  class(summary_obj) <- c("summary.bqr.svy", "summary.bwqr_fit")
+  class(summary_obj) <- c("summary.bwqr_fit", "summary.bqr.svy")
   summary_obj
 }
 
@@ -382,7 +382,6 @@ print.summary.bwqr_fit <- function(x, ...) {
   cat("\nPosterior Estimates:\n")
   prob_lower <- sprintf("%.1f%%", x$probs[1] * 100)
   prob_upper <- sprintf("%.1f%%", x$probs[2] * 100)
-
   fmt_num <- function(v, d) ifelse(is.na(v), "---", sprintf(paste0("%.", d, "f"), as.numeric(v)))
 
   display_table <- data.frame(
@@ -409,6 +408,8 @@ print.summary.bwqr_fit <- function(x, ...) {
   invisible(x)
 }
 
+
+
 #' Summary method for bqr.svy objects
 #'
 #' @param object An object of class \code{"bqr.svy"}.
@@ -423,90 +424,78 @@ summary.bqr.svy <- function(object,
   if (!inherits(object, "bqr.svy"))
     stop("Object must be of class 'bqr.svy'")
 
-  # --- Caso multi-tau: lista de matrices ---
-  if (is.list(object$draws)) {
-    taus <- object$quantile
-    draws_list <- object$draws
-    nm <- names(draws_list)
-    if (is.null(nm)) nm <- paste0("tau=", formatC(taus, format = "f", digits = 3))
+  make_block <- function(draws_mat, tau, meta) {
+    d <- if (is.data.frame(draws_mat)) data.matrix(draws_mat) else as.matrix(draws_mat)
+    storage.mode(d) <- "numeric"
+    if (nrow(d) == 0L || ncol(d) == 0L)
+      stop("Empty or non-numeric draws matrix for tau=", tau)
 
-    per_tau <- lapply(seq_along(draws_list), function(i) {
-      d <- draws_list[[i]]
-      if (is.data.frame(d)) d <- data.matrix(d)
-      d <- as.matrix(d)
-      storage.mode(d) <- "numeric"
-      if (nrow(d) == 0L || ncol(d) == 0L)
-        stop("'object$draws[[", i, "]]' empty or not numeric.", call. = FALSE)
+    stats <- summarise_draws_custom(d)
+    stats$lower_ci <- round(apply(d, 2, quantile, probs = probs[1], na.rm = TRUE), digits)
+    stats$upper_ci <- round(apply(d, 2, quantile, probs = probs[2], na.rm = TRUE), digits)
 
-      stats <- summarise_draws_custom(d)
-      stats$lower_ci <- round(apply(d, 2, quantile, probs = probs[1], na.rm = TRUE), digits)
-      stats$upper_ci <- round(apply(d, 2, quantile, probs = probs[2], na.rm = TRUE), digits)
-      stats$tau <- rep(taus[i], nrow(stats))
-      stats
-    })
-
-    ps <- do.call(rbind, per_tau)
-    rownames(ps) <- NULL
-    # Reordenar columnas: tau primero
-    cols <- c("tau","variable","mean","sd","lower_ci","upper_ci","rhat","ess_bulk","ess_tail")
-    cols <- intersect(cols, names(ps))
-    ps <- ps[, cols, drop = FALSE]
-
-    n_draws_vec <- vapply(draws_list, nrow, integer(1))
-
-    summary_obj <- list(
-      call              = object$call %||% NULL,
-      method            = object$method %||% NA_character_,
-      quantile          = taus,
-      n_draws           = n_draws_vec,               # ahora vector por tau
-      n_chains          = object$n_chains %||% 1L,
-      warmup            = object$warmup   %||% 0L,
-      thin              = object$thin     %||% 1L,
-      accept_rate       = object$accept_rate %||% NA_real_,  # puede ser vector
-      runtime           = object$runtime  %||% NA_real_,
-      posterior_summary = ps,              # df con columna 'tau'
+    list(
+      tau               = tau,
+      posterior_summary = stats,
+      n_draws           = nrow(d),
+      n_chains          = meta$n_chains %||% 1L,
+      warmup            = meta$warmup   %||% 0L,
+      thin              = meta$thin     %||% 1L,
+      accept_rate       = meta$accept_rate %||% NA_real_,
+      runtime           = meta$runtime  %||% NA_real_,
       probs             = probs,
       digits            = digits
     )
-    class(summary_obj) <- "summary.bqr.svy"
-    return(summary_obj)
   }
 
-  # --- Caso single-tau (igual que tu versión actual) ---
-  draws <- object$draws
-  if (is.data.frame(draws)) draws <- data.matrix(draws)
-  draws <- as.matrix(draws)
-  storage.mode(draws) <- "numeric"
-  if (nrow(draws) == 0L || ncol(draws) == 0L)
-    stop("'object$draws' is empty or not numeric.", call. = FALSE)
-
-  stats <- summarise_draws_custom(draws)
-  stats$lower_ci <- round(apply(draws, 2, quantile, probs = probs[1], na.rm = TRUE), digits)
-  stats$upper_ci <- round(apply(draws, 2, quantile, probs = probs[2], na.rm = TRUE), digits)
-
-  n_chains <- if (!is.null(object$n_chains) && length(object$n_chains) == 1L) object$n_chains else 1L
-  warmup   <- if (!is.null(object$warmup)   && length(object$warmup)   == 1L) object$warmup   else 0L
-  thin     <- if (!is.null(object$thin)     && length(object$thin)     == 1L) object$thin     else 1L
-  acc_rate <- if (!is.null(object$accept_rate) && length(object$accept_rate) == 1L) object$accept_rate else NA_real_
-  runtime  <- if (!is.null(object$runtime)     && length(object$runtime)     == 1L) object$runtime     else NA_real_
-
-  summary_obj <- list(
-    call              = object$call %||% NULL,
-    method            = object$method %||% NA_character_,
-    quantile          = object$quantile %||% NA_real_,
-    n_draws           = nrow(draws),
-    n_chains          = n_chains,
-    warmup            = warmup,
-    thin              = thin,
-    accept_rate       = acc_rate,
-    runtime           = runtime,
-    posterior_summary = stats,
-    probs             = probs,
-    digits            = digits
+  meta <- list(
+    n_chains    = object$n_chains %||% 1L,
+    warmup      = object$warmup   %||% 0L,
+    thin        = object$thin     %||% 1L,
+    accept_rate = object$accept_rate,
+    runtime     = object$runtime
   )
-  class(summary_obj) <- "summary.bqr.svy"
-  summary_obj
+
+  if (is.list(object$draws)) {
+    # ----- MULTI-τ -----
+    taus   <- object$quantile
+    dl     <- object$draws
+
+    per_tau <- vector("list", length(dl))
+    for (i in seq_along(dl)) {
+      meta_i <- meta
+      if (!is.null(meta$accept_rate) && length(meta$accept_rate) >= i) meta_i$accept_rate <- meta$accept_rate[i]
+      if (!is.null(meta$runtime)     && length(meta$runtime)     >= i) meta_i$runtime     <- meta$runtime[i]
+      per_tau[[i]] <- make_block(dl[[i]], tau = taus[i], meta = meta_i)
+    }
+    names(per_tau) <- paste0("tau=", formatC(taus, format="f", digits=3))
+
+    out <- list(
+      call      = object$call %||% NULL,
+      method    = object$method %||% object$algorithm %||% NA_character_,
+      quantiles = taus,
+      per_tau   = per_tau
+    )
+    class(out) <- "summary.bqr.svy"
+    return(out)
+  }
+
+  # ----- SINGLE-τ (ARREGLADO) -----
+  tau1  <- as.numeric(object$quantile %||% NA_real_)
+  block <- make_block(object$draws, tau = tau1, meta = meta)
+
+  out <- list(
+    call      = object$call %||% NULL,
+    method    = object$method %||% object$algorithm %||% NA_character_,
+    quantiles = tau1,
+    per_tau   = list(block)
+  )
+  names(out$per_tau) <- paste0("tau=", formatC(tau1, format="f", digits=3))
+  class(out) <- "summary.bqr.svy"
+  out
 }
+
+
 
 
 #' Print method for summary.bqr.svy objects
@@ -519,100 +508,55 @@ print.summary.bqr.svy <- function(x, ...) {
   cat("====================================\n\n")
   cat("Model Information:\n")
   cat("  Method           :", x$method, "\n")
-
-  # ¿multi o single?
-  is_multi <- length(x$quantile) > 1L || ("tau" %in% names(as.data.frame(x$posterior_summary)))
-
-  if (!is_multi) {
-    cat("  Quantile (tau)   :", x$quantile, "\n")
+  if (length(x$quantiles) > 1L) {
+    cat("  Quantiles (tau)  :", paste(x$quantiles, collapse = ", "), "\n\n")
   } else {
-    cat("  Quantiles (tau)  :", paste(x$quantile, collapse = ", "), "\n")
+    cat("  Quantile (tau)   :", x$quantiles, "\n\n")
   }
-
-  n_chains_val <- if (is.null(x$n_chains) || anyNA(x$n_chains)) 1L else as.integer(x$n_chains)
-  warmup_val   <- if (is.null(x$warmup)   || anyNA(x$warmup))   0L else as.integer(x$warmup)
-  thin_val     <- if (is.null(x$thin)     || anyNA(x$thin))     1L else as.integer(x$thin)
-
-  if (!is_multi) {
-    cat("  Chains           :", n_chains_val, "\n")
-    cat("  Post-warmup draws:", x$n_draws, "per chain\n")
-  } else {
-    cat("  Chains           :", n_chains_val, "\n")
-    nd <- x$n_draws
-    if (length(nd) > 1L) {
-      cat("  Post-warmup draws (by tau):", paste(nd, collapse = ", "), "\n")
-    } else {
-      cat("  Post-warmup draws:", nd, "per chain\n")
-    }
-  }
-
-  cat("  Warmup           :", warmup_val, "draws\n")
-  cat("  Thinning         :", thin_val, "\n")
-
-  if (!is.null(x$accept_rate) && length(x$accept_rate) > 0 && !all(is.na(x$accept_rate))) {
-    if (length(x$accept_rate) == 1L) {
-      cat("  Accept rate      :", sprintf("%.3f", x$accept_rate), "\n")
-    } else {
-      cat("  Accept rate (by tau):", paste(sprintf("%.3f", x$accept_rate), collapse = ", "), "\n")
-    }
-  }
-  if (!is.null(x$runtime) && !all(is.na(x$runtime)))
-    cat("  Runtime          :", paste(sprintf("%.2f", x$runtime), collapse = ", "), "seconds\n")
-
-  ps <- as.data.frame(x$posterior_summary, stringsAsFactors = FALSE)
-  needed <- c("variable","mean","sd","lower_ci","upper_ci","rhat","ess_bulk","ess_tail")
-  missing_cols <- setdiff(needed, names(ps))
-  if (length(missing_cols)) for (m in missing_cols) ps[[m]] <- rep(NA_real_, nrow(ps))
-
-  cat("\nPosterior Estimates:\n")
-  prob_lower <- sprintf("%.1f%%", x$probs[1] * 100)
-  prob_upper <- sprintf("%.1f%%", x$probs[2] * 100)
 
   fmt_num <- function(v, d) ifelse(is.na(v), "---", sprintf(paste0("%.", d, "f"), as.numeric(v)))
 
-  if (!is_multi) {
-    display_table <- data.frame(
+  # Un bloque por tau (idéntico formato para single/multi)
+  for (i in seq_along(x$per_tau)) {
+    b <- x$per_tau[[i]]
+    cat(sprintf("----- Quantile tau = %.3f -----\n", b$tau))
+    cat("  Chains           :", b$n_chains, "\n")
+    cat("  Post-warmup draws:", b$n_draws, "per chain\n")
+    cat("  Warmup           :", b$warmup, "draws\n")
+    cat("  Thinning         :", b$thin, "\n")
+    if (!is.null(b$accept_rate) && !is.na(b$accept_rate))
+      cat("  Accept rate      :", sprintf("%.3f", b$accept_rate), "\n")
+    if (!is.null(b$runtime) && !is.na(b$runtime))
+      cat("  Runtime          :", sprintf("%.2f", b$runtime), "seconds\n")
+
+    ps <- as.data.frame(b$posterior_summary, stringsAsFactors = FALSE)
+    needed <- c("variable","mean","sd","lower_ci","upper_ci","rhat","ess_bulk","ess_tail")
+    miss <- setdiff(needed, names(ps)); if (length(miss)) for (m in miss) ps[[m]] <- NA_real_
+
+    cat("\n  Posterior Estimates:\n")
+    prob_lower <- sprintf("%.1f%%", b$probs[1] * 100)
+    prob_upper <- sprintf("%.1f%%", b$probs[2] * 100)
+
+    display <- data.frame(
       Variable = ps$variable,
-      Mean     = fmt_num(ps$mean,     x$digits),
-      SD       = fmt_num(ps$sd,       x$digits),
-      CI_Lower = fmt_num(ps$lower_ci, x$digits),
-      CI_Upper = fmt_num(ps$upper_ci, x$digits),
+      Mean     = fmt_num(ps$mean,     b$digits),
+      SD       = fmt_num(ps$sd,       b$digits),
+      CI_Lower = fmt_num(ps$lower_ci, b$digits),
+      CI_Upper = fmt_num(ps$upper_ci, b$digits),
       Rhat     = ifelse(is.na(ps$rhat),     "---", sprintf("%.3f", ps$rhat)),
       ESS_bulk = ifelse(is.na(ps$ess_bulk), "---", sprintf("%.0f", ps$ess_bulk)),
       ESS_tail = ifelse(is.na(ps$ess_tail), "---", sprintf("%.0f", ps$ess_tail)),
       check.names = FALSE
     )
-    names(display_table) <- c("Variable", "Mean", "SD",
-                              paste0(prob_lower, " CI"), paste0(prob_upper, " CI"),
-                              "Rhat", "ESS_bulk", "ESS_tail")
-    print(display_table, row.names = FALSE, right = FALSE)
-  } else {
-    # ordenar por tau y variable para lectura
-    if (!("tau" %in% names(ps))) ps$tau <- NA_real_
-    ps <- ps[order(ps$tau, ps$variable), , drop = FALSE]
-    display_table <- data.frame(
-      Tau      = fmt_num(ps$tau, 3),
-      Variable = ps$variable,
-      Mean     = fmt_num(ps$mean,     x$digits),
-      SD       = fmt_num(ps$sd,       x$digits),
-      CI_Lower = fmt_num(ps$lower_ci, x$digits),
-      CI_Upper = fmt_num(ps$upper_ci, x$digits),
-      Rhat     = ifelse(is.na(ps$rhat),     "---", sprintf("%.3f", ps$rhat)),
-      ESS_bulk = ifelse(is.na(ps$ess_bulk), "---", sprintf("%.0f", ps$ess_bulk)),
-      ESS_tail = ifelse(is.na(ps$ess_tail), "---", sprintf("%.0f", ps$ess_tail)),
-      check.names = FALSE
-    )
-    names(display_table)[which(names(display_table) %in% c("CI_Lower","CI_Upper"))] <-
+    names(display)[which(names(display) %in% c("CI_Lower","CI_Upper"))] <-
       c(paste0(prob_lower, " CI"), paste0(prob_upper, " CI"))
-    print(display_table, row.names = FALSE, right = FALSE)
+    print(display, row.names = FALSE, right = FALSE)
+
+    .check_convergence_and_warn(ps, b$n_draws)
+    cat("\n")
   }
-
-  # chequeo silencioso (si lo tienes definido)
-  .check_convergence_and_warn(ps, if (length(x$n_draws) > 1) max(x$n_draws, na.rm = TRUE) else x$n_draws)
-
   cat("Methods: Rank-normalization R-hat and ESS (Vehtari et al., 2021).\n")
-  cat("Note: ESS_bulk measures center of distribution, ESS_tail measures tails.\n")
-  cat("      Convergence diagnostics computed for all parameters including sigma.\n")
+  cat("Note: ESS_bulk measures center, ESS_tail measures tails; diagnostics include sigma.\n")
   invisible(x)
 }
 
@@ -628,49 +572,84 @@ summary.mo.bqr.svy <- function(object, digits = 3, ...) {
   if (!inherits(object, "mo.bqr.svy"))
     stop("Object must be of class 'mo.bqr.svy'")
 
-  quantile_summaries <- lapply(seq_along(object$quantile), function(i) {
-    q     <- object$quantile[i]
-    fit_q <- object$fit[[i]]
+  K         <- if (!is.null(object$U)) ncol(object$U) else NA_integer_
+  taus      <- object$quantile
+  fit_list  <- object$fit
+  modes_by_tau <- vapply(fit_list, function(f) if (is.null(f$mode)) NA_character_ else f$mode, character(1))
 
-    if (is.null(fit_q)) {
+  quantile_summaries <- lapply(seq_along(taus), function(i) {
+    q  <- taus[i]
+    fi <- fit_list[[i]]
+    if (is.null(fi)) {
       return(list(
-        quantile    = q,
-        converged   = FALSE,
-        iterations  = NA_integer_,
-        coefficients= NULL,
-        sigma       = NA_real_
+        quantile     = q,
+        converged    = FALSE,
+        iterations   = NA_integer_,
+        mode         = NA_character_,
+        coef_table   = NULL,          # data.frame
+        sigma_scalar = NA_real_,      # escalar (joint)
+        sigma_by_dir = NULL           # vector (separable)
       ))
     }
 
-    n_coef    <- length(fit_q$beta)
-    coef_names <- if (n_coef == 1) "(Intercept)" else c("(Intercept)", paste0("X", 1:(n_coef - 1)))
-    coef_df    <- data.frame(
-      Coefficient = coef_names,
-      Estimate    = round(fit_q$beta, digits),
-      stringsAsFactors = FALSE
-    )
+    mode_i    <- fi$mode
+    iters_i   <- if (!is.null(fi$iter)) as.integer(fi$iter) else NA_integer_
+    conv_i    <- isTRUE(fi$converged)
+
+    if (identical(mode_i, "separable")) {
+      # beta_dir: K x (p+r)
+      beta_dir <- fi$beta_dir
+      if (is.null(beta_dir) || !is.matrix(beta_dir))
+        stop("Expected 'beta_dir' for separable mode.")
+      # Resumen por columna (parámetro) a través de direcciones: min/med/max
+      cn <- colnames(beta_dir)
+      if (is.null(cn)) cn <- paste0("V", seq_len(ncol(beta_dir)))
+      qstats <- t(apply(beta_dir, 2, function(v) stats::quantile(v, c(0, .5, 1), na.rm = TRUE)))
+      colnames(qstats) <- c("Min", "Median", "Max")
+      coef_table <- data.frame(Parameter = cn,
+                               Min      = round(qstats[, "Min"],    digits),
+                               Median   = round(qstats[, "Median"], digits),
+                               Max      = round(qstats[, "Max"],    digits),
+                               row.names = NULL, check.names = FALSE)
+      sigma_by_dir <- fi$sigma_by_dir
+      sigma_scalar <- NA_real_
+
+    } else { # joint
+      b <- fi$beta
+      if (is.null(b)) stop("Expected 'beta' for joint mode.")
+      nm <- names(b)
+      if (is.null(nm)) nm <- paste0("b", seq_along(b))
+      coef_table <- data.frame(
+        Coefficient = nm,
+        Estimate    = round(as.numeric(b), digits),
+        row.names   = NULL, check.names = FALSE
+      )
+      sigma_scalar <- if (!is.null(fi$sigma) && length(fi$sigma) == 1L) as.numeric(fi$sigma) else NA_real_
+      sigma_by_dir <- NULL
+    }
 
     list(
       quantile     = q,
-      converged    = isTRUE(fit_q$converged),
-      iterations   = if (!is.null(fit_q$iter)) as.integer(fit_q$iter) else NA_integer_,
-      coefficients = coef_df,
-      sigma        = if (!is.null(fit_q$sigma)) round(as.numeric(fit_q$sigma), digits) else NA_real_
+      converged    = conv_i,
+      iterations   = iters_i,
+      mode         = mode_i,
+      coef_table   = coef_table,
+      sigma_scalar = if (is.finite(sigma_scalar)) round(sigma_scalar, digits) else NA_real_,
+      sigma_by_dir = sigma_by_dir
     )
   })
 
-  names(quantile_summaries) <- paste0("q", object$quantile)
+  names(quantile_summaries) <- paste0("q", taus)
 
   summary_obj <- list(
-    call             = if (!is.null(object$call)) object$call else NULL,
-    algorithm        = if (!is.null(object$algorithm)) object$algorithm else NA_character_,
-    quantiles        = object$quantile,
-    n_directions     = if (!is.null(object$n_dir)) as.integer(object$n_dir) else NA_integer_,
-    prior            = if (!is.null(object$prior)) object$prior else NULL,
-    quantile_results = quantile_summaries,
-    digits           = digits
+    call              = if (!is.null(object$call)) object$call else NULL,
+    algorithm         = if (!is.null(object$algorithm)) object$algorithm else NA_character_,
+    quantiles         = taus,
+    n_directions      = K,
+    prior             = if (!is.null(object$prior)) object$prior else NULL,
+    quantile_results  = quantile_summaries,
+    digits            = digits
   )
-
   class(summary_obj) <- "summary.mo.bqr.svy"
   summary_obj
 }
@@ -685,46 +664,58 @@ print.summary.mo.bqr.svy <- function(x, ...) {
   cat("Model Information:\n")
   cat("  Algorithm      :", x$algorithm, "\n")
   cat("  Quantiles (tau):", paste(x$quantiles, collapse = ", "), "\n")
-  cat("  Directions     :", x$n_directions, "\n")
-  cat("\n")
+  cat("  Directions     :", x$n_directions, "\n\n")
 
-  converged_status <- sapply(x$quantile_results, function(qr) isTRUE(qr$converged))
-  total_iter       <- sapply(x$quantile_results, function(qr) qr$iterations)
-
-  cat("Convergence Summary:\n")
-  cat("  Converged quantiles:", sum(converged_status, na.rm = TRUE),
-      "out of", length(x$quantiles), "\n")
-  if (any(!is.na(total_iter))) {
-    cat("  Average iterations :", sprintf("%.1f", mean(total_iter, na.rm = TRUE)), "\n")
-    cat("  Max iterations     :", max(total_iter, na.rm = TRUE), "\n")
+  conv  <- vapply(x$quantile_results, function(qr) isTRUE(qr$converged), logical(1))
+  iters <- vapply(x$quantile_results, function(qr) qr$iterations, numeric(1))
+  if (any(!is.na(iters))) {
+    cat("Convergence Summary:\n")
+    cat("  Converged quantiles:", sum(conv, na.rm = TRUE), "out of", length(x$quantiles), "\n")
+    cat("  Average iterations :", sprintf("%.1f", mean(iters, na.rm = TRUE)), "\n")
+    cat("  Max iterations     :", max(iters, na.rm = TRUE), "\n\n")
   }
-  cat("\n")
 
+  dg <- x$digits
   for (i in seq_along(x$quantile_results)) {
     qr <- x$quantile_results[[i]]
     cat(sprintf("Quantile tau = %.3f:\n", qr$quantile))
+    cat(sprintf("  Mode       : %s\n", if (is.null(qr$mode)) "NA" else qr$mode))
     cat(sprintf("  Converged  : %s (%s iterations)\n",
                 ifelse(isTRUE(qr$converged), "Yes", "No"),
                 ifelse(is.na(qr$iterations), "NA", as.integer(qr$iterations))))
-    if (!is.null(qr$coefficients)) {
-      cat("  Coefficients:\n")
-      coef_display <- qr$coefficients
-      coef_display$Estimate <- sprintf(paste0("%.", x$digits, "f"), coef_display$Estimate)
-      print(coef_display, row.names = FALSE, right = FALSE)
-      if (!is.na(qr$sigma)) cat("  sigma^2 =",
-                                sprintf(paste0("%.", x$digits, "f"), qr$sigma), "\n")
-    } else {
-      cat("  No results available\n")
+
+    if (is.null(qr$coef_table)) {
+      cat("  No results available\n\n")
+      next
     }
-    cat("\n")
+
+    if (!is.null(qr$sigma_by_dir)) {
+      # separable: mostrar resumen compacto por parámetro y sigma_by_dir
+      cat("  Coefficients (by direction summary):\n")
+      print(qr$coef_table, row.names = FALSE, right = FALSE)
+      qs <- stats::quantile(qr$sigma_by_dir, c(0, .5, 1), na.rm = TRUE)
+      cat("  sigma (by dir): min/med/max =",
+          sprintf(paste0("%.", dg, "f / %.", dg, "f / %.", dg, "f"),
+                  qs[1], qs[2], qs[3]), "\n\n")
+    } else {
+      # joint: imprime primeras N filas si es largo
+      cat("  Coefficients:\n")
+      N <- nrow(qr$coef_table)
+      show <- min(N, 10L)
+      print(qr$coef_table[seq_len(show), , drop = FALSE], row.names = FALSE, right = FALSE)
+      if (N > show) cat("    ... (", N - show, " more)\n", sep = "")
+      if (length(qr$sigma_scalar) == 1L && is.finite(qr$sigma_scalar))
+        cat("  sigma^2 =", sprintf(paste0("%.", dg, "f"), qr$sigma_scalar), "\n")
+      cat("\n")
+    }
   }
 
-  non_converged <- which(!converged_status)
-  if (length(non_converged) > 0) {
+  if (any(!conv)) {
+    bad <- which(!conv)
     cat("Warnings:\n")
     cat("  * Non-converged quantiles:",
-        paste(x$quantiles[non_converged], collapse = ", "), "\n")
-    cat("  * Consider increasing max_iter or checking model specification\n")
+        paste(x$quantiles[bad], collapse = ", "), "\n")
+    cat("  * Consider increasing 'max_iter', relaxing 'epsilon', or revising priors\n")
   }
   invisible(x)
 }

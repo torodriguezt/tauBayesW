@@ -11,7 +11,7 @@ knitr::opts_chunk$set(
 ## ----installation, eval=FALSE-------------------------------------------------
 # # From CRAN (when available)
 # install.packages("tauBayesW")
-# 
+#
 # # From GitHub (development version)
 # # remotes::install_github("torodriguezt/tauBayesW")
 
@@ -33,11 +33,11 @@ weights <- runif(n, 0.5, 2)  # Survey weights
 data <- data.frame(y, x1, x2)
 
 # Single quantile regression (median)
-model_median <- bqr.svy(y ~ x1 + x2, 
+model_median <- bqr.svy(y ~ x1 + x2,
                         data = data,
                         weights = weights,
                         quantile = 0.5,
-                        n_mcmc = 2000,
+                        iter = 2000,
                         verbose = FALSE)
 
 summary(model_median)
@@ -47,10 +47,10 @@ summary(model_median)
 quantiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
 
 model_multi <- mo.bqr.svy(y ~ x1 + x2,
-                          data = data, 
+                          data = data,
                           weights = weights,
                           quantile = quantiles,
-                          max_iter = 100,
+                          max_iter = 500,
                           verbose = FALSE)
 
 summary(model_multi)

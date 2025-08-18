@@ -492,3 +492,290 @@ plot.mo.bqr.svy <- function(x, type = c("quantiles", "convergence"), ...) {
   }
 }
 
+#' 3D quantile body for \code{mo.bqr.svy} (d = 3)
+#'
+#' Draws the directional quantile body in \eqn{\mathbb{R}^3} for a fitted
+#' \code{mo.bqr.svy} model at a fixed covariate configuration \eqn{X_0}.
+#' For each direction \eqn{U_{\cdot k}} on the unit sphere the function computes
+#' the directional quantile \eqn{r_k = X_0^\top \hat\beta_{\tau,k}} (or a common
+#' \eqn{\hat\beta_\tau} in \code{em_mode="joint"}) and plots the points
+#' \eqn{r_k U_{\cdot k}}. The convex hull of those points is rendered as a mesh.
+#'
+#' @param object A fitted object of class \code{mo.bqr.svy} with \code{nrow(object$U) == 3}.
+#' @param tau Numeric scalar. Quantile level to display. Defaults to the first
+#'   element in \code{object$quantile}.
+#' @param data Optional \code{data.frame} from which sensible defaults for
+#'   \code{fixed_values} (medians/modes) are derived to build \eqn{X_0}.
+#' @param fixed_values Optional named \code{list} giving values for covariates
+#'   (matching the model formula) to build \eqn{X_0}. Overrides values inferred
+#'   from \code{data}. Example: \code{list(x1 = 0, x2 = 1)}.
+#' @param dirs Optional integer vector with a subset of directions \eqn{k} to plot.
+#'   By default all directions are used.
+#' @param engine Character, \code{"plotly"} (default) for interactive plot or
+#'   \code{"rgl"} for an OpenGL window.
+#' @param col Color for the mesh (single color). Default \code{"#D1495B"}.
+#' @param opacity Mesh opacity in \code{[0,1]}. Default \code{0.55}.
+#' @param show_points Logical; if \code{TRUE}, also plots the vertex cloud.
+#' @param z_by_dir Optional list or matrix with direction-specific “gamma inputs”
+#'   when using \code{em_mode="joint"} and your specification includes directional
+#'   \eqn{\gamma_{k,c}} terms. If provided, it adds \eqn{\sum_c \gamma_{k,c} z_{k,c}}
+#'   to each radius \eqn{r_k}. Leave \code{NULL} (default) if you used \code{r = 0}.
+#'
+#' @return A \code{plotly} object (when \code{engine="plotly"}) or \code{NULL}
+#'   (when \code{engine="rgl"}) invisibly.
+#'
+#' @details
+#' The function assumes a linear predictor in the X-part. In
+#' \code{em_mode="separable"}, the X-coefficients are direction-specific and taken
+#' from \code{fit[[qi]]$beta_dir}. In \code{em_mode="joint"}, a single X-coefficient
+#' vector is used for all directions. If your fit used \code{r = 0} (no \eqn{\Gamma}),
+#' you can ignore \code{z_by_dir}.
+#'
+#' Column-name alignment is attempted between the model matrix columns and the
+#' stored coefficients; unnamed coefficients fall back to column order.
+#'
+#' @section Dependencies:
+#' Requires \pkg{plotly} for interactive rendering and \pkg{geometry} for the
+#' convex hull (\code{convhulln}). With \code{engine="rgl"}, requires \pkg{rgl}.
+#'
+#' @examples
+#' \dontrun{
+#' # fit3d <- mo.bqr.svy(cbind(y1,y2,y3) ~ x1 + x2, data=mydata,
+#' #                     quantile=0.5, algorithm="em", n_dir=60, r=0)
+#' plot_quantile_body3d.mo.bqr.svy(fit3d,
+#'   tau = 0.5, data = mydata, fixed_values = list(x1 = 0, x2 = 0),
+#'   engine = "plotly", opacity = 0.6, show_points = TRUE)
+#' }
+#'
+#' @importFrom stats terms model.matrix delete.response median
+#' @export
+plot_quantile_body3d.mo.bqr.svy <- function(object,
+                                            tau = NULL,
+                                            data = NULL,
+                                            fixed_values = NULL,
+                                            dirs = NULL,
+                                            engine = c("plotly","rgl"),
+                                            col = "#D1495B",
+                                            opacity = 0.55,
+                                            show_points = TRUE,
+                                            z_by_dir = NULL) {
+  engine <- match.arg(engine)
+  if (!inherits(object, "mo.bqr.svy"))
+    stop("object must be class 'mo.bqr.svy'.")
+  U <- object$U
+  if (is.null(U) || !is.matrix(U) || nrow(U) != 3)
+    stop("This plot requires d = 3 (nrow(object$U) == 3).")
+  K <- ncol(U)
+
+  # Normaliza columnas de U (||u_k|| = 1)
+  U <- apply(U, 2, function(v) { s <- sqrt(sum(v^2)); if (s == 0) v else v/s })
+
+  # ---- seleccionar cuantil ----
+  taus <- object$quantile
+  if (is.null(taus) || !length(taus)) stop("No quantile levels in object.")
+  if (is.null(tau)) tau <- taus[1]
+  qi <- which.min(abs(taus - tau))
+  tau <- taus[qi]
+
+  # ---- construir X0 (una fila) ----
+  coef_names <- names(object$coefficients)
+  form <- if (!is.null(object$formula)) object$formula else object$call$formula
+
+  X0 <- NULL; xnames <- NULL
+  # Intento 1: armar a partir de formula + data (si hay) + fixed_values
+  try({
+    trm  <- stats::terms(form)
+    newdata <- list()
+    if (!is.null(data)) {
+      for (v in all.vars(form)[-1]) {
+        if (!v %in% names(data)) next
+        colv <- data[[v]]
+        if (!is.null(fixed_values) && v %in% names(fixed_values)) {
+          newdata[[v]] <- fixed_values[[v]]
+        } else if (is.numeric(colv)) {
+          newdata[[v]] <- stats::median(colv, na.rm = TRUE)
+        } else {
+          mf <- names(sort(table(colv), decreasing = TRUE))[1]
+          newdata[[v]] <- if (is.factor(colv)) factor(mf, levels = levels(colv)) else mf
+        }
+      }
+    } else if (!is.null(fixed_values)) {
+      newdata <- fixed_values
+    }
+    newdata <- as.data.frame(newdata, optional = TRUE)
+    X0 <- stats::model.matrix(stats::delete.response(trm), data = newdata)
+    xnames <- colnames(X0)
+  }, silent = TRUE)
+
+  # Intento 2 (fallback): si no se pudo, usar nombres de coeficientes:
+  if (is.null(X0) || is.null(xnames) || ncol(X0) == 0) {
+    if (is.null(coef_names) || !length(coef_names))
+      stop("Couldn't build X0; provide 'fixed_values' or fit should expose coefficient names.")
+    xnames <- coef_names
+    X0 <- matrix(0, nrow = 1, ncol = length(xnames))
+    colnames(X0) <- xnames
+    if ("(Intercept)" %in% xnames) X0[, "(Intercept)"] <- 1
+    if (!is.null(fixed_values)) {
+      for (nm in names(fixed_values)) if (nm %in% xnames) X0[, nm] <- fixed_values[[nm]]
+    }
+  }
+
+  # ---- direcciones a usar ----
+  if (is.null(dirs)) dirs <- seq_len(K)
+  dirs <- as.integer(dirs[dirs >= 1 & dirs <= K])
+  if (!length(dirs)) stop("No valid directions selected.")
+  Usel <- U[, dirs, drop = FALSE]
+
+  # ---- radios r_k ----
+  r_vec <- numeric(length(dirs))
+  if (identical(object$mode, "separable")) {
+    beta_dir <- object$fit[[qi]]$beta_dir
+    if (is.null(beta_dir))
+      stop("No 'beta_dir' found. Was the model fitted with em_mode='separable'?")
+    # alineación por nombres si existen
+    if (!is.null(colnames(beta_dir))) {
+      bx <- matrix(0, nrow = nrow(beta_dir), ncol = ncol(X0))
+      colnames(bx) <- colnames(X0)
+      common <- intersect(colnames(beta_dir), colnames(X0))
+      if (length(common)) bx[, common] <- beta_dir[, common, drop = FALSE]
+    } else {
+      pX <- min(ncol(beta_dir), ncol(X0))
+      bx <- matrix(0, nrow = nrow(beta_dir), ncol = ncol(X0))
+      colnames(bx) <- colnames(X0)
+      bx[, seq_len(pX)] <- beta_dir[, seq_len(pX), drop = FALSE]
+    }
+    bx <- bx[dirs, , drop = FALSE]
+    for (i in seq_along(dirs)) {
+      r_vec[i] <- as.numeric(X0 %*% matrix(bx[i, , drop = FALSE], ncol = 1))
+    }
+  } else { # joint
+    b <- object$fit[[qi]]$beta
+    if (is.null(b)) stop("No 'beta' found. Was the model fitted with em_mode='joint'?")
+    if (!is.null(names(b))) {
+      bx <- numeric(ncol(X0)); names(bx) <- colnames(X0)
+      common <- intersect(names(b), colnames(X0))
+      if (length(common)) bx[common] <- b[common]
+    } else {
+      bx <- b[seq_len(ncol(X0))]
+      names(bx) <- colnames(X0)
+    }
+    rk <- as.numeric(X0 %*% matrix(bx, ncol = 1))
+    r_vec[] <- rk
+
+    # offset por gammas si el usuario lo provee (con nombres tipo gamma_k*_c*)
+    if (!is.null(z_by_dir) && !is.null(names(b))) {
+      for (ii in seq_along(dirs)) {
+        k <- dirs[ii]
+        pat <- paste0("^gamma_k", k, "_c")
+        gk  <- b[grep(pat, names(b), perl = TRUE)]
+        zk  <- if (is.list(z_by_dir)) z_by_dir[[k]] else
+          if (is.matrix(z_by_dir)) z_by_dir[k, seq_along(gk), drop = TRUE] else NULL
+        if (!is.null(zk) && length(zk) == length(gk))
+          r_vec[ii] <- r_vec[ii] + sum(as.numeric(gk) * as.numeric(zk))
+      }
+    }
+  }
+
+  # ---- puntos cartesianos: r_k * U_k ----
+  pts <- sweep(Usel, 2, r_vec, `*`)  # 3 x |dirs|
+  Xv <- as.numeric(pts[1,]); Yv <- as.numeric(pts[2,]); Zv <- as.numeric(pts[3,])
+
+  # ====== Hull (robusto) ======
+  if (engine == "plotly" && !requireNamespace("plotly", quietly = TRUE))
+    stop("Package 'plotly' is required.", call. = FALSE)
+  if (!requireNamespace("geometry", quietly = TRUE))
+    stop("Package 'geometry' is required.", call. = FALSE)
+
+  pts_mat <- unique(cbind(Xv, Yv, Zv))
+  need_only_points <- nrow(pts_mat) < 4
+
+  # si casi degenerado, jitter minúsculo
+  if (!need_only_points) {
+    s <- svd(scale(pts_mat, scale = FALSE))
+    rank_est <- sum(s$d > (max(s$d) * .Machine$double.eps * 50))
+    if (rank_est < 3) {
+      rng <- apply(pts_mat, 2, function(v) diff(range(v)))
+      eps <- pmax(rng, 1) * 1e-8
+      set.seed(1)
+      pts_mat <- pts_mat + sweep(matrix(rnorm(length(pts_mat), 0, 1), ncol = 3), 2, eps, `*`)
+    }
+  }
+
+  hull_ok <- FALSE; tri <- NULL
+  if (!need_only_points) {
+    hull_try <- try(geometry::convhulln(pts_mat, options = "Qt QJ"), silent = TRUE)
+    if (!inherits(hull_try, "try-error")) {
+      tri <- t(hull_try)
+      hull_ok <- TRUE
+    }
+  }
+
+  # ---- nombres de respuestas (para pintar datos si 'data' no es NULL) ----
+  resp_names <- NULL
+  if (!is.null(data)) {
+    # extrae LHS de la fórmula; maneja cbind(y1,y2,y3)
+    lhs <- tryCatch(form[[2]], error = function(e) NULL)
+    if (!is.null(lhs)) {
+      vars_lhs <- setdiff(all.vars(lhs), "cbind")
+      if (length(vars_lhs) == 3 && all(vars_lhs %in% names(data))) {
+        resp_names <- vars_lhs
+      }
+    }
+  }
+
+  # ====== Render ======
+  if (engine == "plotly") {
+    plt <- plotly::plot_ly()
+    if (hull_ok) {
+      plt <- plotly::add_mesh(
+        plt, x = pts_mat[,1], y = pts_mat[,2], z = pts_mat[,3],
+        i = tri[1,]-1, j = tri[2,]-1, k = tri[3,]-1,
+        color = I(col), opacity = opacity, name = paste0("tau=", tau)
+      )
+    }
+    if (isTRUE(show_points) || !hull_ok) {
+      plt <- plotly::add_markers(
+        plt, x = pts_mat[,1], y = pts_mat[,2], z = pts_mat[,3],
+        marker = list(size = 3, opacity = 0.9, color = if (hull_ok) "#333333" else col),
+        name = if (hull_ok) "vertices" else paste0("tau=", tau, " (points)")
+      )
+    }
+    # --- pintar datos observados si 'data' fue provista ---
+    if (!is.null(resp_names)) {
+      Yobs <- data[, resp_names]
+      plt <- plotly::add_markers(
+        plt,
+        x = Yobs[[1]], y = Yobs[[2]], z = Yobs[[3]],
+        marker = list(size = 3, color = "steelblue", opacity = 0.55),
+        name   = "observed data"
+      )
+    }
+
+    plt <- plotly::layout(
+      plt,
+      scene = list(xaxis = list(title = if (!is.null(resp_names)) resp_names[1] else "y1"),
+                   yaxis = list(title = if (!is.null(resp_names)) resp_names[2] else "y2"),
+                   zaxis = list(title = if (!is.null(resp_names)) resp_names[3] else "y3")),
+      title = paste0("Quantile body (d=3), tau = ", tau)
+    )
+    return(plt)
+
+  } else { # rgl
+    if (!requireNamespace("rgl", quietly = TRUE))
+      stop("Package 'rgl' is required for engine = 'rgl'.", call. = FALSE)
+    if (hull_ok) {
+      rgl::tmesh3d(vertices = t(pts_mat),
+                   indices  = t(tri),
+                   homogeneous = FALSE) |>
+        rgl::shade3d(color = col, alpha = opacity)
+    }
+    if (isTRUE(show_points) || !hull_ok) {
+      rgl::points3d(pts_mat, col = if (hull_ok) 1 else col, size = 5)
+    }
+    if (!is.null(resp_names)) {
+      Yobs <- data[, resp_names]
+      rgl::points3d(as.matrix(Yobs), col = "steelblue", size = 4)
+    }
+    invisible(NULL)
+  }
+}
