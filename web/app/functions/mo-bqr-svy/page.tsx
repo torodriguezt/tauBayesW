@@ -136,24 +136,6 @@ print(model)`
                   </p>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Key Features</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="list-disc list-inside space-y-2">
-                    <li>Simultaneous estimation of multiple quantiles</li>
-                    <li>Multidirectional EM algorithm with joint/separable modes</li>
-                    <li>Support for multivariate responses</li>
-                    <li>Configurable search directions (n_dir parameter)</li>
-                    <li>Flexible prior specification per quantile and direction</li>
-                    <li>Survey weights integration</li>
-                    <li>Automatic convergence monitoring</li>
-                    <li>Fast C++ implementation (769× speedup)</li>
-                  </ul>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             <TabsContent value="usage" className="space-y-6">
@@ -271,29 +253,6 @@ print(model)`
                     of quantile bodies for models with 3-dimensional responses. This function draws the directional 
                     quantile body in ℝ³ for a fitted mo.bqr.svy model at a fixed covariate configuration.
                   </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-semibold mb-2">Key Features:</h4>
-                      <ul className="text-sm space-y-1">
-                        <li>• Interactive 3D plots with plotly</li>
-                        <li>• Convex hull mesh rendering</li>
-                        <li>• Support for both joint and separable modes</li>
-                        <li>• Configurable opacity and colors</li>
-                        <li>• Optional observed data overlay</li>
-                        <li>• Direction subset selection</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-2">Requirements:</h4>
-                      <ul className="text-sm space-y-1">
-                        <li>• 3-dimensional response (d = 3)</li>
-                        <li>• plotly package for interactive plots</li>
-                        <li>• geometry package for convex hull</li>
-                        <li>• Optional: rgl for OpenGL rendering</li>
-                      </ul>
-                    </div>
-                  </div>
 
                   <div className="bg-muted p-4 rounded-lg">
                     <h4 className="font-semibold mb-2">Example Usage:</h4>

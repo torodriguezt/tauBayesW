@@ -23,7 +23,9 @@ Imports:
     Rcpp,
     stats,
     graphics,
-    methods
+    methods,
+    plotly,
+    geometry
 Suggests:
     knitr,
     rmarkdown,

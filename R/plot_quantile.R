@@ -547,7 +547,10 @@ plot.mo.bqr.svy <- function(x, type = c("quantiles", "convergence"), ...) {
 #'   engine = "plotly", opacity = 0.6, show_points = TRUE)
 #' }
 #'
-#' @importFrom stats terms model.matrix delete.response median
+#' @importFrom stats terms model.matrix delete.response median 
+#' @importFrom plotly plot_ly add_mesh add_markers layout
+#' @importFrom geometry convhulln
+#' @importFrom rgl tmesh3d shade3d points3d
 #' @export
 plot_quantile_body3d.mo.bqr.svy <- function(object,
                                             tau = NULL,

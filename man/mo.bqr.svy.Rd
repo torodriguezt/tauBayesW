@@ -39,7 +39,7 @@ mo.bqr.svy(
 \item A function \code{f(tau, p, names)}: Generates quantile-specific priors
 }}
 
-\item{n_dir}{Number of search directions (currently not used).}
+\item{n_dir}{Number of projection directions (if directions \code{U} are not supplied).}
 
 \item{epsilon}{Convergence tolerance for the EM algorithm.}
 
@@ -47,7 +47,21 @@ mo.bqr.svy(
 
 \item{verbose}{Logical indicating whether to print progress messages.}
 
-\item{...}{Additional arguments (currently unused).}
+\item{em_mode}{Character string, either \code{"joint"} or \code{"separable"}.
+Controls whether all directions share the same orthogonal basis ("joint") or
+each direction has its own basis ("separable").}
+
+\item{gamma_prior_var}{Numeric. Prior variance for the gamma coefficients
+when using \code{em_mode = "separable"}.}
+
+\item{...}{Additional arguments for direction specification:
+\describe{
+\item{U}{Optional user-specified matrix of directions (\eqn{d \times K}).}
+\item{Gamma}{Optional user-specified matrix of orthogonal complements
+(\eqn{d \times K r}).}
+\item{r}{Optional integer. Number of orthogonal complement vectors per
+direction (between 0 and \eqn{d-1}). Defaults to 1 if not specified.}
+}}
 }
 \value{
 An object of class \code{"mo.bqr.svy"} containing:
@@ -60,38 +74,43 @@ An object of class \code{"mo.bqr.svy"} containing:
 \item{fit}{List of fitted results for each quantile}
 \item{coefficients}{Coefficients from the first quantile}
 \item{n_dir}{Number of directions}
+\item{U}{Matrix of projection directions}
+\item{Gamma}{Matrix of orthogonal complements (if applicable)}
+\item{mode}{Fitting mode, \code{"joint"} or \code{"separable"}}
 }
 \description{
 Fits Bayesian quantile regression models for multiple quantiles simultaneously
 using the EM algorithm. Supports complex survey designs through sampling weights
-and allows for quantile-specific prior distributions.
+and allows for quantile-specific prior distributions. Can handle multiple
+projection directions in either "joint" or "separable" mode.
 }
 \details{
 This function allows for flexible prior specification across quantiles. When a list
 of priors is provided, elements can be named using either \code{"q0.1"} format or
 \code{"0.1"} format to match specific quantiles. When a function is provided, it
 will be called with \code{(tau, p, names)} for each quantile level.
+
+The projection directions \code{U} and their orthogonal complements \code{Gamma}
+can be supplied directly, or generated automatically when only \code{n_dir} (and
+optionally \code{r}) are specified.
 }
 \examples{
 # Basic usage with default priors
-fit1 <- mo.bqr.svy(y ~ x1 + x2, data = mydata, quantile = c(0.1, 0.5, 0.9))
+fit1 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
+                   quantile = c(0.1, 0.5, 0.9))
 
 # Using quantile-specific priors via function
 prior_fn <- function(tau, p, names) {
-  # More concentrated priors for extreme quantiles
   variance <- ifelse(tau < 0.2 | tau > 0.8, 0.1, 1.0)
   mo_prior_default(p = p, beta_cov = diag(variance, p), names = names)
 }
 fit2 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
                    quantile = c(0.1, 0.5, 0.9), prior = prior_fn)
 
-# Using a list of quantile-specific priors
-priors <- list(
-  q0.1 = mo_prior_default(p = 3, beta_mean = c(0, 0.8, -0.3)),
-  q0.5 = mo_prior_default(p = 3, beta_mean = c(0, 1.0, -0.5)),
-  q0.9 = mo_prior_default(p = 3, beta_mean = c(0, 1.2, -0.7))
-)
+# Explicit control of directions
+set.seed(1)
+U <- matrix(rnorm(6), nrow = 3)  # d=3, K=2
 fit3 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
-                   quantile = c(0.1, 0.5, 0.9), prior = priors)
+                   quantile = 0.5, U = U, r = 2, em_mode = "separable")
 
 }

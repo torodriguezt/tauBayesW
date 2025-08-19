@@ -12,18 +12,12 @@ if (!exists("%||%"))
 
 new_mo_bqr_prior <- function(beta_mean, beta_cov, sigma_shape, sigma_rate, names = NULL) {
   if (!is.null(names)) {
+    if (length(names) != length(beta_mean))
+      stop("'names' must have same length as 'beta_mean'.")
+    if (!all(dim(beta_cov) == c(length(names), length(names))))
+      stop("'beta_cov' must be a square matrix with dimension length(names).")
     names(beta_mean) <- names
-    dimnames(beta_cov) <-        # add gammas in the same order as gamma_names_joint (k1_c1, k1_c2, ... kK_c_r)
-        gam_vec <- as.numeric(t(beta_gamma_by_dir))
-        names(gam_vec) <- paste0("gamma_k", rep(seq_len(ncol(U)), each = r),
-                                 "_c", sequence(rep(r, ncol(U))))
-        beta_flat <- c(beta_flat, gam_vec)
-      }
-
-      results[[qi]] <- list(
-        beta_dir    = beta_dir,                # K x (p+r)
-        beta        = beta_flat,               # vector with expanded names (useful for coef())
-        sigma_by_dir= as.numeric(cpp_result$sigma), # K, names)
+    dimnames(beta_cov) <- list(names, names)
   }
   structure(
     list(
@@ -35,6 +29,7 @@ new_mo_bqr_prior <- function(beta_mean, beta_cov, sigma_shape, sigma_rate, names
     class = "mo_bqr_prior"
   )
 }
+
 
 #' Default prior for Multiple-Output BQR (EM)
 #'
@@ -240,7 +235,8 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
 #'
 #' Fits Bayesian quantile regression models for multiple quantiles simultaneously
 #' using the EM algorithm. Supports complex survey designs through sampling weights
-#' and allows for quantile-specific prior distributions.
+#' and allows for quantile-specific prior distributions. Can handle multiple
+#' projection directions in either "joint" or "separable" mode.
 #'
 #' @param formula A formula object specifying the model.
 #' @param weights Optional vector of sampling weights. If \code{NULL}, equal weights are used.
@@ -254,17 +250,33 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
 #'     \item A list of \code{mo_bqr_prior} objects: One prior per quantile
 #'     \item A function \code{f(tau, p, names)}: Generates quantile-specific priors
 #'   }
-#' @param n_dir Number of search directions (currently not used).
+#' @param n_dir Number of projection directions (if directions \code{U} are not supplied).
 #' @param epsilon Convergence tolerance for the EM algorithm.
 #' @param max_iter Maximum number of EM iterations.
 #' @param verbose Logical indicating whether to print progress messages.
-#' @param ... Additional arguments (currently unused).
+#' @param em_mode Character string, either \code{"joint"} or \code{"separable"}.
+#'   Controls whether all directions share the same orthogonal basis ("joint") or
+#'   each direction has its own basis ("separable").
+#' @param gamma_prior_var Numeric. Prior variance for the gamma coefficients
+#'   when using \code{em_mode = "separable"}.
+#' @param ... Additional arguments for direction specification:
+#'   \describe{
+#'     \item{U}{Optional user-specified matrix of directions (\eqn{d \times K}).}
+#'     \item{Gamma}{Optional user-specified matrix of orthogonal complements
+#'       (\eqn{d \times K r}).}
+#'     \item{r}{Optional integer. Number of orthogonal complement vectors per
+#'       direction (between 0 and \eqn{d-1}). Defaults to 1 if not specified.}
+#'   }
 #'
 #' @details
 #' This function allows for flexible prior specification across quantiles. When a list
 #' of priors is provided, elements can be named using either \code{"q0.1"} format or
 #' \code{"0.1"} format to match specific quantiles. When a function is provided, it
 #' will be called with \code{(tau, p, names)} for each quantile level.
+#'
+#' The projection directions \code{U} and their orthogonal complements \code{Gamma}
+#' can be supplied directly, or generated automatically when only \code{n_dir} (and
+#' optionally \code{r}) are specified.
 #'
 #' @return An object of class \code{"mo.bqr.svy"} containing:
 #'   \item{call}{The matched call}
@@ -276,28 +288,28 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
 #'   \item{fit}{List of fitted results for each quantile}
 #'   \item{coefficients}{Coefficients from the first quantile}
 #'   \item{n_dir}{Number of directions}
+#'   \item{U}{Matrix of projection directions}
+#'   \item{Gamma}{Matrix of orthogonal complements (if applicable)}
+#'   \item{mode}{Fitting mode, \code{"joint"} or \code{"separable"}}
 #'
 #' @examples
 #' # Basic usage with default priors
-#' fit1 <- mo.bqr.svy(y ~ x1 + x2, data = mydata, quantile = c(0.1, 0.5, 0.9))
+#' fit1 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
+#'                    quantile = c(0.1, 0.5, 0.9))
 #'
 #' # Using quantile-specific priors via function
 #' prior_fn <- function(tau, p, names) {
-#'   # More concentrated priors for extreme quantiles
 #'   variance <- ifelse(tau < 0.2 | tau > 0.8, 0.1, 1.0)
 #'   mo_prior_default(p = p, beta_cov = diag(variance, p), names = names)
 #' }
 #' fit2 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
 #'                    quantile = c(0.1, 0.5, 0.9), prior = prior_fn)
 #'
-#' # Using a list of quantile-specific priors
-#' priors <- list(
-#'   q0.1 = mo_prior_default(p = 3, beta_mean = c(0, 0.8, -0.3)),
-#'   q0.5 = mo_prior_default(p = 3, beta_mean = c(0, 1.0, -0.5)),
-#'   q0.9 = mo_prior_default(p = 3, beta_mean = c(0, 1.2, -0.7))
-#' )
+#' # Explicit control of directions
+#' set.seed(1)
+#' U <- matrix(rnorm(6), nrow = 3)  # d=3, K=2
 #' fit3 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
-#'                    quantile = c(0.1, 0.5, 0.9), prior = priors)
+#'                    quantile = 0.5, U = U, r = 2, em_mode = "separable")
 #'
 #' @export
 #' @importFrom stats model.frame model.matrix model.response

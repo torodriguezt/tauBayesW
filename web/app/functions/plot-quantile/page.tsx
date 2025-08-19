@@ -390,40 +390,12 @@ plot_quantile_body3d.mo.bqr.svy(
                     </pre>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-semibold mb-2">Key Features:</h4>
-                      <ul className="text-sm space-y-1">
-                        <li>• Interactive 3D mesh with plotly</li>
-                        <li>• Convex hull computation</li>
-                        <li>• Observed data overlay</li>
-                        <li>• Configurable colors and opacity</li>
-                        <li>• Direction subset selection</li>
-                        <li>• Support for both joint/separable modes</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-2">Function Arguments:</h4>
-                      <ul className="text-sm space-y-1">
-                        <li>• <strong>object:</strong> mo.bqr.svy with d=3</li>
-                        <li>• <strong>tau:</strong> quantile level to display</li>
-                        <li>• <strong>data:</strong> original data for overlay</li>
-                        <li>• <strong>fixed_values:</strong> covariate values</li>
-                        <li>• <strong>engine:</strong> "plotly" or "rgl"</li>
-                        <li>• <strong>dirs:</strong> direction subset</li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 p-3 border rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                    <h4 className="font-semibold text-sm mb-2">Advanced Options:</h4>
-                    <ul className="text-xs space-y-1">
-                      <li>• <strong>z_by_dir:</strong> Direction-specific gamma inputs for joint mode</li>
-                      <li>• <strong>dirs:</strong> Select subset of directions (e.g., dirs = 1:10)</li>
-                      <li>• <strong>engine = "rgl":</strong> OpenGL rendering for better performance</li>
-                      <li>• <strong>show_points = FALSE:</strong> Hide vertex points, show only mesh</li>
-                    </ul>
-                  </div>
+                  <Alert>
+                    <AlertDescription>
+                      <strong>Requirements:</strong> This function requires the plotly and geometry packages, 
+                      and works only with mo.bqr.svy objects where the response has exactly 3 dimensions.
+                    </AlertDescription>
+                  </Alert>
                 </CardContent>
               </Card>
             </TabsContent>
