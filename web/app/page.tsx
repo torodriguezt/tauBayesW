@@ -427,7 +427,7 @@ export default function RDocumentation() {
                             </CardTitle>
                           </div>
                           <CardDescription className="text-base leading-relaxed">
-                            Comprehensive visualization functions for quantile regression models with customizable plotting options.
+                            Comprehensive visualization functions for quantile regression models with customizable plotting options and 3D quantile body visualization.
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-0">

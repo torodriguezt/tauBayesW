@@ -632,7 +632,7 @@ plot_quantile_body3d.mo.bqr.svy <- function(object,
     beta_dir <- object$fit[[qi]]$beta_dir
     if (is.null(beta_dir))
       stop("No 'beta_dir' found. Was the model fitted with em_mode='separable'?")
-    # alineación por nombres si existen
+    # alignment by names if they exist
     if (!is.null(colnames(beta_dir))) {
       bx <- matrix(0, nrow = nrow(beta_dir), ncol = ncol(X0))
       colnames(bx) <- colnames(X0)
@@ -689,7 +689,7 @@ plot_quantile_body3d.mo.bqr.svy <- function(object,
   pts_mat <- unique(cbind(Xv, Yv, Zv))
   need_only_points <- nrow(pts_mat) < 4
 
-  # si casi degenerado, jitter minúsculo
+  # if almost degenerate, add minimal jitter
   if (!need_only_points) {
     s <- svd(scale(pts_mat, scale = FALSE))
     rank_est <- sum(s$d > (max(s$d) * .Machine$double.eps * 50))
@@ -713,7 +713,7 @@ plot_quantile_body3d.mo.bqr.svy <- function(object,
   # ---- nombres de respuestas (para pintar datos si 'data' no es NULL) ----
   resp_names <- NULL
   if (!is.null(data)) {
-    # extrae LHS de la fórmula; maneja cbind(y1,y2,y3)
+    # extract LHS from formula; handles cbind(y1,y2,y3)
     lhs <- tryCatch(form[[2]], error = function(e) NULL)
     if (!is.null(lhs)) {
       vars_lhs <- setdiff(all.vars(lhs), "cbind")

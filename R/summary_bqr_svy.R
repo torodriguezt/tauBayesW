@@ -516,7 +516,7 @@ print.summary.bqr.svy <- function(x, ...) {
 
   fmt_num <- function(v, d) ifelse(is.na(v), "---", sprintf(paste0("%.", d, "f"), as.numeric(v)))
 
-  # Un bloque por tau (idéntico formato para single/multi)
+  # One block per tau (identical format for single/multi)
   for (i in seq_along(x$per_tau)) {
     b <- x$per_tau[[i]]
     cat(sprintf("----- Quantile tau = %.3f -----\n", b$tau))
@@ -601,7 +601,7 @@ summary.mo.bqr.svy <- function(object, digits = 3, ...) {
       beta_dir <- fi$beta_dir
       if (is.null(beta_dir) || !is.matrix(beta_dir))
         stop("Expected 'beta_dir' for separable mode.")
-      # Resumen por columna (parámetro) a través de direcciones: min/med/max
+      # Summary by column (parameter) across directions: min/med/max
       cn <- colnames(beta_dir)
       if (is.null(cn)) cn <- paste0("V", seq_len(ncol(beta_dir)))
       qstats <- t(apply(beta_dir, 2, function(v) stats::quantile(v, c(0, .5, 1), na.rm = TRUE)))
@@ -690,7 +690,7 @@ print.summary.mo.bqr.svy <- function(x, ...) {
     }
 
     if (!is.null(qr$sigma_by_dir)) {
-      # separable: mostrar resumen compacto por parámetro y sigma_by_dir
+      # separable: show compact summary by parameter and sigma_by_dir
       cat("  Coefficients (by direction summary):\n")
       print(qr$coef_table, row.names = FALSE, right = FALSE)
       qs <- stats::quantile(qr$sigma_by_dir, c(0, .5, 1), na.rm = TRUE)
@@ -812,7 +812,7 @@ convergence_check.bqr.svy <- function(object,
   if (is.null(object$draws))
     stop("No MCMC draws found in object.")
 
-  # --- Helper: diagnósticos para una matriz de draws ---
+  # --- Helper: diagnostics for a draws matrix ---
   .diag_one <- function(d) {
     if (is.data.frame(d)) d <- data.matrix(d)
     d <- as.matrix(d)
@@ -876,7 +876,7 @@ convergence_check.bqr.svy <- function(object,
     return(out_list)
   }
 
-  # --- Tau único: comportamiento previo (pero usando Vehtari) ---
+  # --- Single tau: previous behavior (but using Vehtari) ---
   res <- .diag_one(object$draws)
   if (isTRUE(verbose)) {
     cat("=== Convergence diagnostics (bqr.svy) ===\n")

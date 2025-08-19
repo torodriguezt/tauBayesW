@@ -97,16 +97,18 @@ print(model)`
               <Badge variant="secondary">Multiple Quantiles</Badge>
               <Badge variant="secondary">Multidirectional</Badge>
               <Badge variant="secondary">Survey Weights</Badge>
+              <Badge variant="secondary">3D Visualization</Badge>
               <Badge variant="outline">Joint/Separable Modes</Badge>
             </div>
           </div>
 
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="usage">Usage</TabsTrigger>
               <TabsTrigger value="arguments">Arguments</TabsTrigger>
               <TabsTrigger value="examples">Examples</TabsTrigger>
+              <TabsTrigger value="plotting">3D Plotting</TabsTrigger>
               <TabsTrigger value="summary">Summary Methods</TabsTrigger>
             </TabsList>
 
@@ -250,6 +252,121 @@ print(model)`
                     >
                       {copied ? "Copied!" : <Copy className="h-4 w-4" />}
                     </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="plotting" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>3D Quantile Body Visualization</CardTitle>
+                  <CardDescription>
+                    Advanced 3D plotting for multivariate responses (d = 3)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p>
+                    The <code>plot_quantile_body3d.mo.bqr.svy()</code> function creates interactive 3D visualizations 
+                    of quantile bodies for models with 3-dimensional responses. This function draws the directional 
+                    quantile body in ℝ³ for a fitted mo.bqr.svy model at a fixed covariate configuration.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-semibold mb-2">Key Features:</h4>
+                      <ul className="text-sm space-y-1">
+                        <li>• Interactive 3D plots with plotly</li>
+                        <li>• Convex hull mesh rendering</li>
+                        <li>• Support for both joint and separable modes</li>
+                        <li>• Configurable opacity and colors</li>
+                        <li>• Optional observed data overlay</li>
+                        <li>• Direction subset selection</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2">Requirements:</h4>
+                      <ul className="text-sm space-y-1">
+                        <li>• 3-dimensional response (d = 3)</li>
+                        <li>• plotly package for interactive plots</li>
+                        <li>• geometry package for convex hull</li>
+                        <li>• Optional: rgl for OpenGL rendering</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="bg-muted p-4 rounded-lg">
+                    <h4 className="font-semibold mb-2">Example Usage:</h4>
+                    <pre className="text-sm overflow-x-auto">
+{`# Fit model with 3D response
+fit3d <- mo.bqr.svy(cbind(y1, y2, y3) ~ x1 + x2, 
+                    data = mydata,
+                    quantile = 0.5, 
+                    algorithm = "em", 
+                    n_dir = 60, 
+                    r = 0)
+
+# Create interactive 3D plot
+plot_quantile_body3d.mo.bqr.svy(
+  fit3d,
+  tau = 0.5,
+  data = mydata,
+  fixed_values = list(x1 = 0, x2 = 0),
+  engine = "plotly",
+  opacity = 0.6,
+  show_points = TRUE,
+  col = "#D1495B"
+)`}
+                    </pre>
+                  </div>
+
+                  <Alert>
+                    <AlertDescription>
+                      The 3D plotting function requires the response to be exactly 3-dimensional. 
+                      For responses with different dimensions, use the standard 2D plotting functions.
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Function Arguments</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <h4 className="font-semibold">object</h4>
+                      <p className="text-muted-foreground">Fitted mo.bqr.svy object with d=3</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">tau</h4>
+                      <p className="text-muted-foreground">Quantile level to display (default: first)</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">data</h4>
+                      <p className="text-muted-foreground">Original data for observed points overlay</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">fixed_values</h4>
+                      <p className="text-muted-foreground">Named list of covariate values</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">engine</h4>
+                      <p className="text-muted-foreground">"plotly" (interactive) or "rgl" (OpenGL)</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">opacity</h4>
+                      <p className="text-muted-foreground">Mesh transparency (0-1)</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">show_points</h4>
+                      <p className="text-muted-foreground">Display vertex points</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">dirs</h4>
+                      <p className="text-muted-foreground">Subset of directions to plot</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

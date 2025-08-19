@@ -13,7 +13,17 @@ if (!exists("%||%"))
 new_mo_bqr_prior <- function(beta_mean, beta_cov, sigma_shape, sigma_rate, names = NULL) {
   if (!is.null(names)) {
     names(beta_mean) <- names
-    dimnames(beta_cov) <- list(names, names)
+    dimnames(beta_cov) <-        # add gammas in the same order as gamma_names_joint (k1_c1, k1_c2, ... kK_c_r)
+        gam_vec <- as.numeric(t(beta_gamma_by_dir))
+        names(gam_vec) <- paste0("gamma_k", rep(seq_len(ncol(U)), each = r),
+                                 "_c", sequence(rep(r, ncol(U))))
+        beta_flat <- c(beta_flat, gam_vec)
+      }
+
+      results[[qi]] <- list(
+        beta_dir    = beta_dir,                # K x (p+r)
+        beta        = beta_flat,               # vector with expanded names (useful for coef())
+        sigma_by_dir= as.numeric(cpp_result$sigma), # K, names)
   }
   structure(
     list(
@@ -162,14 +172,14 @@ print.mo_bqr_prior <- function(x, ...) {
 
 
 as_prior_list_per_tau <- function(prior, p, names, taus) {
-  # caso NULL
+  # NULL case
   if (is.null(prior)) {
     priors <- replicate(length(taus), mo_prior_default(p, names = names), simplify = FALSE)
     names(priors) <- paste0("q", taus)
     return(priors)
   }
 
-  # caso función
+  # function case
   if (is.function(prior)) {
     priors <- lapply(taus, function(tau) {
       pr <- prior(tau, p, names)
@@ -179,7 +189,7 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
     return(priors)
   }
 
-  # caso objeto único o lista "legacy" válida
+  # single object or valid "legacy" list case
   if (inherits(prior, "mo_bqr_prior") ||
       (is.list(prior) && all(c("beta_mean","beta_cov","sigma_shape","sigma_rate") %in% names(prior)))) {
     pr0 <- as_mo_bqr_prior(prior, p = p, names = names)
@@ -342,14 +352,14 @@ mo.bqr.svy <- function(formula,
   dots <- list(...)
   U_user     <- dots$U      %||% NULL
   Gamma_user <- dots$Gamma  %||% NULL
-  r_user     <- dots$r      %||% NULL  # nº de columnas de Gamma por dirección (0..d-1)
+  r_user     <- dots$r      %||% NULL  # number of columns in Gamma per direction (0..d-1)
 
   # helper robusto para completar una base ortonormal a partir de v (unitario)
   .orthobasis_from_v <- function(v, d, r_needed) {
     v <- v / sqrt(sum(v^2))
     B <- diag(d); B[, 1] <- v
     Q <- qr.Q(qr(B), complete = TRUE)
-    # Fallback si por alguna razón faltaran columnas
+    # Fallback if for some reason there are missing columns
     if (ncol(Q) < (1 + r_needed)) {
       Pperp <- diag(d) - v %*% t(v)
       sv <- svd(Pperp)
@@ -415,7 +425,6 @@ mo.bqr.svy <- function(formula,
 
   G <- ncol(Gamma)  # puede ser 0
 
-  # --- Priors por cuantil (siempre en términos de beta_X) ---
   as_prior_list_per_tau <- function(prior, p, names, taus) {
     if (is.null(prior)) {
       priors <- replicate(length(taus),
@@ -548,11 +557,11 @@ mo.bqr.svy <- function(formula,
       beta_x_by_dir <- beta_dir[, 1:p, drop = FALSE]  # K x p
       beta_gamma_by_dir <- if (r>0) beta_dir[, (p+1):(p+r), drop = FALSE] else NULL
 
-      beta_flat <- as.numeric(t(beta_x_by_dir))  # X por dir apilado por filas
+      beta_flat <- as.numeric(t(beta_x_by_dir))  # X by dir stacked by rows
       names(beta_flat) <- as.vector(t(outer(coef_names, paste0("_k", seq_len(ncol(U))), paste0)))
 
       if (r > 0) {
-        # añadir gammas en el mismo orden de gamma_names_joint (k1_c1, k1_c2, ... kK_c_r)
+        # add gammas in the same order as gamma_names_joint (k1_c1, k1_c2, ... kK_c_r)
         gam_vec <- as.numeric(t(beta_gamma_by_dir))
         names(gam_vec) <- paste0("gamma_k", rep(seq_len(ncol(U)), each = r),
                                  "_c", sequence(rep(r, ncol(U))))
@@ -561,7 +570,7 @@ mo.bqr.svy <- function(formula,
 
       results[[qi]] <- list(
         beta_dir    = beta_dir,                # K x (p+r)
-        beta        = beta_flat,               # vector con nombres expandidos (útil para coef())
+        beta        = beta_flat,               
         sigma_by_dir= as.numeric(cpp_result$sigma), # K
         iter        = cpp_result$iter,
         converged   = cpp_result$converged,
@@ -573,7 +582,6 @@ mo.bqr.svy <- function(formula,
     }
   }
 
-  # coefficients (para compatibilidad con métodos que esperan vector)
   if (em_mode == "joint") {
     coefficients_all <- as.numeric(results[[1]]$beta)
     names(coefficients_all) <- names(results[[1]]$beta)
