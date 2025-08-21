@@ -275,28 +275,48 @@ print.bqr.svy <- function(x, digits = 3, ...) {
 #' @param x An object of class \code{"mo.bqr.svy"}.
 #' @param digits Integer, number of significant digits to print.
 #' @param ... Additional arguments passed to \code{\link[base]{print}}.
+#' @method print mo.bqr.svy
 #' @export
-print.mo.bqr.svy <- function(x, digits = 3, ...) {
+print.mo.bqr.svy <- function(x, digits = 3, show_directions = TRUE, ...) {
   cat("\nMultiple-Output Bayesian Quantile Regression (class 'mo.bqr.svy')\n")
   cat("Algorithm :", x$algorithm, "\n")
   cat("Quantiles :", paste(x$quantile, collapse = ", "), "\n")
   cat("Directions:", x$n_dir, "\n")
-  cat("\nBrief Results:\n")
-  for (i in seq_along(x$quantile)) {
-    q <- x$quantile[i]
-    fit_q <- x$fit[[i]]
-    if (!is.null(fit_q)) {
-      cat(sprintf("  Converged  : %s (%d iterations)\n",
-                  ifelse(isTRUE(fit_q$converged), "Yes", "No"),
-                  fit_q$iter %||% NA_integer_))
+
+  for (qi in seq_along(x$quantile)) {
+    cat(sprintf("\n--- Quantile %.3f ---\n", x$quantile[qi]))
+    fit_q <- x$fit[[qi]]
+    dirs  <- fit_q$directions
+
+    conv_vec  <- vapply(dirs, function(dr) isTRUE(dr$converged), logical(1))
+    iter_vec  <- vapply(dirs, function(dr) if (is.null(dr$iter)) NA_real_ else as.numeric(dr$iter), numeric(1))
+
+    cat(" Converged (all directions):", if (all(conv_vec, na.rm = TRUE)) "Yes" else "No", "\n")
+
+    if (all(is.na(iter_vec))) {
+      cat(" Iterations: -\n")
     } else {
-      cat(sprintf("  tau = %.3f: No results\n", q))
+      cat(sprintf(" Iterations: avg %.1f, min %d, max %d\n",
+                  mean(iter_vec, na.rm = TRUE),
+                  as.integer(min(iter_vec, na.rm = TRUE)),
+                  as.integer(max(iter_vec, na.rm = TRUE))))
+    }
+
+    if (isTRUE(show_directions)) {
+      for (k in seq_along(dirs)) {
+        dr <- dirs[[k]]
+        cat(sprintf("  Direction %d:\n", k))
+        print(round(dr$beta, digits))
+        cat("    sigma:", round(dr$sigma, digits),
+            " | converged:", dr$converged,
+            " | iter:", if (is.null(dr$iter)) "-" else dr$iter, "\n")
+      }
     }
   }
-  cat("\nUse summary() for detailed results.\n")
+
+  cat("\nUse summary() for a tabular view.\n")
   invisible(x)
 }
-
 #' Summary method for bwqr_fit objects
 #'
 #' @param object An object of class \code{"bwqr_fit"}.
@@ -563,162 +583,131 @@ print.summary.bqr.svy <- function(x, ...) {
 
 
 #' Summary method for Multiple-Output Bayesian Quantile Regression
-#' @param object An object of class `mo.bqr.svy`.
-#' @param digits Integer, number of decimal places for output (default 3).
-#' @param ... Additional arguments (unused).
-#' @return An object of class `summary.mo.bqr.svy` containing per-quantile results and metadata.
+#'
+#' Provides a tabular summary of fitted Bayesian quantile regression models
+#' estimated with \code{mo.bqr.svy}. The output contains, for each quantile
+#' and direction, the estimated coefficients, scale parameter, iteration count,
+#' and convergence status. In addition, summary attributes at the quantile level
+#' (average iterations, global convergence) are stored for use by the print method.
+#'
+#' @param object An object of class \code{"mo.bqr.svy"}, typically returned by
+#'   \code{\link{mo.bqr.svy}}.
+#' @param digits Integer, number of decimal places to use for rounding numeric
+#'   results. Defaults to \code{3}.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return A \code{summary.mo_bqr.svy} object, which is a data frame containing:
+#'   \itemize{
+#'     \item \code{quantile}: quantile level \eqn{\tau}.
+#'     \item \code{direction}: index of the direction used in the EM algorithm.
+#'     \item coefficient columns: estimated regression parameters for each covariate.
+#'     \item \code{sigma}: estimated scale parameter for that direction.
+#'     \item \code{iter}: number of EM iterations taken for that direction.
+#'     \item \code{converged}: logical indicating convergence for that direction.
+#'   }
+#'
+#'   Additionally, each block of rows corresponding to a quantile
+#'   has two attributes:
+#'   \itemize{
+#'     \item \code{"conv_global"}: TRUE if all directions converged, FALSE otherwise.
+#'     \item \code{"iter_summary"}: average number of iterations across directions.
+#'   }
+#'
+#' The object has class \code{c("summary.mo_bqr.svy", "data.frame")}, and its
+#' default print method displays both per-quantile summaries and per-direction
+#' details.
+#'
+#' @seealso \code{\link{mo.bqr.svy}}, \code{\link{print.summary.mo_bqr.svy}}
+#' Summary method for Multiple-Output Bayesian Quantile Regression
+#' (doc igual que ya tienes)
+#' @method summary mo.bqr.svy
 #' @export
 summary.mo.bqr.svy <- function(object, digits = 3, ...) {
   if (!inherits(object, "mo.bqr.svy"))
     stop("Object must be of class 'mo.bqr.svy'")
 
-  K         <- if (!is.null(object$U)) ncol(object$U) else NA_integer_
-  taus      <- object$quantile
-  fit_list  <- object$fit
-  modes_by_tau <- vapply(fit_list, function(f) if (is.null(f$mode)) NA_character_ else f$mode, character(1))
+  taus <- object$quantile
+  fit_list <- object$fit
 
   quantile_summaries <- lapply(seq_along(taus), function(i) {
     q  <- taus[i]
     fi <- fit_list[[i]]
-    if (is.null(fi)) {
-      return(list(
-        quantile     = q,
-        converged    = FALSE,
-        iterations   = NA_integer_,
-        mode         = NA_character_,
-        coef_table   = NULL,          # data.frame
-        sigma_scalar = NA_real_,      # escalar (joint)
-        sigma_by_dir = NULL           # vector (separable)
-      ))
-    }
+    dir_results <- fi$directions
 
-    mode_i    <- fi$mode
-    iters_i   <- if (!is.null(fi$iter)) as.integer(fi$iter) else NA_integer_
-    conv_i    <- isTRUE(fi$converged)
-
-    if (identical(mode_i, "separable")) {
-      # beta_dir: K x (p+r)
-      beta_dir <- fi$beta_dir
-      if (is.null(beta_dir) || !is.matrix(beta_dir))
-        stop("Expected 'beta_dir' for separable mode.")
-      # Summary by column (parameter) across directions: min/med/max
-      cn <- colnames(beta_dir)
-      if (is.null(cn)) cn <- paste0("V", seq_len(ncol(beta_dir)))
-      qstats <- t(apply(beta_dir, 2, function(v) stats::quantile(v, c(0, .5, 1), na.rm = TRUE)))
-      colnames(qstats) <- c("Min", "Median", "Max")
-      coef_table <- data.frame(Parameter = cn,
-                               Min      = round(qstats[, "Min"],    digits),
-                               Median   = round(qstats[, "Median"], digits),
-                               Max      = round(qstats[, "Max"],    digits),
-                               row.names = NULL, check.names = FALSE)
-      sigma_by_dir <- fi$sigma_by_dir
-      sigma_scalar <- NA_real_
-
-    } else { # joint
-      b <- fi$beta
-      if (is.null(b)) stop("Expected 'beta' for joint mode.")
-      nm <- names(b)
-      if (is.null(nm)) nm <- paste0("b", seq_along(b))
-      coef_table <- data.frame(
-        Coefficient = nm,
-        Estimate    = round(as.numeric(b), digits),
-        row.names   = NULL, check.names = FALSE
+    df <- do.call(rbind, lapply(seq_along(dir_results), function(k) {
+      dr <- dir_results[[k]]
+      data.frame(
+        quantile   = q,
+        direction  = k,
+        t(as.matrix(round(dr$beta, digits))),
+        sigma      = round(dr$sigma, digits),
+        iter       = dr$iter,
+        converged  = dr$converged,
+        row.names  = NULL,
+        check.names = FALSE
       )
-      sigma_scalar <- if (!is.null(fi$sigma) && length(fi$sigma) == 1L) as.numeric(fi$sigma) else NA_real_
-      sigma_by_dir <- NULL
-    }
+    }))
 
-    list(
-      quantile     = q,
-      converged    = conv_i,
-      iterations   = iters_i,
-      mode         = mode_i,
-      coef_table   = coef_table,
-      sigma_scalar = if (is.finite(sigma_scalar)) round(sigma_scalar, digits) else NA_real_,
-      sigma_by_dir = sigma_by_dir
-    )
+    attr(df, "conv_global")  <- all(df$converged)
+    attr(df, "iter_summary") <- mean(df$iter, na.rm = TRUE)
+    df
   })
 
-  names(quantile_summaries) <- paste0("q", taus)
+  out <- do.call(rbind, quantile_summaries)
+  rownames(out) <- NULL
+  class(out) <- c("summary.mo_bqr.svy", "data.frame")  # <- esta clase está bien con _
 
-  summary_obj <- list(
-    call              = if (!is.null(object$call)) object$call else NULL,
-    algorithm         = if (!is.null(object$algorithm)) object$algorithm else NA_character_,
-    quantiles         = taus,
-    n_directions      = K,
-    prior             = if (!is.null(object$prior)) object$prior else NULL,
-    quantile_results  = quantile_summaries,
-    digits            = digits
-  )
-  class(summary_obj) <- "summary.mo.bqr.svy"
-  summary_obj
+  return(out)
 }
 
-#' Print method for summary.mo.bqr.svy
-#' @param x An object of class `summary.mo.bqr.svy`.
-#' @param ... Additional arguments (unused).
+
+
+#' Print method for summary.mo_bqr.svy objects
+#'
+#' @param x An object of class \code{"summary.mo_bqr.svy"}.
+#' @param ... Additional arguments (currently unused).
 #' @export
-print.summary.mo.bqr.svy <- function(x, ...) {
+print.summary.mo_bqr.svy <- function(x, ...) {
   cat("\nMultiple-Output Bayesian Quantile Regression Summary\n")
   cat("===================================================\n\n")
-  cat("Model Information:\n")
-  cat("  Algorithm      :", x$algorithm, "\n")
-  cat("  Quantiles (tau):", paste(x$quantiles, collapse = ", "), "\n")
-  cat("  Directions     :", x$n_directions, "\n\n")
 
-  conv  <- vapply(x$quantile_results, function(qr) isTRUE(qr$converged), logical(1))
-  iters <- vapply(x$quantile_results, function(qr) qr$iterations, numeric(1))
-  if (any(!is.na(iters))) {
-    cat("Convergence Summary:\n")
-    cat("  Converged quantiles:", sum(conv, na.rm = TRUE), "out of", length(x$quantiles), "\n")
-    cat("  Average iterations :", sprintf("%.1f", mean(iters, na.rm = TRUE)), "\n")
-    cat("  Max iterations     :", max(iters, na.rm = TRUE), "\n\n")
+  if (!is.data.frame(x) || !"quantile" %in% names(x)) {
+    cat("(empty summary)\n")
+    return(invisible(x))
   }
 
-  dg <- x$digits
-  for (i in seq_along(x$quantile_results)) {
-    qr <- x$quantile_results[[i]]
-    cat(sprintf("Quantile tau = %.3f:\n", qr$quantile))
-    cat(sprintf("  Mode       : %s\n", if (is.null(qr$mode)) "NA" else qr$mode))
-    cat(sprintf("  Converged  : %s (%s iterations)\n",
-                ifelse(isTRUE(qr$converged), "Yes", "No"),
-                ifelse(is.na(qr$iterations), "NA", as.integer(qr$iterations))))
+  taus <- unique(x$quantile)
 
-    if (is.null(qr$coef_table)) {
-      cat("  No results available\n\n")
-      next
-    }
+  for (q in taus) {
+    df_q <- x[x$quantile == q, , drop = FALSE]
 
-    if (!is.null(qr$sigma_by_dir)) {
-      # separable: show compact summary by parameter and sigma_by_dir
-      cat("  Coefficients (by direction summary):\n")
-      print(qr$coef_table, row.names = FALSE, right = FALSE)
-      qs <- stats::quantile(qr$sigma_by_dir, c(0, .5, 1), na.rm = TRUE)
-      cat("  sigma (by dir): min/med/max =",
-          sprintf(paste0("%.", dg, "f / %.", dg, "f / %.", dg, "f"),
-                  qs[1], qs[2], qs[3]), "\n\n")
-    } else {
-      # joint: imprime primeras N filas si es largo
-      cat("  Coefficients:\n")
-      N <- nrow(qr$coef_table)
-      show <- min(N, 10L)
-      print(qr$coef_table[seq_len(show), , drop = FALSE], row.names = FALSE, right = FALSE)
-      if (N > show) cat("    ... (", N - show, " more)\n", sep = "")
-      if (length(qr$sigma_scalar) == 1L && is.finite(qr$sigma_scalar))
-        cat("  sigma^2 =", sprintf(paste0("%.", dg, "f"), qr$sigma_scalar), "\n")
-      cat("\n")
-    }
+    # Calcular desde columnas (sin atributos)
+    has_conv <- "converged" %in% names(df_q)
+    has_iter <- "iter" %in% names(df_q)
+    conv_global  <- if (has_conv) all(df_q$converged, na.rm = TRUE) else NA
+    iter_summary <- if (has_iter) mean(df_q$iter, na.rm = TRUE) else NA_real_
+
+    conv_txt <- if (isTRUE(conv_global)) "Yes" else if (identical(conv_global, FALSE)) "No" else "-"
+
+    cat(sprintf("Quantile tau = %.3f:\n", q))
+    cat("  Converged (all directions):", conv_txt, "\n")
+    cat("  Avg iterations:", if (is.finite(iter_summary)) round(iter_summary, 1) else "-", "\n\n")
+
+    cat("  Per-direction results:\n")
+    # ---- IMPRESIÓN SIN RECURSIÓN ----
+    df_show <- df_q
+    # opcional: reordenar/ocultar columnas redundantes
+    cols <- c("direction", setdiff(names(df_show), c("quantile", "direction")))
+    df_show <- df_show[, cols, drop = FALSE]
+    class(df_show) <- "data.frame"             # quitar clase para evitar S3 recursivo
+    print.data.frame(df_show, row.names = FALSE)  # imprimir explícitamente como data.frame
+    cat("\n")
   }
 
-  if (any(!conv)) {
-    bad <- which(!conv)
-    cat("Warnings:\n")
-    cat("  * Non-converged quantiles:",
-        paste(x$quantiles[bad], collapse = ", "), "\n")
-    cat("  * Consider increasing 'max_iter', relaxing 'epsilon', or revising priors\n")
-  }
   invisible(x)
 }
+
+
 
 #' Generic summary function for Bayesian Quantile Regression objects
 #'

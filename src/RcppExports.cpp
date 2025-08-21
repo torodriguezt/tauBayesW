@@ -15,29 +15,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// bwqr_weighted_em_cpp_wrap
-Rcpp::List bwqr_weighted_em_cpp_wrap(const Eigen::MatrixXd& y, const Eigen::MatrixXd& x, const Eigen::VectorXd& w, const Eigen::MatrixXd& u, const Eigen::MatrixXd& gamma_u, double tau, const Eigen::VectorXd& mu0, const Eigen::MatrixXd& sigma0, double a0, double b0, double eps, int max_iter, bool verbose);
-RcppExport SEXP _tauBayesW_bwqr_weighted_em_cpp_wrap(SEXP ySEXP, SEXP xSEXP, SEXP wSEXP, SEXP uSEXP, SEXP gamma_uSEXP, SEXP tauSEXP, SEXP mu0SEXP, SEXP sigma0SEXP, SEXP a0SEXP, SEXP b0SEXP, SEXP epsSEXP, SEXP max_iterSEXP, SEXP verboseSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type y(ySEXP);
-    Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type x(xSEXP);
-    Rcpp::traits::input_parameter< const Eigen::VectorXd& >::type w(wSEXP);
-    Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type u(uSEXP);
-    Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type gamma_u(gamma_uSEXP);
-    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
-    Rcpp::traits::input_parameter< const Eigen::VectorXd& >::type mu0(mu0SEXP);
-    Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type sigma0(sigma0SEXP);
-    Rcpp::traits::input_parameter< double >::type a0(a0SEXP);
-    Rcpp::traits::input_parameter< double >::type b0(b0SEXP);
-    Rcpp::traits::input_parameter< double >::type eps(epsSEXP);
-    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
-    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(bwqr_weighted_em_cpp_wrap(y, x, w, u, gamma_u, tau, mu0, sigma0, a0, b0, eps, max_iter, verbose));
-    return rcpp_result_gen;
-END_RCPP
-}
 // bwqr_weighted_em_cpp_sep_wrap
 Rcpp::List bwqr_weighted_em_cpp_sep_wrap(const Eigen::MatrixXd& y, const Eigen::MatrixXd& x, const Eigen::VectorXd& w, const Eigen::MatrixXd& u, const Eigen::MatrixXd& gamma_u, double tau, const Eigen::VectorXd& mu0, const Eigen::MatrixXd& sigma0, double a0, double b0, double eps, int max_iter, bool verbose);
 RcppExport SEXP _tauBayesW_bwqr_weighted_em_cpp_sep_wrap(SEXP ySEXP, SEXP xSEXP, SEXP wSEXP, SEXP uSEXP, SEXP gamma_uSEXP, SEXP tauSEXP, SEXP mu0SEXP, SEXP sigma0SEXP, SEXP a0SEXP, SEXP b0SEXP, SEXP epsSEXP, SEXP max_iterSEXP, SEXP verboseSEXP) {
@@ -136,7 +113,6 @@ RcppExport SEXP _tauBayesW_RcppExport_registerCCallable() {
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_tauBayesW_bwqr_weighted_em_cpp_wrap", (DL_FUNC) &_tauBayesW_bwqr_weighted_em_cpp_wrap, 13},
     {"_tauBayesW_bwqr_weighted_em_cpp_sep_wrap", (DL_FUNC) &_tauBayesW_bwqr_weighted_em_cpp_sep_wrap, 13},
     {"_tauBayesW_MCMC_BWQR_AL_wrap", (DL_FUNC) &_tauBayesW_MCMC_BWQR_AL_wrap, 11},
     {"_tauBayesW_MCMC_BWQR_AP_wrap", (DL_FUNC) &_tauBayesW_MCMC_BWQR_AP_wrap, 9},

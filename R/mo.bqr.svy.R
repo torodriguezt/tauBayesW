@@ -227,16 +227,13 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
 }
 
 
-# =====================================================
-# mo.bqr.svy() - Multiple-Output Bayesian Quantile Regression for Complex Surveys (EM)
-# =====================================================
-
-#' Multiple-Output Bayesian Quantile Regression for Complex Surveys (EM)
+#' Multiple-Output Bayesian Quantile Regression for Complex Surveys (Directional EM)
 #'
-#' Fits Bayesian quantile regression models for multiple quantiles simultaneously
-#' using the EM algorithm. Supports complex survey designs through sampling weights
-#' and allows for quantile-specific prior distributions. Can handle multiple
-#' projection directions in either "joint" or "separable" mode.
+#' Fits Bayesian quantile regression models for multivariate responses using the
+#' EM algorithm and a directional approach. The method projects the response into
+#' random unit vectors (directions) and their orthogonal complements, and then fits
+#' univariate Bayesian quantile regression models along each projection. The
+#' collection of fitted directions defines the multivariate quantile region.
 #'
 #' @param formula A formula object specifying the model.
 #' @param weights Optional vector of sampling weights. If \code{NULL}, equal weights are used.
@@ -250,33 +247,31 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
 #'     \item A list of \code{mo_bqr_prior} objects: One prior per quantile
 #'     \item A function \code{f(tau, p, names)}: Generates quantile-specific priors
 #'   }
-#' @param n_dir Number of projection directions (if directions \code{U} are not supplied).
+#' @param n_dir Integer. Number of projection directions (if directions \code{U} are not supplied).
 #' @param epsilon Convergence tolerance for the EM algorithm.
 #' @param max_iter Maximum number of EM iterations.
 #' @param verbose Logical indicating whether to print progress messages.
-#' @param em_mode Character string, either \code{"joint"} or \code{"separable"}.
-#'   Controls whether all directions share the same orthogonal basis ("joint") or
-#'   each direction has its own basis ("separable").
 #' @param gamma_prior_var Numeric. Prior variance for the gamma coefficients
-#'   when using \code{em_mode = "separable"}.
+#'   associated with orthogonal complements.
 #' @param ... Additional arguments for direction specification:
 #'   \describe{
-#'     \item{U}{Optional user-specified matrix of directions (\eqn{d \times K}).}
-#'     \item{Gamma}{Optional user-specified matrix of orthogonal complements
-#'       (\eqn{d \times K r}).}
-#'     \item{r}{Optional integer. Number of orthogonal complement vectors per
-#'       direction (between 0 and \eqn{d-1}). Defaults to 1 if not specified.}
+#'     \item{U}{Optional user-specified matrix of directions (\eqn{d \times K}). If not provided,
+#'       \code{n_dir} random unit vectors are generated automatically.}
 #'   }
 #'
 #' @details
-#' This function allows for flexible prior specification across quantiles. When a list
+#' The algorithm works by drawing or receiving as input a set of unit directions
+#' \eqn{u_k \in \mathbb{R}^d}. For each direction, an orthonormal basis of its
+#' orthogonal complement \eqn{\Gamma_k} is computed using \code{pracma::nullspace}.
+#' The response \eqn{Y} is then projected into the pair \eqn{(u_k, \Gamma_k)}, and
+#' a Bayesian quantile regression is fitted along that direction using the EM
+#' algorithm. Results across all directions can be combined to approximate the
+#' multivariate quantile region.
+#'
+#' Prior distributions can be specified globally or quantile-specific. When a list
 #' of priors is provided, elements can be named using either \code{"q0.1"} format or
 #' \code{"0.1"} format to match specific quantiles. When a function is provided, it
 #' will be called with \code{(tau, p, names)} for each quantile level.
-#'
-#' The projection directions \code{U} and their orthogonal complements \code{Gamma}
-#' can be supplied directly, or generated automatically when only \code{n_dir} (and
-#' optionally \code{r}) are specified.
 #'
 #' @return An object of class \code{"mo.bqr.svy"} containing:
 #'   \item{call}{The matched call}
@@ -285,12 +280,14 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
 #'   \item{quantile}{Vector of fitted quantiles}
 #'   \item{algorithm}{Algorithm used}
 #'   \item{prior}{List of priors used for each quantile}
-#'   \item{fit}{List of fitted results for each quantile}
+#'   \item{fit}{List of fitted results for each quantile, each containing one sub-list per direction}
 #'   \item{coefficients}{Coefficients from the first quantile}
 #'   \item{n_dir}{Number of directions}
-#'   \item{U}{Matrix of projection directions}
-#'   \item{Gamma}{Matrix of orthogonal complements (if applicable)}
-#'   \item{mode}{Fitting mode, \code{"joint"} or \code{"separable"}}
+#'   \item{U}{Matrix of projection directions (\eqn{d \times K})}
+#'   \item{Gamma_list}{List of orthogonal complement bases, one per direction}
+#'   \item{n_obs}{Number of observations}
+#'   \item{n_vars}{Number of covariates}
+#'   \item{response_dim}{Dimension of the response \eqn{d}}
 #'
 #' @examples
 #' # Basic usage with default priors
@@ -308,11 +305,13 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
 #' # Explicit control of directions
 #' set.seed(1)
 #' U <- matrix(rnorm(6), nrow = 3)  # d=3, K=2
+#' U <- apply(U, 2, function(v) v / sqrt(sum(v^2))) # normalize
 #' fit3 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
-#'                    quantile = 0.5, U = U, r = 2, em_mode = "separable")
+#'                    quantile = 0.5, U = U)
 #'
 #' @export
 #' @importFrom stats model.frame model.matrix model.response
+#' @importFrom pracma nullspace
 mo.bqr.svy <- function(formula,
                        weights  = NULL,
                        data,
@@ -323,12 +322,8 @@ mo.bqr.svy <- function(formula,
                        epsilon  = 1e-6,
                        max_iter = 1000,
                        verbose  = FALSE,
-                       # NUEVO:
-                       em_mode  = c("joint","separable"),
                        gamma_prior_var = 1e6,
                        ...) {
-
-  em_mode <- match.arg(em_mode)
 
   if (algorithm != "em") stop("Only 'em' is implemented.")
   if (missing(data))     stop("'data' must be provided.")
@@ -340,7 +335,7 @@ mo.bqr.svy <- function(formula,
 
   mf <- model.frame(formula, data)
   y  <- model.response(mf)
-  if (is.vector(y)) y <- matrix(y, ncol = 1)     # asegurar n x d
+  if (is.vector(y)) y <- matrix(y, ncol = 1)
   if (!is.matrix(y)) stop("'y' must be a numeric matrix or vector.")
   if (any(!is.finite(y))) stop("Response 'y' contains non-finite values.")
   n <- nrow(y); d <- ncol(y)
@@ -355,88 +350,46 @@ mo.bqr.svy <- function(formula,
   if (any(!is.finite(wts)) || any(wts <= 0)) stop("Invalid weights.")
   wts <- wts / mean(wts)
 
-  # --- Direcciones: permitir pasar via ... o construir desde n_dir ---
-  `%||%` <- function(a, b) {
-    if (is.null(a)) return(b)
-    if (is.atomic(a) && length(a) == 1L && is.na(a)) return(b)
-    a
+  # --- Construcción de direcciones y bases ortogonales ---
+  if (!requireNamespace("pracma", quietly = TRUE)) {
+    stop("Package 'pracma' is required for nullspace calculation")
   }
+
+  `%||%` <- function(a, b) if (is.null(a) || (is.atomic(a) && length(a) == 1L && is.na(a))) b else a
   dots <- list(...)
-  U_user     <- dots$U      %||% NULL
-  Gamma_user <- dots$Gamma  %||% NULL
-  r_user     <- dots$r      %||% NULL  # number of columns in Gamma per direction (0..d-1)
-
-  # helper robusto para completar una base ortonormal a partir de v (unitario)
-  .orthobasis_from_v <- function(v, d, r_needed) {
-    v <- v / sqrt(sum(v^2))
-    B <- diag(d); B[, 1] <- v
-    Q <- qr.Q(qr(B), complete = TRUE)
-    # Fallback if for some reason there are missing columns
-    if (ncol(Q) < (1 + r_needed)) {
-      Pperp <- diag(d) - v %*% t(v)
-      sv <- svd(Pperp)
-      Q <- cbind(v, sv$u[, 1:(d-1), drop = FALSE])
-    }
-    Q
-  }
-
-  .build_U_Gamma <- function(d, K, r = NULL) {
-    if (d == 1) return(list(U = matrix(1, 1, 1), Gamma = matrix(numeric(0), 1, 0), r = 0))
-    if (is.null(r)) r <- 1L
-    r <- as.integer(max(0, min(r, d - 1)))
-
-    if (d == 2) {
-      angles <- (0:(K - 1)) * 2 * pi / K
-      U      <- rbind(cos(angles),  sin(angles))
-      Gamma  <- if (r == 0) matrix(numeric(0), 2, 0) else rbind(-sin(angles), cos(angles))
-      return(list(U = U, Gamma = Gamma, r = r))
-    }
-
-    # d >= 3
-    U <- matrix(NA_real_, d, K)
-    Gamma <- if (r == 0) matrix(numeric(0), d, 0) else matrix(NA_real_, d, K * r)
-    for (k in seq_len(K)) {
-      v <- rnorm(d)
-      Q <- .orthobasis_from_v(v, d = d, r_needed = r)
-      U[, k] <- Q[, 1]
-      if (r > 0) Gamma[, ((k - 1) * r + 1):(k * r)] <- Q[, 2:(1 + r), drop = FALSE]
-    }
-    list(U = U, Gamma = Gamma, r = r)
-  }
+  U_user <- dots$U %||% NULL
 
   if (!is.null(U_user)) {
     U <- as.matrix(U_user)
     if (nrow(U) != d) stop("U must have d rows.")
     K <- ncol(U)
-    if (!is.null(Gamma_user)) {
-      Gamma <- as.matrix(Gamma_user)
-      if (nrow(Gamma) != d) stop("Gamma must have d rows.")
-      if (ncol(Gamma) %% K != 0) stop("ncol(Gamma) must be a multiple of ncol(U).")
-      r <- ncol(Gamma) / K
+
+    if (d == 1) {
+      Gamma_list <- replicate(K, matrix(numeric(0), 1, 0), simplify = FALSE)
     } else {
-      tmp <- .build_U_Gamma(d, K, r = r_user)
-      r <- tmp$r
-      if (r == 0) {
-        Gamma <- matrix(numeric(0), d, 0)
-      } else {
-        Gamma <- matrix(NA_real_, d, K * r)
-        for (k in seq_len(K)) {
-          v <- U[, k]
-          Q <- .orthobasis_from_v(v, d = d, r_needed = r)
-          Gamma[, ((k - 1) * r + 1):(k * r)] <- Q[, 2:(1 + r), drop = FALSE]
-        }
+      Gamma_list <- lapply(seq_len(K), function(k) pracma::nullspace(t(U[, k])))
+    }
+
+  } else {
+    if (d == 1) {
+      U <- matrix(1.0, 1, 1)
+      K <- 1
+      Gamma_list <- list(matrix(numeric(0), 1, 0))
+    } else {
+      K <- max(1L, as.integer(n_dir))
+      U <- matrix(NA_real_, d, K)
+      Gamma_list <- vector("list", K)
+      for (k in seq_len(K)) {
+        u_k <- rnorm(d)
+        u_k <- u_k / sqrt(sum(u_k^2))
+        U[, k] <- u_k
+        Gamma_list[[k]] <- pracma::nullspace(t(u_k))
       }
     }
-  } else {
-    K <- max(1L, as.integer(n_dir))
-    built <- .build_U_Gamma(d, K, r = r_user)
-    U     <- built$U
-    Gamma <- built$Gamma
-    r     <- built$r
   }
 
-  G <- ncol(Gamma)  # puede ser 0
 
+  # --- Priors helper ---
   as_prior_list_per_tau <- function(prior, p, names, taus) {
     if (is.null(prior)) {
       priors <- replicate(length(taus),
@@ -466,7 +419,7 @@ mo.bqr.svy <- function(formula,
       if (!is.null(names(prior))) {
         priors <- vector("list", length(taus))
         for (i in seq_along(taus)) {
-          key1 <- paste0("q", taus[i]); key2 <- as.character(taus[i])  # <- fix de 'laus'
+          key1 <- paste0("q", taus[i]); key2 <- as.character(taus[i])
           pr <- prior[[key1]] %||% prior[[key2]] %||% prior[[i]]
           if (is.null(pr)) stop("Missing prior for tau=", taus[i])
           priors[[i]] <- pr
@@ -483,18 +436,7 @@ mo.bqr.svy <- function(formula,
 
   prior_list <- as_prior_list_per_tau(prior, p = p, names = coef_names, taus = quantile)
 
-  if (G > 0) {
-    stopifnot(G %% ncol(U) == 0)
-    r_eff <- G / ncol(U)
-    gamma_names_joint <- paste0("gamma_k", rep(seq_len(ncol(U)), each = r_eff),
-                                "_c", sequence(rep(r_eff, ncol(U))))
-  } else gamma_names_joint <- character(0)
-  all_coef_names_joint <- c(coef_names, gamma_names_joint)
-
-  x_names_by_dir <- as.vector(t(outer(coef_names, paste0("_k", seq_len(ncol(U))), paste0)))
-  gamma_names_sep <- if (r > 0) gamma_names_joint else character(0)
-  all_coef_names_sep <- c(x_names_by_dir, gamma_names_sep)
-
+  # --- Main fitting loop ---
   results <- vector("list", length(quantile))
   names(results) <- paste0("q", quantile)
 
@@ -502,59 +444,36 @@ mo.bqr.svy <- function(formula,
     q  <- quantile[qi]
     pr <- prior_list[[qi]]
 
-    if (verbose) message(sprintf("Fitting tau = %.3f (mode=%s, d=%d, K=%d, r=%d, G=%d)",
-                                 q, em_mode, d, ncol(U), r, G))
+    if (verbose) message(sprintf("Fitting tau = %.3f (d=%d, K=%d)", q, d, K))
 
-    if (em_mode == "joint") {
-      m      <- p + G
-      mu0    <- c(pr$beta_mean, rep(0, G))
-      sigma0 <- diag(1e6, m)
-      sigma0[1:p, 1:p] <- pr$beta_cov
-      cpp_result <- .bwqr_weighted_em_cpp(
-        y        = y,
-        x        = X,
-        w        = wts,
-        u        = U,
-        gamma_u  = Gamma,
-        tau      = q,
-        mu0      = mu0,
-        sigma0   = sigma0,
-        a0       = pr$sigma_shape,
-        b0       = pr$sigma_rate,
-        eps      = epsilon,
-        max_iter = max_iter,
-        verbose  = verbose
-      )
-      beta_final <- as.numeric(cpp_result$beta)  # length p+G
-      names(beta_final) <- all_coef_names_joint
+    direction_results <- vector("list", K)
+    names(direction_results) <- paste0("dir_", seq_len(K))
 
-      results[[qi]] <- list(
-        beta        = beta_final,                    # vector p+G
-        sigma       = as.numeric(cpp_result$sigma),  # escalar
-        iter        = cpp_result$iter,
-        converged   = cpp_result$converged,
-        prior       = pr,
-        mode        = "joint",
-        U           = U,
-        Gamma       = Gamma
-      )
+    for (k in seq_len(K)) {
+      u_k <- U[, k]
+      gamma_uk <- Gamma_list[[k]]
+      r_k <- if (d > 1) ncol(gamma_uk) else 0
+      p_ext <- p + r_k
 
-    } else {
-      m_blk   <- p + r
-      mu0_blk <- c(pr$beta_mean, rep(0, r))
-      sigma0_blk <- diag(1e-6, m_blk)  
-      sigma0_blk[1:p, 1:p] <- pr$beta_cov
-      if (r > 0) sigma0_blk[(p+1):(p+r), (p+1):(p+r)] <- diag(gamma_prior_var, r)
+      mu0_ext <- c(pr$beta_mean, rep(0, r_k))
+      sigma0_ext <- diag(1e6, p_ext)
+      sigma0_ext[1:p, 1:p] <- pr$beta_cov
+      if (r_k > 0) {
+        sigma0_ext[(p+1):p_ext, (p+1):p_ext] <- diag(gamma_prior_var, r_k)
+      }
+
+      u_k_matrix <- matrix(u_k, ncol = 1)
+      gamma_k_matrix <- if (d > 1) gamma_uk else matrix(numeric(0), d, 0)
 
       cpp_result <- .bwqr_weighted_em_cpp_sep(
         y        = y,
         x        = X,
         w        = wts,
-        u        = U,
-        gamma_u  = Gamma,
+        u        = u_k_matrix,
+        gamma_u  = gamma_k_matrix,
         tau      = q,
-        mu0      = mu0_blk,    
-        sigma0   = sigma0_blk,  
+        mu0      = mu0_ext,
+        sigma0   = sigma0_ext,
         a0       = pr$sigma_shape,
         b0       = pr$sigma_rate,
         eps      = epsilon,
@@ -562,45 +481,37 @@ mo.bqr.svy <- function(formula,
         verbose  = verbose
       )
 
-      beta_dir <- as.matrix(cpp_result$beta)
-      colnames(beta_dir) <- c(coef_names, if (r>0) paste0("gamma_c", seq_len(r)))
-      rownames(beta_dir) <- paste0("k", seq_len(ncol(U)))
+      beta_k <- as.numeric(cpp_result$beta[1, ])
+      sigma_k <- as.numeric(cpp_result$sigma[1])
+      covariate_names <- c(coef_names,
+                           if (r_k > 0) paste0("gamma_", seq_len(r_k)) else character(0))
+      names(beta_k) <- covariate_names
 
-      beta_x_by_dir <- beta_dir[, 1:p, drop = FALSE]  # K x p
-      beta_gamma_by_dir <- if (r>0) beta_dir[, (p+1):(p+r), drop = FALSE] else NULL
-
-      beta_flat <- as.numeric(t(beta_x_by_dir))  # X by dir stacked by rows
-      names(beta_flat) <- as.vector(t(outer(coef_names, paste0("_k", seq_len(ncol(U))), paste0)))
-
-      if (r > 0) {
-        # add gammas in the same order as gamma_names_joint (k1_c1, k1_c2, ... kK_c_r)
-        gam_vec <- as.numeric(t(beta_gamma_by_dir))
-        names(gam_vec) <- paste0("gamma_k", rep(seq_len(ncol(U)), each = r),
-                                 "_c", sequence(rep(r, ncol(U))))
-        beta_flat <- c(beta_flat, gam_vec)
-      }
-
-      results[[qi]] <- list(
-        beta_dir    = beta_dir,                # K x (p+r)
-        beta        = beta_flat,               
-        sigma_by_dir= as.numeric(cpp_result$sigma), # K
+      direction_results[[k]] <- list(
+        beta        = beta_k,
+        sigma       = sigma_k,
         iter        = cpp_result$iter,
         converged   = cpp_result$converged,
-        prior       = pr,
-        mode        = "separable",
-        U           = U,
-        Gamma       = Gamma
+        u           = u_k,
+        gamma_u     = gamma_uk
       )
     }
+
+    results[[qi]] <- list(
+      directions  = direction_results,
+      prior       = pr,
+      U           = U,
+      Gamma_list  = Gamma_list,
+      quantile    = q
+    )
   }
 
-  if (em_mode == "joint") {
-    coefficients_all <- as.numeric(results[[1]]$beta)
-    names(coefficients_all) <- names(results[[1]]$beta)
-  } else {
-    coefficients_all <- as.numeric(results[[1]]$beta)
-    names(coefficients_all) <- names(results[[1]]$beta)
-  }
+  first_result <- results[[1]]
+  coefficients_all <- unlist(lapply(seq_len(K), function(k) {
+    beta_k <- first_result$directions[[k]]$beta
+    names(beta_k) <- paste0(names(beta_k), "_dir", k)
+    beta_k
+  }))
 
   structure(list(
     call         = match.call(),
@@ -611,26 +522,50 @@ mo.bqr.svy <- function(formula,
     prior        = prior_list,
     fit          = results,
     coefficients = coefficients_all,
-    n_dir        = ncol(U),
+    n_dir        = K,
     U            = U,
-    Gamma        = Gamma,
-    mode         = em_mode
+    Gamma_list   = Gamma_list,
+    n_obs        = n,
+    n_vars       = p,
+    response_dim = d
   ), class = "mo.bqr.svy")
 }
 
 
-
 #' Print method for mo.bqr.svy objects
 #'
+#' Displays the fitted call, quantiles, and estimated coefficients per direction.
+#'
+#' @param x An object of class \code{"mo.bqr.svy"}.
+#' @param ... Additional arguments (not used).
+#' Print method for mo.bqr.svy objects
+#' @method print mo.bqr.svy
 #' @export
-print.mo_bqr.svy <- function(x, ...) {
+print.mo.bqr.svy <- function(x, ...) {
   cat("Call:\n"); print(x$call)
-  for (i in seq_along(x$quantile)) {
-    cat(sprintf("\nQuantile: %.2f\n", x$quantile[i]))
-    print(x$fit[[i]]$beta)
+
+  cat("\nFitted quantiles:", paste(x$quantile, collapse = ", "), "\n")
+  cat("Number of directions:", x$n_dir, "\n")
+  cat("Response dimension:", x$response_dim, "\n")
+
+  for (qi in seq_along(x$quantile)) {
+    cat(sprintf("\n--- Quantile %.2f ---\n", x$quantile[qi]))
+    dir_results <- x$fit[[qi]]$directions
+
+    for (k in seq_along(dir_results)) {
+      dr <- dir_results[[k]]
+      cat(sprintf(" Direction %d:\n", k))
+      print(round(dr$beta, 4))
+      cat("  sigma:", round(dr$sigma, 4),
+          " | converged:", dr$converged,
+          " | iter:", dr$iter, "\n")
+    }
   }
+
   invisible(x)
 }
+
+
 
 #' Simulate data for Multiple-Output Bayesian Quantile Regression
 #'

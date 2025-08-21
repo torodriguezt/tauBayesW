@@ -1,8 +1,8 @@
 #' tauBayesW: Bayesian Weighted Quantile Regression with EM and MCMC Algorithm
 #'
-#' The tauBayesW package provides Bayesian quantile regression methods for complex 
+#' The tauBayesW package provides Bayesian quantile regression methods for complex
 #' survey designs with two main functions:
-#' 
+#'
 #' \itemize{
 #'   \item \code{bqr.svy()}: Single quantile estimation using MCMC methods
 #'   \item \code{mo.bqr.svy()}: Multiple quantile estimation using EM algorithm
@@ -26,20 +26,20 @@
 #' }
 #'
 #' @section EM Algorithm:
-#' The multiple output function uses an Expectation-Maximization algorithm 
-#' based on the asymmetric Laplace distribution for efficient estimation 
+#' The multiple output function uses an Expectation-Maximization algorithm
+#' based on the asymmetric Laplace distribution for efficient estimation
 #' of multiple quantiles simultaneously.
 #'
-#' @references 
-#' Yu, K. and Moyeed, R. A. (2001). Bayesian quantile regression. 
+#' @references
+#' Yu, K. and Moyeed, R. A. (2001). Bayesian quantile regression.
 #' \emph{Statistics & Probability Letters}, 54(4), 437-447.
 #'
-#' Kozumi, H. and Kobayashi, G. (2011). Gibbs sampling methods for Bayesian 
-#' quantile regression. \emph{Journal of Statistical Computation and Simulation}, 
+#' Kozumi, H. and Kobayashi, G. (2011). Gibbs sampling methods for Bayesian
+#' quantile regression. \emph{Journal of Statistical Computation and Simulation},
 #' 81(11), 1565-1578.
 #'
-#' @author Marcus L. Nascimento, Kelly Cristina Mota Goncalves, 
-#'         Johntan Cardona Jimenez, Tomas Rodriguez Taborda
+#' @author Marcus L. Nascimento, Kelly Cristina Mota Goncalves,
+#'         Johnatan Cardona Jimenez, Tomas Rodriguez Taborda
 #'
 #' @keywords internal
 #' @useDynLib tauBayesW, .registration = TRUE

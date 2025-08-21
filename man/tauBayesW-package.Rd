@@ -61,6 +61,6 @@ Useful links:
 }
 \author{
 Marcus L. Nascimento, Kelly Cristina Mota Goncalves,
-Johntan Cardona Jimenez, Tomas Rodriguez Taborda
+Johnatan Cardona Jimenez, Tomas Rodriguez Taborda
 }
 \keyword{internal}

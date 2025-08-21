@@ -2,7 +2,7 @@
 % Please edit documentation in R/mo.bqr.svy.R
 \name{mo.bqr.svy}
 \alias{mo.bqr.svy}
-\title{Multiple-Output Bayesian Quantile Regression for Complex Surveys (EM)}
+\title{Multiple-Output Bayesian Quantile Regression for Complex Surveys (Directional EM)}
 \usage{
 mo.bqr.svy(
   formula,
@@ -15,7 +15,6 @@ mo.bqr.svy(
   epsilon = 1e-06,
   max_iter = 1000,
   verbose = FALSE,
-  em_mode = c("joint", "separable"),
   gamma_prior_var = 1e+06,
   ...
 )
@@ -39,7 +38,7 @@ mo.bqr.svy(
 \item A function \code{f(tau, p, names)}: Generates quantile-specific priors
 }}
 
-\item{n_dir}{Number of projection directions (if directions \code{U} are not supplied).}
+\item{n_dir}{Integer. Number of projection directions (if directions \code{U} are not supplied).}
 
 \item{epsilon}{Convergence tolerance for the EM algorithm.}
 
@@ -47,20 +46,13 @@ mo.bqr.svy(
 
 \item{verbose}{Logical indicating whether to print progress messages.}
 
-\item{em_mode}{Character string, either \code{"joint"} or \code{"separable"}.
-Controls whether all directions share the same orthogonal basis ("joint") or
-each direction has its own basis ("separable").}
-
 \item{gamma_prior_var}{Numeric. Prior variance for the gamma coefficients
-when using \code{em_mode = "separable"}.}
+associated with orthogonal complements.}
 
 \item{...}{Additional arguments for direction specification:
 \describe{
-\item{U}{Optional user-specified matrix of directions (\eqn{d \times K}).}
-\item{Gamma}{Optional user-specified matrix of orthogonal complements
-(\eqn{d \times K r}).}
-\item{r}{Optional integer. Number of orthogonal complement vectors per
-direction (between 0 and \eqn{d-1}). Defaults to 1 if not specified.}
+\item{U}{Optional user-specified matrix of directions (\eqn{d \times K}). If not provided,
+\code{n_dir} random unit vectors are generated automatically.}
 }}
 }
 \value{
@@ -71,28 +63,35 @@ An object of class \code{"mo.bqr.svy"} containing:
 \item{quantile}{Vector of fitted quantiles}
 \item{algorithm}{Algorithm used}
 \item{prior}{List of priors used for each quantile}
-\item{fit}{List of fitted results for each quantile}
+\item{fit}{List of fitted results for each quantile, each containing one sub-list per direction}
 \item{coefficients}{Coefficients from the first quantile}
 \item{n_dir}{Number of directions}
-\item{U}{Matrix of projection directions}
-\item{Gamma}{Matrix of orthogonal complements (if applicable)}
-\item{mode}{Fitting mode, \code{"joint"} or \code{"separable"}}
+\item{U}{Matrix of projection directions (\eqn{d \times K})}
+\item{Gamma_list}{List of orthogonal complement bases, one per direction}
+\item{n_obs}{Number of observations}
+\item{n_vars}{Number of covariates}
+\item{response_dim}{Dimension of the response \eqn{d}}
 }
 \description{
-Fits Bayesian quantile regression models for multiple quantiles simultaneously
-using the EM algorithm. Supports complex survey designs through sampling weights
-and allows for quantile-specific prior distributions. Can handle multiple
-projection directions in either "joint" or "separable" mode.
+Fits Bayesian quantile regression models for multivariate responses using the
+EM algorithm and a directional approach. The method projects the response into
+random unit vectors (directions) and their orthogonal complements, and then fits
+univariate Bayesian quantile regression models along each projection. The
+collection of fitted directions defines the multivariate quantile region.
 }
 \details{
-This function allows for flexible prior specification across quantiles. When a list
+The algorithm works by drawing or receiving as input a set of unit directions
+\eqn{u_k \in \mathbb{R}^d}. For each direction, an orthonormal basis of its
+orthogonal complement \eqn{\Gamma_k} is computed using \code{pracma::nullspace}.
+The response \eqn{Y} is then projected into the pair \eqn{(u_k, \Gamma_k)}, and
+a Bayesian quantile regression is fitted along that direction using the EM
+algorithm. Results across all directions can be combined to approximate the
+multivariate quantile region.
+
+Prior distributions can be specified globally or quantile-specific. When a list
 of priors is provided, elements can be named using either \code{"q0.1"} format or
 \code{"0.1"} format to match specific quantiles. When a function is provided, it
 will be called with \code{(tau, p, names)} for each quantile level.
-
-The projection directions \code{U} and their orthogonal complements \code{Gamma}
-can be supplied directly, or generated automatically when only \code{n_dir} (and
-optionally \code{r}) are specified.
 }
 \examples{
 # Basic usage with default priors
@@ -110,7 +109,8 @@ fit2 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
 # Explicit control of directions
 set.seed(1)
 U <- matrix(rnorm(6), nrow = 3)  # d=3, K=2
+U <- apply(U, 2, function(v) v / sqrt(sum(v^2))) # normalize
 fit3 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
-                   quantile = 0.5, U = U, r = 2, em_mode = "separable")
+                   quantile = 0.5, U = U)
 
 }
