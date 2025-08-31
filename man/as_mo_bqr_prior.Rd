@@ -6,6 +6,47 @@
 \usage{
 as_mo_bqr_prior(x, p, names = NULL)
 }
+\arguments{
+\item{x}{An object to coerce. Can be:
+\itemize{
+\item A valid \code{mo_bqr_prior} object
+\item A list with components \code{beta_mean}, \code{beta_cov},
+\code{sigma_shape}, and \code{sigma_rate}
+}}
+
+\item{p}{Integer. Number of regression coefficients (including intercept).
+Used to validate and expand inputs.}
+
+\item{names}{Optional character vector of coefficient names. If provided,
+they are attached to \code{beta_mean} and \code{beta_cov}.}
+}
+\value{
+A \code{mo_bqr_prior} object with fields:
+\itemize{
+\item \code{beta_mean}: Numeric vector of prior means
+\item \code{beta_cov}: Prior covariance matrix
+\item \code{sigma_shape}: Shape parameter of inverse-gamma prior
+\item \code{sigma_rate}: Rate parameter of inverse-gamma prior
+}
+}
 \description{
-Coerce to a \code{mo_bqr_prior} object
+This function ensures that the input is converted to a valid
+\code{mo_bqr_prior} object. It accepts an existing \code{mo_bqr_prior},
+or a list with the necessary components, and performs validation
+and expansion of scalar or vector inputs.
+}
+\examples{
+# From an existing mo_bqr_prior
+prior1 <- mo_prior_default(p = 3)
+as_mo_bqr_prior(prior1, p = 3)
+
+# From a list
+prior_list <- list(
+  beta_mean   = c(0, 0, 0),
+  beta_cov    = diag(1e6, 3),
+  sigma_shape = 0.001,
+  sigma_rate  = 0.001
+)
+as_mo_bqr_prior(prior_list, p = 3, names = c("(Intercept)", "x1", "x2"))
+
 }

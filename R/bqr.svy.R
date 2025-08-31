@@ -132,20 +132,21 @@ print.bqr_prior <- function(x, ...) {
 #'   \item \code{.MCMC_BWQR_SL} – Score likelihood
 #'   \item \code{.MCMC_BWQR_AP} – Approximate likelihood
 #' }
-#' Only a single quantile can be estimated at a time.
+#' One or more quantiles can be estimated, depending on the input.
 #'
 #' Survey weights are handled differently by each method:
 #' \itemize{
-#'   \item \code{"ald"} and \code{"score"}: weights are normalized (divided by their mean)
-#'   \item \code{"approximate"}: weights are used as provided (raw weights)
+#'   \item \code{"ald"} and \code{"score"}: weights are normalized (divided by their mean).
+#'   \item \code{"approximate"}: weights are used as provided (raw weights).
 #' }
 #'
 #' @param formula A \code{\link{formula}} specifying the model.
 #' @param weights Optional survey weights (numeric vector or one-sided formula).
 #'   Weights are passed directly to the underlying C++ algorithms without any
 #'   preprocessing like scaling.
-#' @param data Optional \code{data.frame} for variables in the model.
-#' @param quantile Numeric scalar in (0, 1): target quantile \eqn{\tau}.
+#' @param data Optional \code{data.frame} containing the variables used in the model.
+#' @param quantile Numeric scalar or vector in (0, 1): target quantile(s) \eqn{\tau}.
+#'   Duplicates are automatically removed.
 #' @param method One of \code{"ald"}, \code{"score"}, \code{"approximate"}.
 #' @param prior Prior specification. Can be:
 #'   \itemize{
@@ -155,58 +156,56 @@ print.bqr_prior <- function(x, ...) {
 #'   }
 #'   For \code{"ald"}: uses \code{b0}, \code{B0}, \code{c0}, \code{C0}.
 #'   For \code{"score"} and \code{"approximate"}: uses \code{b0}, \code{B0} only.
-#' @param niter, burnin, thin MCMC settings.
+#' @param niter Integer. Number of MCMC iterations.
+#' @param burnin Integer. Number of burn-in iterations.
+#' @param thin Integer. Thinning interval.
+#' @param ... Additional arguments passed to underlying functions (reserved for future use).
 #'
 #' @details
 #' \strong{Prior Specification:}
 #'
 #' The prior can be specified in several ways:
 #' \enumerate{
-#'   \item Using \code{\link{prior_default}} (recommended):
-#'   \preformatted{
-#'   prior <- prior_default(
-#'     p     = 3,                          # number of coefficients
-#'     b0    = c(0, 1.5, -0.8),            # prior means
-#'     B0    = diag(c(1, 0.5, 0.5)),       # prior covariance matrix
-#'     c0    = 2,                          # ALD: sigma^2 IG shape
-#'     C0    = 1,                          # ALD: sigma^2 IG rate
-#'     names = c("(Intercept)", "x1", "x2")
-#'   )}
-#'
-#'   \item As a list:
-#'   \preformatted{
-#'   prior <- list(
-#'     b0 = c(0, 1.5, -0.8),
-#'     B0 = diag(c(1, 0.5, 0.5)),
-#'     c0 = 2,    # only used by "ald" method
-#'     C0 = 1     # only used by "ald" method
-#'   )}
-#'
-#'   \item \code{NULL} for default vague priors
+#'   \item Using \code{\link{prior_default}} (recommended).
+#'   \item As a list with \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}.
+#'   \item As \code{NULL}, in which case vague priors are used.
 #' }
 #'
-#' @return An object of class \code{"bqr.svy"} and \code{"bwqr_fit"}.
+#' Multiple quantiles can be fitted in a single call. The returned object
+#' adapts its class accordingly (\code{"bwqr_fit"} for one quantile,
+#' \code{"bwqr_fit_multi"} for several).
+#'
+#' @return An object of class \code{"bqr.svy"}, containing:
+#' \item{beta}{Posterior mean estimates of regression coefficients.}
+#' \item{draws}{Posterior draws from the MCMC sampler.}
+#' \item{accept_rate}{Average acceptance rate (if available).}
+#' \item{quantile}{The quantile(s) fitted.}
+#' \item{prior}{Prior specification used.}
+#' \item{formula, terms, model}{Model specification details.}
+#' \item{runtime}{Elapsed runtime in seconds.}
 #'
 #' @examples
-#' # Basic usage with default priors
+#' # Simulate data
 #' sim <- simulate_bqr_data(n = 100, betas = c(2, 1.5, -0.8))
+#'
+#' # Basic usage with default priors
 #' fit1 <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights)
 #'
 #' # With informative priors
 #' prior <- prior_default(
 #'   p  = 3,
-#'   b0 = c(2, 1.5, -0.8),           # close to true values
-#'   B0 = diag(c(0.25, 0.25, 0.25)), # small variances = concentrated prior
-#'   c0 = 3, C0 = 2                  # for ALD method
+#'   b0 = c(2, 1.5, -0.8),
+#'   B0 = diag(c(0.25, 0.25, 0.25)),
+#'   c0 = 3, C0 = 2
 #' )
 #' fit2 <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
-#'                method = "ald", prior = prior)
+#'                 method = "ald", prior = prior)
 #'
-#' # Compare different methods
+#' # Compare methods
 #' fit_score <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
-#'                     method = "score", prior = prior)
+#'                      method = "score")
 #' fit_approx <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
-#'                      method = "approximate", prior = prior)
+#'                       method = "approximate")
 #'
 #' @importFrom stats model.frame model.matrix model.response terms
 #' @export
@@ -270,7 +269,6 @@ bqr.svy <- function(formula,
 
   # ALD/Score use normalized weights; Approximate uses raw weights
   w_norm <- w / mean(w)
-  w_un <- sum(w) / n * w
 
   # --- helper to run backend for a single tau ---
   run_backend_one <- function(tau_i) {
@@ -296,7 +294,7 @@ bqr.svy <- function(formula,
                         B_prior_prec  = solve(prior$B0)
                       ),
                       "approximate" = .MCMC_BWQR_AP(
-                        y, X, w_un,
+                        y, X, w,
                         n_mcmc        = niter,
                         burnin        = burnin,
                         thin          = thin,
@@ -395,9 +393,6 @@ bqr.svy <- function(formula,
 }
 
 
-
-# ==== DATA SIMULATION ==========================================================
-
 #' Simulate data for Bayesian Weighted Quantile Regression
 #'
 #' Generates synthetic data compatible with \code{\link{bqr.svy}}, allowing the user
@@ -452,3 +447,20 @@ simulate_bqr_data <- function(n = 100,
     true_betas = betas
   )
 }
+
+#' @export
+plot.bqr.svy <- function(x, ..., datafile = NULL, response = "Y", x_var = NULL,
+                         paintedArea = TRUE, band_choice = c("minmax","symmetric"),
+                         show_data = !is.null(datafile)) {
+  drawQuantile1D(
+    fit         = x,
+    datafile    = datafile,
+    response    = response,
+    x_var       = x_var,
+    paintedArea = paintedArea,
+    band_choice = band_choice,
+    print_plot  = TRUE,
+    show_data   = show_data
+  )
+}
+

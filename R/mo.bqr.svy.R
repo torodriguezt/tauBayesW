@@ -111,6 +111,44 @@ mo_prior_default <- function(p,
 
 #' Coerce to a \code{mo_bqr_prior} object
 #'
+#' This function ensures that the input is converted to a valid
+#' \code{mo_bqr_prior} object. It accepts an existing \code{mo_bqr_prior},
+#' or a list with the necessary components, and performs validation
+#' and expansion of scalar or vector inputs.
+#'
+#' @param x An object to coerce. Can be:
+#'   \itemize{
+#'     \item A valid \code{mo_bqr_prior} object
+#'     \item A list with components \code{beta_mean}, \code{beta_cov},
+#'           \code{sigma_shape}, and \code{sigma_rate}
+#'   }
+#' @param p Integer. Number of regression coefficients (including intercept).
+#'   Used to validate and expand inputs.
+#' @param names Optional character vector of coefficient names. If provided,
+#'   they are attached to \code{beta_mean} and \code{beta_cov}.
+#'
+#' @return A \code{mo_bqr_prior} object with fields:
+#'   \itemize{
+#'     \item \code{beta_mean}: Numeric vector of prior means
+#'     \item \code{beta_cov}: Prior covariance matrix
+#'     \item \code{sigma_shape}: Shape parameter of inverse-gamma prior
+#'     \item \code{sigma_rate}: Rate parameter of inverse-gamma prior
+#'   }
+#'
+#' @examples
+#' # From an existing mo_bqr_prior
+#' prior1 <- mo_prior_default(p = 3)
+#' as_mo_bqr_prior(prior1, p = 3)
+#'
+#' # From a list
+#' prior_list <- list(
+#'   beta_mean   = c(0, 0, 0),
+#'   beta_cov    = diag(1e6, 3),
+#'   sigma_shape = 0.001,
+#'   sigma_rate  = 0.001
+#' )
+#' as_mo_bqr_prior(prior_list, p = 3, names = c("(Intercept)", "x1", "x2"))
+#'
 #' @export
 as_mo_bqr_prior <- function(x, p, names = NULL) {
   if (inherits(x, "mo_bqr_prior")) {
@@ -155,6 +193,24 @@ as_mo_bqr_prior <- function(x, p, names = NULL) {
   )
 }
 
+
+#' Print method for \code{mo_bqr_prior} objects
+#'
+#' This function defines the \code{print()} method for objects of class
+#' \code{mo_bqr_prior}. It displays a summary of the prior structure,
+#' including the length of \code{beta_mean}, the dimension of
+#' \code{beta_cov}, and the values of \code{sigma_shape} and \code{sigma_rate}.
+#'
+#' @param x An object of class \code{mo_bqr_prior}.
+#' @param ... Additional arguments passed to or from other methods
+#'   (currently unused).
+#'
+#' @return The object \code{x}, invisibly.
+#'
+#' @examples
+#' prior <- mo_prior_default(p = 3)
+#' print(prior)
+#'
 #' @export
 print.mo_bqr_prior <- function(x, ...) {
   cat("mo_bqr_prior\n")
@@ -164,6 +220,7 @@ print.mo_bqr_prior <- function(x, ...) {
   cat("  sigma_rate :", x$sigma_rate, "\n")
   invisible(x)
 }
+
 
 
 as_prior_list_per_tau <- function(prior, p, names, taus) {
@@ -193,9 +250,9 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
     return(priors)
   }
 
-  # caso lista de priors (uno por tau)
+  # list of priors (one per tau)
   if (is.list(prior)) {
-    # nombrada: intentar emparejar "q0.1" o "0.1"
+    # named: try to match "q0.1" or "0.1"
     if (!is.null(names(prior))) {
       priors <- vector("list", length(taus))
       for (i in seq_along(taus)) {
@@ -208,23 +265,24 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
         } else if (length(prior) == length(taus)) {
           priors[[i]] <- as_mo_bqr_prior(prior[[i]], p = p, names = names)
         } else {
-          stop("No se encontró prior para tau=", taus[i],
-               ". Nombra los elementos como 'q", taus[i], "' o provee longitud exacta.")
+          stop("No prior found for tau = ", taus[i],
+               ". Name the elements as 'q", taus[i], "' or provide a list of exact length.")
         }
       }
       names(priors) <- paste0("q", taus)
       return(priors)
     }
-    # no nombrada: exigir longitud correcta
+    # unnamed: require correct length
     if (length(prior) != length(taus))
-      stop("'prior' como lista debe tener la misma longitud que 'quantile' o venir nombrada.")
+      stop("'prior' as a list must have the same length as 'quantile' or be named.")
     priors <- lapply(prior, function(pr) as_mo_bqr_prior(pr, p = p, names = names))
     names(priors) <- paste0("q", taus)
     return(priors)
   }
 
-  stop("Formato de 'prior' no reconocido. Usa mo_bqr_prior, lista válida, función, o NULL.")
+  stop("Unrecognized 'prior' format. Use mo_bqr_prior, a valid list, a function, or NULL.")
 }
+
 
 
 #' Multiple-Output Bayesian Quantile Regression for Complex Surveys (Directional EM)
@@ -290,6 +348,15 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
 #'   \item{response_dim}{Dimension of the response \eqn{d}}
 #'
 #' @examples
+#' \donttest{
+#' # Datos simulados para el ejemplo
+#' set.seed(1)
+#' n  <- 150
+#' x1 <- runif(n,-1,1)
+#' x2 <- rnorm(n)
+#' y  <- 1 + 2*x1 + 0.5*x2 + rnorm(n)
+#' mydata <- data.frame(y, x1, x2)
+#'
 #' # Basic usage with default priors
 #' fit1 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
 #'                    quantile = c(0.1, 0.5, 0.9))
@@ -304,11 +371,15 @@ as_prior_list_per_tau <- function(prior, p, names, taus) {
 #'
 #' # Explicit control of directions
 #' set.seed(1)
-#' U <- matrix(rnorm(6), nrow = 3)  # d=3, K=2
+#' y1 <- 1 + 2*x1 + 0.5*x2 + rnorm(n)
+#' y2 <- -1 + 1.5*x1 + rnorm(n)
+#' y3 <- 0.5 - x2 + rnorm(n)
+#' mydata <- data.frame(y1, y2, y3, x1, x2)
+#' U <- matrix(rnorm(9), nrow = 3)  # d=3, K=2
 #' U <- apply(U, 2, function(v) v / sqrt(sum(v^2))) # normalize
-#' fit3 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
+#' fit3 <- mo.bqr.svy(cbind(y1,y2,y3) ~ x1 + x2, data = mydata,
 #'                    quantile = 0.5, U = U)
-#'
+#' }
 #' @export
 #' @importFrom stats model.frame model.matrix model.response
 #' @importFrom pracma nullspace
@@ -350,7 +421,6 @@ mo.bqr.svy <- function(formula,
   if (any(!is.finite(wts)) || any(wts <= 0)) stop("Invalid weights.")
   wts <- wts / mean(wts)
 
-  # --- Construcción de direcciones y bases ortogonales ---
   if (!requireNamespace("pracma", quietly = TRUE)) {
     stop("Package 'pracma' is required for nullspace calculation")
   }
@@ -569,6 +639,40 @@ print.mo.bqr.svy <- function(x, ...) {
 
 #' Simulate data for Multiple-Output Bayesian Quantile Regression
 #'
+#' Generates synthetic data suitable for testing and demonstrating
+#' \code{\link{mo.bqr.svy}}. The function simulates predictors \code{X},
+#' a response \code{y}, random weights, and stores the true regression
+#' coefficients used for generation.
+#'
+#' @param n Integer. Number of observations to simulate.
+#' @param p Integer. Number of predictors (excluding the intercept).
+#' @param beta_true Numeric vector of length \code{p + 1}, giving the true
+#'   regression coefficients (first element is the intercept, followed by slopes).
+#'   If \code{NULL}, defaults to \code{c(1, 1, 2, ..., p)}.
+#' @param seed Optional integer for reproducibility.
+#'
+#' @return A list with the following elements:
+#' \describe{
+#'   \item{\code{data}}{A \code{data.frame} with response \code{y} and
+#'   predictors \code{x1, ..., xp}.}
+#'   \item{\code{weights}}{A numeric vector of length \code{n} with
+#'   random survey weights drawn from \eqn{U(0.5, 2)}.}
+#'   \item{\code{true_betas}}{Matrix with the true regression coefficients
+#'   used in the simulation (1 row, \code{p+1} columns).}
+#'   \item{\code{quantiles}}{Default quantile levels \code{c(0.1, 0.5, 0.9)}.}
+#' }
+#'
+#' @examples
+#' # Simulate data with 2 predictors and default coefficients
+#' sim <- simulate_mo_bqr_data(n = 50, p = 2, seed = 123)
+#' str(sim$data)
+#'
+#' # Use custom true coefficients
+#' sim2 <- simulate_mo_bqr_data(n = 50, p = 3,
+#'                              beta_true = c(1, 2, -1, 0.5),
+#'                              seed = 456)
+#' sim2$true_betas
+#'
 #' @export
 simulate_mo_bqr_data <- function(n = 100, p = 2, beta_true = NULL, seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
@@ -593,3 +697,22 @@ simulate_mo_bqr_data <- function(n = 100, p = 2, beta_true = NULL, seed = NULL) 
     quantiles  = c(0.1, 0.5, 0.9)
   )
 }
+
+
+
+#' @export
+plot.mo.bqr.svy <- function(x, ..., datafile = NULL, response = c("Y1","Y2"),
+                            xValue = NULL, paintedArea = FALSE, comparison = FALSE,
+                            show_data = !is.null(datafile)) {
+  drawQuantileRegion(
+    fit         = x,
+    datafile    = datafile,
+    response    = response,
+    xValue      = xValue,
+    paintedArea = paintedArea,
+    comparison  = comparison,
+    print_plot  = TRUE,
+    show_data   = show_data
+  )
+}
+

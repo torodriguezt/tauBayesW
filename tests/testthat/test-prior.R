@@ -114,3 +114,4 @@ test_that("bqr.svy works with approximate method and legacy-list prior", {
   expect_s3_class(fit, "bwqr_fit")
   expect_s3_class(fit$prior, "bqr_prior")
 })
+

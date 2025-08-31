@@ -265,10 +265,10 @@ plot.bqr.svy <- function(x, type = c("trace", "intervals", "quantiles"), ...) {
 #' @keywords internal
 .collect_points_for_tau <- function(fit, tau, x0_vec) {
   taus <- fit$quantile
-  if (length(taus) == 0) stop("El objeto no tiene cuantiles en 'fit'.")
+  if (length(taus) == 0) stop("The object has no quantiles in 'fit'.")
   idx_tau <- which.min(abs(taus - tau))
   fi <- fit$fit[[idx_tau]]
-  if (is.null(fi)) stop("No se encontró resultados para tau = ", tau)
+  if (is.null(fi)) stop("No results found for tau = ", tau)
 
   U <- fit$U
   Gamma_list <- fi$Gamma_list %||% fit$Gamma_list
@@ -288,6 +288,7 @@ plot.bqr.svy <- function(x, type = c("trace", "intervals", "quantiles"), ...) {
   pts
 }
 
+
 #' @keywords internal
 .reconstruct_point_dir <- function(u, Gamma, beta_dir, x0_vec) {
   bx <- beta_dir[names(x0_vec)]
@@ -300,29 +301,269 @@ plot.bqr.svy <- function(x, type = c("trace", "intervals", "quantiles"), ...) {
 
 
 
-#' Draw quantile regions (2D) for mo.bqr.svy
+#' Draw univariate quantile curves/bands for mo.bqr.svy (d = 1)
 #'
-#' @param fit objeto \code{mo.bqr.svy} con d = 2
-#' @param datafile (opcional) data.frame para superponer puntos observados
-#' @param response (opcional) nombres de columnas Y en datafile, p.ej. c("Y1","Y2")
-#' @param xValue valores de predictores donde evaluar la región (una o varias filas)
-#' @param paintedArea si TRUE rellena el polígono; si FALSE solo contorno
-#' @param comparison si TRUE y hay múltiples xValue, colorea por cada uno
-#' @param print_plot si TRUE devuelve ggplot; si FALSE devuelve data.frame de polígonos
-#' @param show_data si TRUE y hay datafile/response válidos, dibuja los puntos observados
-#' @return ggplot o data.frame con coordenadas
+#' @param fit mo.bqr.svy object with response_dim = 1
+#' @param datafile optional data.frame to overlay observed points
+#' @param response name of Y column in datafile (character, length 1)
+#' @param x_var which predictor to map to the horizontal axis (character, length 1).
+#'              If NULL, uses the first term label in fit$terms.
+#' @param x_grid numeric vector of x values for x_var; if NULL, deduced from datafile or set to seq(-2,2,len=100)
+#' @param xValue data.frame or list with fixed values for other predictors (one or more rows).
+#'               If multiple rows are provided, curves are colored by row (comparison).
+#' @param paintedArea if TRUE and there are at least 2 taus, fills ribbon between two taus (see band_choice)
+#' @param band_choice character: "minmax" (default) or "symmetric".
+#'        - "minmax": banda entre min(taus) y max(taus)
+#'        - "symmetric": toma el mayor tau < 0.5 y el menor tau > 0.5 (si existen)
+#' @param print_plot if TRUE returns ggplot; if FALSE returns a data.frame with predictions
+#' @param show_data if TRUE and datafile/response/x_var available, shows observed points
+#' @return ggplot object or data.frame with columns: xid, x, tau, yhat
+#' @export
+drawQuantile1D <- function(fit, datafile = NULL, response = "Y",
+                           x_var = NULL, x_grid = NULL, xValue = NULL,
+                           paintedArea = TRUE, band_choice = c("minmax","symmetric"),
+                           print_plot = TRUE, show_data = !is.null(datafile)) {
+  band_choice <- match.arg(band_choice)
+  taus <- as.numeric(fit$quantile)
+  if (length(taus) == 0L) stop("The object has no levels in 'fit$quantile'.")
+
+  get_vars <- function(fit) {
+    if (!is.null(fit$terms))      return(attr(stats::terms(fit$terms), "term.labels"))
+    if (!is.null(fit$formula))    return(attr(stats::terms(fit$formula), "term.labels"))
+    if (!is.null(fit$call) && !is.null(fit$call$formula))
+      return(attr(stats::terms(stats::as.formula(fit$call$formula)), "term.labels"))
+    stop("Could not find predictors (missing fit$terms or formula).")
+  }
+  vars <- get_vars(fit)
+  if (is.null(x_var)) {
+    if (length(vars) == 0L) stop("No predictors in the model; specify x_var.")
+    x_var <- vars[1L]
+  }
+  if (!x_var %in% vars) stop(sprintf("x_var='%s' is not among the model predictors.", x_var))
+
+  to_list_newdata <- function(xValue) {
+    if (is.null(xValue)) {
+      if (length(vars) == 0L) list(data.frame(row=1)[,FALSE])
+      else list(as.data.frame(as.list(stats::setNames(rep(0, length(vars)), vars))))
+    } else if (is.data.frame(xValue)) {
+      split(xValue, seq_len(nrow(xValue)))
+    } else if (is.list(xValue) && !is.data.frame(xValue)) {
+      lapply(xValue, function(el) if (is.data.frame(el)) el[1,,drop=FALSE] else as.data.frame(el))
+    } else stop("xValue must be a data.frame (1+ rows) or a list of named rows.")
+  }
+  base_list <- to_list_newdata(xValue)
+
+  if (is.null(x_grid)) {
+    if (!is.null(datafile) && x_var %in% names(datafile)) {
+      rng <- range(datafile[[x_var]], na.rm = TRUE)
+      x_grid <- if (is.finite(rng[1]) && is.finite(rng[2]) && diff(rng) > 0)
+        seq(rng[1], rng[2], length.out = 100) else seq(-2, 2, length.out = 100)
+    } else x_grid <- seq(-2, 2, length.out = 100)
+  }
+
+  extract_beta_from_node <- function(node) {
+    cands <- list(
+      tryCatch(node$directions[[1]]$beta, error = function(e) NULL),
+      node$beta, node$coef, node$coefficients
+    )
+    for (el in cands) if (is.numeric(el)) return(el)
+    NULL
+  }
+  get_beta_for_tau <- function(fit, tau, qi) {
+    b_try <- try(stats::coef(fit, tau = tau), silent = TRUE)
+    if (!inherits(b_try, "try-error") && is.numeric(b_try)) return(b_try)
+    b_try <- try(coef(fit, tau = tau), silent = TRUE)
+    if (!inherits(b_try, "try-error") && is.numeric(b_try)) return(b_try)
+
+    cf <- NULL
+    c1 <- try(stats::coef(fit), silent = TRUE)
+    if (!inherits(c1, "try-error")) cf <- c1
+    if (is.null(cf)) cf <- if (!is.null(fit$coef)) fit$coef else fit$coefficients
+    if (!is.null(cf)) {
+      if (is.matrix(cf)) {
+        j <- qi
+        if (!is.null(colnames(cf))) {
+          numcn <- suppressWarnings(as.numeric(gsub("[^0-9\\.]+","", colnames(cf))))
+          if (any(is.finite(numcn))) { jj <- which.min(abs(numcn - tau)); if (length(jj)==1) j <- jj }
+        }
+        b <- cf[, j, drop = TRUE]; if (!is.null(rownames(cf))) names(b) <- rownames(cf); return(b)
+      }
+      if (is.list(cf)) {
+        if (length(cf) >= qi && is.numeric(cf[[qi]])) return(cf[[qi]])
+        nm <- names(cf); if (!is.null(nm)) { num <- suppressWarnings(as.numeric(gsub("[^0-9\\.]+","", nm)))
+        jj <- which.min(abs(num - tau)); if (length(jj) == 1 && is.numeric(cf[[jj]])) return(cf[[jj]]) }
+      }
+      if (is.numeric(cf)) return(cf)
+    }
+    if (!is.null(fit$beta)) {
+      b0 <- fit$beta
+      if (is.numeric(b0) && is.null(dim(b0))) return(b0)
+      if (is.matrix(b0)) {
+        j <- qi
+        if (!is.null(colnames(b0))) {
+          numcn <- suppressWarnings(as.numeric(gsub("[^0-9\\.]+","", colnames(b0))))
+          if (any(is.finite(numcn))) { jj <- which.min(abs(numcn - tau)); if (length(jj)==1) j <- jj }
+        }
+        b <- b0[, j, drop = TRUE]; if (!is.null(rownames(b0))) names(b) <- rownames(b0); return(b)
+      }
+      if (is.list(b0)) {
+        if (length(b0) >= qi && is.numeric(b0[[qi]])) return(b0[[qi]])
+        nm <- names(b0); if (!is.null(nm)) { num <- suppressWarnings(as.numeric(gsub("[^0-9\\.]+","", nm)))
+        jj <- which.min(abs(num - tau)); if (length(jj)==1 && is.numeric(b0[[jj]])) return(b0[[jj]]) }
+      }
+    }
+    if (!is.null(fit$fit) && length(fit$fit) >= qi) {
+      b <- extract_beta_from_node(fit$fit[[qi]]); if (is.numeric(b)) return(b)
+    }
+    stop("Could not find coefficients in 'fit' for tau = ", tau)
+  }
+  .safe_build_xvec <- function(fit, nd) {
+    if (exists(".build_xvec", mode = "function")) {
+      out <- try(.build_xvec(fit, nd), silent = TRUE)
+      if (!inherits(out, "try-error")) return(out)
+    }
+    mm <- if (!is.null(fit$terms)) model.matrix(fit$terms, nd) else model.matrix(fit$formula, nd)
+    v <- as.numeric(mm[1, ]); names(v) <- colnames(mm); v
+  }
+  dot_aligned <- function(beta, x0) {
+    if (!is.null(names(beta))) {
+      common <- intersect(names(beta), names(x0)); if (length(common)) return(sum(beta[common] * x0[common]))
+    }
+    k <- min(length(beta), length(x0)); sum(beta[seq_len(k)] * x0[seq_len(k)])
+  }
+
+  pred_list <- vector("list", length(base_list) * length(taus) * length(x_grid))
+  idx <- 1L
+  for (j in seq_along(base_list)) {
+    base_row <- base_list[[j]]; if (!x_var %in% names(base_row)) base_row[[x_var]] <- NA_real_
+    for (qi in seq_along(taus)) {
+      t <- taus[qi]; beta_t <- get_beta_for_tau(fit, t, qi)
+      for (xv in x_grid) {
+        nd <- base_row; nd[[x_var]] <- xv
+        x0 <- .safe_build_xvec(fit, nd)
+        yhat <- dot_aligned(beta_t, x0)
+        pred_list[[idx]] <- data.frame(xid = j, x = xv, tau = t, yhat = yhat)
+        idx <- idx + 1L
+      }
+    }
+  }
+  df_pred <- do.call(rbind, pred_list)
+  if (!print_plot) return(df_pred)
+
+  g <- ggplot2::ggplot()
+  if (isTRUE(show_data) && !is.null(datafile) && response %in% names(datafile) && x_var %in% names(datafile)) {
+    g <- g + ggplot2::geom_point(
+      data = datafile,
+      aes(x = .data[[x_var]], y = .data[[response]]),
+      alpha = 0.35, size = 1
+    )
+  }
+
+  if (paintedArea && length(taus) >= 2L) {
+    lower <- if (band_choice == "symmetric" && any(taus<0.5) && any(taus>0.5)) max(taus[taus<0.5]) else min(taus)
+    upper <- if (band_choice == "symmetric" && any(taus<0.5) && any(taus>0.5)) min(taus[taus>0.5]) else max(taus)
+    df_low <- subset(df_pred, abs(tau - lower) < 1e-12)
+    df_up  <- subset(df_pred,  abs(tau - upper) < 1e-12)
+    df_rib <- merge(df_low, df_up, by = c("x","xid"), suffixes = c("_lo","_up"))
+    g <- g + ggplot2::geom_ribbon(
+      data = df_rib,
+      ggplot2::aes(x = .data$x, ymin = .data$yhat_lo, ymax = .data$yhat_up,
+                   group = .data$xid, fill = factor(.data$xid)),
+      alpha = 0.25, colour = NA
+    )
+  }
+
+  g <- g + ggplot2::geom_line(
+    data = df_pred,
+    ggplot2::aes(x = .data$x, y = .data$yhat,
+                 color = factor(.data$tau),
+                 linetype = factor(.data$xid),
+                 group = interaction(.data$xid, .data$tau)),
+    linewidth = 0.9
+  ) +
+    ggplot2::scale_color_discrete(name = expression(tau)) +
+    ggplot2::scale_linetype_discrete(name = "xValue") +
+    ggplot2::labs(x = x_var, y = response, fill = "xValue") +
+    ggplot2::theme_bw()
+
+  g
+}
+
+
+
+#' Draw quantile regions (2D) for mo.bqr.svy using convex hulls
+#'
+#' This function visualizes bivariate quantile regions from a fitted
+#' \code{mo.bqr.svy} object. For each requested quantile level, a convex hull is
+#' computed from the directional points and drawn as a closed polygon. The
+#' function can overlay observed data, compare multiple predictor values, and
+#' facet the plot so each quantile level is displayed in its own panel.
+#'
+#' @param fit \code{mo.bqr.svy} object with \code{response_dim = 2}.
+#' @param datafile Optional \code{data.frame} with observed responses to overlay.
+#' @param response Character vector of length 2 naming the Y columns in
+#'   \code{datafile}, e.g. \code{c("Y1","Y2")}.
+#' @param xValue Predictor values at which to evaluate the region. Can be:
+#'   \itemize{
+#'     \item \code{NULL}: uses the mean design vector (all zeros).
+#'     \item \code{data.frame}: one or more rows specifying predictor settings.
+#'     \item \code{list} of data.frames: each element is one row of predictors.
+#'   }
+#' @param paintedArea Logical; if \code{TRUE}, fills the polygon; if \code{FALSE},
+#'   only draws the outline.
+#' @param comparison Logical; if \code{TRUE} and multiple \code{xValue}s are provided,
+#'   colors polygons by each \code{xValue}.
+#' @param print_plot Logical; if \code{TRUE} returns a \pkg{ggplot} object;
+#'   if \code{FALSE} returns a \code{data.frame} with polygon coordinates.
+#' @param show_data Logical; if \code{TRUE} and valid \code{datafile}/\code{response}
+#'   are provided, overlays observed points.
+#' @param facet_by_tau Logical; if \code{TRUE}, facets the plot by quantile level,
+#'   creating one panel per \eqn{\tau}.
+#' @param facet_nrow Number of rows in the facet grid.
+#' @param facet_ncol Number of columns in the facet grid (if \code{NULL}, computed automatically).
+#' @param facet_scales Scales option passed to \code{facet_wrap} (\code{"fixed"},
+#'   \code{"free"}, etc.).
+#' @param round_digits Integer, number of digits to round projected points before
+#'   computing convex hulls (helps remove duplicates).
+#'
+#' @return Either a \pkg{ggplot2} object (if \code{print_plot = TRUE}) showing
+#'   the quantile regions, or a \code{data.frame} with polygon coordinates
+#'   (if \code{print_plot = FALSE}).
+#'
+#' @details
+#' Internally, the function computes directional projections of the fitted model
+#' via \code{.collect_points_for_tau}, applies a convex hull with
+#' \code{grDevices::chull}, and then arranges the vertices to form closed polygons.
+#' This ensures smooth and convex quantile regions. Multiple quantiles can be
+#' visualized simultaneously using faceting.
+#'
+#' @examples
+#' \dontrun{
+#' # Fit a bivariate model
+#' fit2 <- mo.bqr.svy(cbind(Y1,Y2) ~ x, data=df2,
+#'                    weights=df2$w, quantile=c(0.5,0.8))
+#'
+#' # Draw quantile regions with observed points
+#' drawQuantileRegion(fit2, datafile=df2, response=c("Y1","Y2"),
+#'                    xValue=data.frame(x=c(-1,0,1)),
+#'                    paintedArea=FALSE, comparison=TRUE,
+#'                    facet_by_tau=TRUE)
+#' }
+#' @importFrom ggplot2 ggplot geom_point aes geom_polygon geom_path facet_wrap labs coord_equal theme_bw
 #' @export
 drawQuantileRegion <- function(fit, datafile = NULL, response = c("Y1","Y2"),
                                xValue = NULL, paintedArea = FALSE,
                                comparison = FALSE, print_plot = TRUE,
-                               show_data = !is.null(datafile)) {
+                               show_data = !is.null(datafile),
+                               facet_by_tau = TRUE, facet_nrow = 1, facet_ncol = NULL,
+                               facet_scales = "fixed",
+                               round_digits = 10) {
+
   if (is.null(fit$response_dim) || fit$response_dim != 2L)
-    stop("drawQuantileRegion: se requiere un 'fit' con response_dim = 2.")
-
+    stop("drawQuantileRegion: a 'fit' with response_dim = 2 is required.")
   if (!requireNamespace("ggplot2", quietly = TRUE))
-    stop("Falta 'ggplot2'. Instálalo con install.packages('ggplot2').")
+    stop("'ggplot2' is missing. Please install it with install.packages('ggplot2').")
 
-  # --- construir lista de newdata (una por cada xValue solicitado) ---
   to_list_newdata <- function(fit, xValue) {
     if (is.null(xValue)) {
       vars <- attr(stats::terms(fit$terms), "term.labels")
@@ -332,29 +573,44 @@ drawQuantileRegion <- function(fit, datafile = NULL, response = c("Y1","Y2"),
       split(xValue, seq_len(nrow(xValue)))
     } else if (is.list(xValue) && !is.data.frame(xValue)) {
       lapply(xValue, function(el) if (is.data.frame(el)) el[1,,drop=FALSE] else as.data.frame(el))
-    } else stop("xValue debe ser data.frame (1+ filas) o lista de filas nombradas.")
+    } else stop("xValue must be a data.frame (with 1 or more rows) or a list of named rows.")
   }
 
   newdata_list <- to_list_newdata(fit, xValue)
   taus <- fit$quantile
-  if (length(taus) == 0L) stop("El objeto no tiene niveles en 'fit$quantile'.")
+  if (length(taus) == 0L) stop("The object has no levels in 'fit$quantile'.")
 
-  # --- armar data.frame con polígonos para todas las (tau, newdata) ---
   poly_list <- list(); idx <- 1L
   for (t in taus) for (j in seq_along(newdata_list)) {
     nd <- newdata_list[[j]]
     x0 <- .build_xvec(fit, nd)
-    pts <- .collect_points_for_tau(fit, tau = t, x0_vec = x0)  # Kx2
-    ang <- atan2(pts[,2], pts[,1]); ord <- order(ang)
-    P <- rbind(pts[ord,,drop=FALSE], pts[ord,,drop=FALSE][1,,drop=FALSE])  # cerrar
-    poly_list[[idx]] <- data.frame(y1=P[,1], y2=P[,2], tau=rep(t,nrow(P)), xid=rep(j,nrow(P)))
+    pts <- .collect_points_for_tau(fit, tau = t, x0_vec = x0)
+
+    pts <- unique(round(pts, round_digits))
+    pts <- pts[stats::complete.cases(pts), , drop = FALSE]
+
+    if (nrow(pts) < 2L) {
+      P <- rbind(pts, pts)
+    } else if (nrow(pts) == 2L) {
+      P <- rbind(pts, pts[1,,drop=FALSE])
+    } else {
+      h <- grDevices::chull(pts)
+      P <- rbind(pts[h,,drop=FALSE], pts[h[1],,drop=FALSE])  # cerrar
+    }
+
+    poly_list[[idx]] <- data.frame(
+      y1 = P[,1], y2 = P[,2],
+      tau = rep(t, nrow(P)), xid = rep(j, nrow(P))
+    )
     idx <- idx + 1L
   }
   df_poly <- do.call(rbind, poly_list)
   if (!print_plot) return(df_poly)
 
-  # --- plot ---
-  library(ggplot2)
+  tau_levels <- sort(unique(df_poly$tau))
+  df_poly$tau_f <- factor(df_poly$tau, levels = tau_levels,
+                          labels = paste0("\u03C4 = ", tau_levels))
+
   g <- ggplot()
   if (isTRUE(show_data) && !is.null(datafile) && all(response %in% names(datafile))) {
     g <- g + geom_point(data = datafile,
@@ -366,129 +622,238 @@ drawQuantileRegion <- function(fit, datafile = NULL, response = c("Y1","Y2"),
     if (comparison || length(newdata_list) > 1L) {
       g <- g + geom_polygon(data = df_poly,
                             aes(x = y1, y = y2,
-                                group = interaction(tau, xid),
-                                fill = factor(xid)),
+                                group = interaction(tau_f, xid),
+                                fill  = factor(xid)),
                             alpha = 0.35, colour = NA)
     } else {
       g <- g + geom_polygon(data = df_poly,
-                            aes(x = y1, y = y2, group = tau),
+                            aes(x = y1, y = y2, group = tau_f),
                             alpha = 0.35, fill = "lightblue", colour = NA)
     }
   } else {
     if (comparison || length(newdata_list) > 1L) {
       g <- g + geom_path(data = df_poly,
                          aes(x = y1, y = y2,
-                             group = interaction(tau, xid),
-                             colour = factor(xid),
-                             linetype = factor(tau)), linewidth = 0.7)
+                             group  = interaction(tau_f, xid),
+                             colour = factor(xid)),
+                         linewidth = 0.9)
     } else {
       g <- g + geom_path(data = df_poly,
-                         aes(x = y1, y = y2, linetype = factor(tau)),
-                         linewidth = 0.7)
+                         aes(x = y1, y = y2, group = tau_f),
+                         linewidth = 0.9)
     }
   }
 
-  g +
-    scale_linetype_discrete(name = expression(tau)) +
-    labs(x = "Y1", y = "Y2", colour = "xValue", fill = "xValue") +
+  if (facet_by_tau) {
+    g <- g + facet_wrap(~tau_f, nrow = facet_nrow, ncol = facet_ncol, scales = facet_scales)
+  }
+
+  g + labs(x = "Y1", y = "Y2", colour = "xValue", fill = "xValue") +
     coord_equal() + theme_bw()
 }
 
 
-#' Draw quantile regions (3D) for mo.bqr.svy (plotly + convex hull)
+
+
+#' Draw quantile regions (3D) for mo.bqr.svy using convex hulls
 #'
-#' @param fit objeto \code{mo.bqr.svy} con d = 3
-#' @param xValue valores de predictores donde evaluar la región (mismas reglas que en 2D)
-#' @param opacity opacidad de cada cuerpo (0-1)
-#' @param datafile (opcional) data.frame con Y observados para superponer
-#' @param response (opcional) nombres de columnas Y en datafile, p.ej. c("Y1","Y2","Y3")
-#' @param show_points si TRUE y hay datafile/response válidos, superpone puntos observados
-#' @param point_opacity opacidad de los puntos observados
-#' @param point_size tamaño de los puntos observados
-#' @return objeto plotly con una malla por cada xValue (y por el/los tau del modelo)
+#' This function visualizes trivariate quantile regions from a fitted
+#' \code{mo.bqr.svy} object using \pkg{plotly}. For each requested quantile
+#' level, a convex hull is computed from the directional points and plotted as
+#' a 3D mesh. When multiple quantiles are present, each one is displayed in its
+#' own subplot (grid of 3D panels).
+#'
+#' @param fit \code{mo.bqr.svy} object with \code{response_dim = 3}.
+#' @param xValue Predictor values at which to evaluate the region. Can be:
+#'   \itemize{
+#'     \item \code{NULL}: uses the mean design vector (all zeros).
+#'     \item \code{data.frame}: one or more rows specifying predictor settings.
+#'     \item \code{list} of data.frames: each element is one row of predictors.
+#'   }
+#'   Works in the same way as in \code{drawQuantileRegion} (2D).
+#' @param opacity Opacity, between 0 and 1, of each quantile body.
+#' @param datafile Optional \code{data.frame} with observed responses to overlay.
+#' @param response Character vector of length 3 naming the Y columns in
+#'   \code{datafile}, e.g. \code{c("Y1","Y2","Y3")}.
+#' @param show_points Logical; if \code{TRUE} and valid \code{datafile}/
+#'   \code{response} are provided, overlays observed points as a 3D scatter.
+#' @param point_opacity Opacity of observed points.
+#' @param point_size Size of observed points.
+#' @param nrows Number of rows in the grid of subplots (when multiple quantiles).
+#' @param ncols Number of columns in the grid of subplots. If \code{NULL},
+#'   computed automatically from the number of quantiles and \code{nrows}.
+#' @param show_titles Logical; if \code{TRUE}, adds facet titles (e.g. tau = 0.5)
+#'   above each subplot.
+#' @param round_digits Integer, number of digits to round projected points
+#'   before computing convex hulls (helps remove duplicates).
+#'
+#' @return A \pkg{plotly} object with one 3D scene per quantile, each containing
+#'   a convex-hull mesh for every \code{xValue}, plus (optionally) the observed
+#'   data points.
+#'
+#' @details
+#' Internally, the function computes directional projections of the fitted model
+#' via \code{.collect_points_for_tau}, applies a convex hull with
+#' \code{geometry::convhulln}, and then maps triangular faces to a mesh object.
+#' The resulting quantile bodies are plotted in interactive 3D. When multiple
+#' quantiles are present, they are arranged in a grid of subplots so each level
+#' can be inspected separately.
+#'
+#' @examples
+#' \dontrun{
+#' # Fit a trivariate model
+#' fit3 <- mo.bqr.svy(cbind(Y1,Y2,Y3) ~ x, data=df3,
+#'                    weights=df3$w, quantile=c(0.5,0.8), U=U)
+#'
+#' # Visualize quantile bodies at x = -1, 0, 1
+#' drawQuantileRegion_3D(fit3,
+#'                       xValue=data.frame(x=c(-1,0,1)),
+#'                       datafile=df3, response=c("Y1","Y2","Y3"),
+#'                       show_points=TRUE)
+#' }
+#'
 #' @export
 drawQuantileRegion_3D <- function(fit, xValue = NULL, opacity = 0.5,
                                   datafile = NULL, response = c("Y1","Y2","Y3"),
                                   show_points = FALSE, point_opacity = 0.25,
-                                  point_size = 2) {
+                                  point_size = 2,
+                                  nrows = 1, ncols = NULL, show_titles = TRUE,
+                                  round_digits = 10) {
   if (is.null(fit$response_dim) || fit$response_dim != 3L)
-    stop("drawQuantileRegion_3D: se requiere un 'fit' con response_dim = 3.")
-
+    stop("drawQuantileRegion_3D: a 'fit' with response_dim = 3 is required.")
   if (!requireNamespace("plotly", quietly = TRUE))
-    stop("Falta 'plotly'. Instálalo con install.packages('plotly').")
+    stop("'plotly' is missing. Please install it with install.packages('plotly').")
   if (!requireNamespace("geometry", quietly = TRUE))
-    stop("Falta 'geometry'. Instálalo con install.packages('geometry').")
+    stop("'geometry' is missing. Please install it with install.packages('geometry').")
 
-  # construir lista de newdata
   to_list_newdata <- function(fit, xValue) {
     if (is.null(xValue)) {
       vars <- attr(stats::terms(fit$terms), "term.labels")
       if (length(vars) == 0L) list(data.frame(row=1)[,FALSE])
-      else list(as.data.frame(as.list(setNames(rep(0, length(vars)), vars))))
+      else list(as.data.frame(as.list(stats::setNames(rep(0, length(vars)), vars))))
     } else if (is.data.frame(xValue)) {
       split(xValue, seq_len(nrow(xValue)))
     } else if (is.list(xValue) && !is.data.frame(xValue)) {
       lapply(xValue, function(el) if (is.data.frame(el)) el[1,,drop=FALSE] else as.data.frame(el))
-    } else stop("xValue debe ser data.frame (1+ filas) o lista de filas nombradas.")
+    } else stop("xValue must be a data.frame (with 1+ rows) or a list of named rows.")
+  }
+  label_nd <- function(nd) {
+    if (ncol(nd)==0) return("xValue#1")
+    paste(paste(names(nd), signif(unlist(nd[1,]), 3), sep="="), collapse=", ")
   }
 
   newdata_list <- to_list_newdata(fit, xValue)
-  taus <- fit$quantile
-  if (length(taus) == 0L) stop("El objeto no tiene niveles en 'fit$quantile'.")
+  taus <- sort(fit$quantile)
+  if (length(taus) == 0L) stop("The object has no levels in 'fit$quantile'.")
+
+  if (is.null(ncols)) ncols <- ceiling(length(taus) / nrows)
+  n_panels <- length(taus)
+
+  n_x <- max(1L, length(newdata_list))
+  pal <- try(grDevices::hcl.colors(n_x, "Dark 3"), silent = TRUE)
+  if (inherits(pal, "try-error")) pal <- grDevices::rainbow(n_x)
+
+  pts_obs <- NULL
+  if (isTRUE(show_points) && !is.null(datafile) && all(response %in% names(datafile))) {
+    pts_obs <- stats::na.omit(datafile[, response])
+  }
 
   plt <- plotly::plot_ly()
-  color_seq <- grDevices::rainbow(max(1L, length(newdata_list)))
 
-  for (j in seq_along(newdata_list)) {
-    nd <- newdata_list[[j]]
-    x0 <- .build_xvec(fit, nd)
+  dx <- 1 / ncols
+  dy <- 1 / nrows
+  pad <- 0.02
 
-    for (t in taus) {
-      pts <- .collect_points_for_tau(fit, tau = t, x0_vec = x0) # K x 3
+  ann_list <- list()
+
+  for (i in seq_along(taus)) {
+    tau <- taus[i]
+    row_i <- ceiling(i / ncols)
+    col_i <- i - (row_i - 1L) * ncols
+
+    x0 <- (col_i - 1) * dx + pad
+    x1 <- col_i * dx - pad
+    inv_row <- nrows - row_i
+    y0 <- inv_row * dy + pad
+    y1 <- (inv_row + 1) * dy - pad
+
+    scene_id <- if (i == 1) "scene" else paste0("scene", i)
+
+    for (j in seq_along(newdata_list)) {
+      nd <- newdata_list[[j]]
+      x0_vec <- .build_xvec(fit, nd)
+      pts <- .collect_points_for_tau(fit, tau = tau, x0_vec = x0_vec)
+      pts <- unique(round(pts, round_digits))
+      pts <- pts[stats::complete.cases(pts), , drop = FALSE]
       colnames(pts) <- c("Y1","Y2","Y3")
 
-      ch <- geometry::convhulln(pts, options = "Qt")
-      tri <- if (ncol(ch) == 4) {
-        do.call(rbind, lapply(seq_len(nrow(ch)), function(i) {
-          v <- ch[i,]
-          rbind(c(v[1], v[2], v[3]),
-                c(v[1], v[3], v[4]),
-                c(v[1], v[2], v[4]),
-                c(v[2], v[3], v[4]))
-        }))
-      } else ch
+      if (nrow(pts) >= 4) {
+        ch <- geometry::convhulln(pts, options = "Qt")
+        tri <- if (ncol(ch) == 4) {
+          do.call(rbind, lapply(seq_len(nrow(ch)), function(ii) {
+            v <- ch[ii,]
+            rbind(c(v[1],v[2],v[3]), c(v[1],v[3],v[4]),
+                  c(v[1],v[2],v[4]), c(v[2],v[3],v[4]))
+          }))
+        } else ch
+        ii <- tri[,1]-1L; jj <- tri[,2]-1L; kk <- tri[,3]-1L
 
-      i <- tri[,1]-1L; jdx <- tri[,2]-1L; k <- tri[,3]-1L
+        plt <- plt |>
+          plotly::add_mesh(
+            x = pts[,1], y = pts[,2], z = pts[,3],
+            i = ii, j = jj, k = kk,
+            name = paste0(label_nd(nd), " | \u03C4=", tau),
+            opacity = opacity, color = pal[j],
+            legendgroup = paste0("xid", j),
+            showlegend = (i == 1),
+            scene = scene_id
+          )
+      }
+    }
 
+    if (!is.null(pts_obs)) {
       plt <- plt |>
-        plotly::add_mesh(
-          x = pts[,1], y = pts[,2], z = pts[,3],
-          i = i, j = jdx, k = k,
-          name = paste0("xValue#", j, " | tau=", t),
-          opacity = opacity,
-          color = color_seq[j]
+        plotly::add_markers(
+          x = pts_obs[[response[1]]],
+          y = pts_obs[[response[2]]],
+          z = pts_obs[[response[3]]],
+          name = "Observed Y",
+          opacity = point_opacity,
+          marker = list(size = point_size),
+          inherit = FALSE,
+          legendgroup = "observed",
+          showlegend = (i == 1),
+          scene = scene_id
         )
+    }
+
+    scene_cfg <- list(
+      domain = list(x = c(x0, x1), y = c(y0, y1)),
+      xaxis  = list(title = "Y1"),
+      yaxis  = list(title = "Y2"),
+      zaxis  = list(title = "Y3"),
+      aspectmode = "cube"
+    )
+
+    plt <- do.call(plotly::layout, c(list(plt), setNames(list(scene_cfg), scene_id)))
+
+    if (isTRUE(show_titles)) {
+      ann_list[[length(ann_list)+1]] <- list(
+        text = paste0("\u03C4 = ", tau),
+        x = (x0 + x1)/2, y = y1 + 0.01,
+        xref = "paper", yref = "paper",
+        showarrow = FALSE, xanchor = "center", yanchor = "bottom",
+        font = list(size = 12)
+      )
     }
   }
 
-  # superponer puntos observados (opcional)
-  if (isTRUE(show_points) && !is.null(datafile) && all(response %in% names(datafile))) {
-    dfp <- stats::na.omit(datafile[, response])
-    plt <- plt |>
-      plotly::add_markers(
-        x = dfp[[response[1]]], y = dfp[[response[2]]], z = dfp[[response[3]]],
-        name = "Observed Y", opacity = point_opacity,
-        marker = list(size = point_size)
-      )
+  if (isTRUE(show_titles) && length(ann_list)) {
+    plt <- plotly::layout(plt, annotations = ann_list)
   }
 
-  plt |>
-    plotly::layout(
-      scene = list(
-        xaxis = list(title = "Y1"),
-        yaxis = list(title = "Y2"),
-        zaxis = list(title = "Y3")
-      ),
-      title = "Directional quantile bodies"
-    )
+  plt
 }
+
+
+

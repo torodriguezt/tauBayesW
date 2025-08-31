@@ -24,9 +24,10 @@ bqr.svy(
 Weights are passed directly to the underlying C++ algorithms without any
 preprocessing like scaling.}
 
-\item{data}{Optional \code{data.frame} for variables in the model.}
+\item{data}{Optional \code{data.frame} containing the variables used in the model.}
 
-\item{quantile}{Numeric scalar in (0, 1): target quantile \eqn{\tau}.}
+\item{quantile}{Numeric scalar or vector in (0, 1): target quantile(s) \eqn{\tau}.
+Duplicates are automatically removed.}
 
 \item{method}{One of \code{"ald"}, \code{"score"}, \code{"approximate"}.}
 
@@ -39,10 +40,23 @@ preprocessing like scaling.}
 For \code{"ald"}: uses \code{b0}, \code{B0}, \code{c0}, \code{C0}.
 For \code{"score"} and \code{"approximate"}: uses \code{b0}, \code{B0} only.}
 
-\item{niter, }{burnin, thin MCMC settings.}
+\item{niter}{Integer. Number of MCMC iterations.}
+
+\item{burnin}{Integer. Number of burn-in iterations.}
+
+\item{thin}{Integer. Thinning interval.}
+
+\item{...}{Additional arguments passed to underlying functions (reserved for future use).}
 }
 \value{
-An object of class \code{"bqr.svy"} and \code{"bwqr_fit"}.
+An object of class \code{"bqr.svy"}, containing:
+\item{beta}{Posterior mean estimates of regression coefficients.}
+\item{draws}{Posterior draws from the MCMC sampler.}
+\item{accept_rate}{Average acceptance rate (if available).}
+\item{quantile}{The quantile(s) fitted.}
+\item{prior}{Prior specification used.}
+\item{formula, terms, model}{Model specification details.}
+\item{runtime}{Elapsed runtime in seconds.}
 }
 \description{
 Fits a Bayesian quantile regression model with survey weights using one of
@@ -52,61 +66,49 @@ three MCMC kernels implemented in C++:
 \item \code{.MCMC_BWQR_SL} – Score likelihood
 \item \code{.MCMC_BWQR_AP} – Approximate likelihood
 }
-Only a single quantile can be estimated at a time.
+One or more quantiles can be estimated, depending on the input.
 }
 \details{
 Survey weights are handled differently by each method:
 \itemize{
-\item \code{"ald"} and \code{"score"}: weights are normalized (divided by their mean)
-\item \code{"approximate"}: weights are used as provided (raw weights)
+\item \code{"ald"} and \code{"score"}: weights are normalized (divided by their mean).
+\item \code{"approximate"}: weights are used as provided (raw weights).
 }
 
 \strong{Prior Specification:}
 
 The prior can be specified in several ways:
 \enumerate{
-\item Using \code{\link{prior_default}} (recommended):
-\preformatted{
-  prior <- prior_default(
-    p     = 3,                          # number of coefficients
-    b0    = c(0, 1.5, -0.8),            # prior means
-    B0    = diag(c(1, 0.5, 0.5)),       # prior covariance matrix
-    c0    = 2,                          # ALD: sigma^2 IG shape
-    C0    = 1,                          # ALD: sigma^2 IG rate
-    names = c("(Intercept)", "x1", "x2")
-  )}
-
-\item As a list:
-\preformatted{
-  prior <- list(
-    b0 = c(0, 1.5, -0.8),
-    B0 = diag(c(1, 0.5, 0.5)),
-    c0 = 2,    # only used by "ald" method
-    C0 = 1     # only used by "ald" method
-  )}
-
-\item \code{NULL} for default vague priors
+\item Using \code{\link{prior_default}} (recommended).
+\item As a list with \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}.
+\item As \code{NULL}, in which case vague priors are used.
 }
+
+Multiple quantiles can be fitted in a single call. The returned object
+adapts its class accordingly (\code{"bwqr_fit"} for one quantile,
+\code{"bwqr_fit_multi"} for several).
 }
 \examples{
-# Basic usage with default priors
+# Simulate data
 sim <- simulate_bqr_data(n = 100, betas = c(2, 1.5, -0.8))
+
+# Basic usage with default priors
 fit1 <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights)
 
 # With informative priors
 prior <- prior_default(
   p  = 3,
-  b0 = c(2, 1.5, -0.8),           # close to true values
-  B0 = diag(c(0.25, 0.25, 0.25)), # small variances = concentrated prior
-  c0 = 3, C0 = 2                  # for ALD method
+  b0 = c(2, 1.5, -0.8),
+  B0 = diag(c(0.25, 0.25, 0.25)),
+  c0 = 3, C0 = 2
 )
 fit2 <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
-               method = "ald", prior = prior)
+                method = "ald", prior = prior)
 
-# Compare different methods
+# Compare methods
 fit_score <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
-                    method = "score", prior = prior)
+                     method = "score")
 fit_approx <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
-                     method = "approximate", prior = prior)
+                      method = "approximate")
 
 }

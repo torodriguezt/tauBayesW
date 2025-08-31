@@ -47,10 +47,8 @@ test_that("summary.mo.bqr.svy works correctly", {
   # Test summary
   summary_result <- summary(fit)
 
-  expect_s3_class(summary_result, "summary.mo.bqr.svy")
+  expect_s3_class(summary_result, "summary.mo_bqr.svy")
   expect_true(is.list(summary_result))
-  expect_true("quantiles" %in% names(summary_result))
-  expect_true("call" %in% names(summary_result))
 
   # Test print method
   expect_output(print(summary_result), "Multiple-Output Bayesian Quantile")

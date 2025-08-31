@@ -94,6 +94,15 @@ of priors is provided, elements can be named using either \code{"q0.1"} format o
 will be called with \code{(tau, p, names)} for each quantile level.
 }
 \examples{
+\donttest{
+# Datos simulados para el ejemplo
+set.seed(1)
+n  <- 150
+x1 <- runif(n,-1,1)
+x2 <- rnorm(n)
+y  <- 1 + 2*x1 + 0.5*x2 + rnorm(n)
+mydata <- data.frame(y, x1, x2)
+
 # Basic usage with default priors
 fit1 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
                    quantile = c(0.1, 0.5, 0.9))
@@ -108,9 +117,13 @@ fit2 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
 
 # Explicit control of directions
 set.seed(1)
-U <- matrix(rnorm(6), nrow = 3)  # d=3, K=2
+y1 <- 1 + 2*x1 + 0.5*x2 + rnorm(n)
+y2 <- -1 + 1.5*x1 + rnorm(n)
+y3 <- 0.5 - x2 + rnorm(n)
+mydata <- data.frame(y1, y2, y3, x1, x2)
+U <- matrix(rnorm(9), nrow = 3)  # d=3, K=2
 U <- apply(U, 2, function(v) v / sqrt(sum(v^2))) # normalize
-fit3 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
+fit3 <- mo.bqr.svy(cbind(y1,y2,y3) ~ x1 + x2, data = mydata,
                    quantile = 0.5, U = U)
-
+}
 }

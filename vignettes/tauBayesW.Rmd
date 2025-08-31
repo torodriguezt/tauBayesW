@@ -203,12 +203,16 @@ summary(model_em)
 
 ### Visualization
 
-```{r visualization, fig.width=8, fig.height=6}
+```{r}
 n_vis <- 300
 x_vis <- seq(-2, 2, length.out = n_vis)
 y_vis <- 1 + 2*x_vis + (0.5 + 0.3*abs(x_vis))*rnorm(n_vis) 
 weights_vis <- rgamma(n_vis, 2, 1)
 data_vis <- data.frame(y = y_vis, x = x_vis)
+```
+
+
+```{r visualization, fig.width=8, fig.height=6}
 
 # Fit single quantile for plotting
 model_vis <- bqr.svy(y ~ x, 
@@ -227,47 +231,29 @@ plot_quantile_with_points.bqr.svy(model_vis, data = data_vis, predictor = "x",
 
 
 ```{r}
-n_vis <- 300
-x_vis <- seq(-2, 2, length.out = n_vis)
-y_vis <- 1 + 2*x_vis + (0.5 + 0.3*abs(x_vis))*rnorm(n_vis) 
-weights_vis <- rgamma(n_vis, 2, 1)
-data_vis <- data.frame(y = y_vis, x = x_vis)
-
-# Fit single quantile for plotting
-model_vis <- mo.bqr.svy(y ~ x, 
-                        data = data_vis,
-                        weights = weights_vis,
-                        quantile = 0.5,
-                        max_iter = 2000,
-                        epsilon = 1e-8,
-                        verbose = FALSE)
-
-# Plot quantile regression with data points
-plot_quantile_with_points.mo.bqr.svy(model_vis, data = data_vis, predictor = "x",
-                          point_alpha = 0.6,
-                          main = "Bayesian Quantile Regression (τ = 0.5)")
-```
+fit1d <- mo.bqr.svy(y ~ x, 
+                     data = data_vis,
+                     weights = weights_vis,
+                     quantile = 0.5,
+                     max_iter  = 2000,
+                     epsilon   = 1e-8,
+                     verbose = FALSE)
 
 
-
-#### Multiple Quantile Visualization
-
-```{r multi-quantile-viz, fig.width=8, fig.height=6}
-# Fit multiple quantiles for univariate case
-model_multi_vis <- mo.bqr.svy(y ~ x,
-                              data = data_vis,
-                              weights = weights_vis,
-                              quantile = c(0.1, 0.25, 0.5, 0.75, 0.9),
-                              max_iter = 1000,
-                              verbose = FALSE)
-
-# Plot multiple quantile curves
-plot(model_multi_vis, type = "quantiles")
-
-# Plot coefficient evolution across quantiles  
-plot(model_multi_vis, type = "convergence")
+drawQuantile1D(
+  fit        = fit1d,
+  datafile   = data_vis,
+  response   = "Y",
+  x_var      = "x",
+  x_grid     = seq(-2, 2, length.out = 200),
+  xValue     = NULL,         
+  paintedArea = TRUE,
+  band_choice = "symmetric", 
+  show_data   = TRUE
+)
 
 ```
+
 
 
 ### Prior information
@@ -281,7 +267,7 @@ For the MCMC case
 # Example data
 # ---------------------
 set.seed(123)
-n  <- 200
+n  <- 400
 x1 <- rnorm(n)
 x2 <- rnorm(n)
 w  <- runif(n, 0.5, 2)   # weights
@@ -341,8 +327,8 @@ fit_ap <- bqr.svy(
   quantile = tau,
   method   = "approximate",
   prior    = prior_info,
-  niter    = 2000,
-  burnin   = 500,
+  niter    = 10000,
+  burnin   = 2500,
   thin     = 5
 )
 
@@ -411,179 +397,104 @@ fit_mo <- mo.bqr.svy(
 # ---------------------
 # Results
 # ---------------------
-print(fit_mo)
-
-# Access coefficients for each quantile
-for (q in seq_along(fit_mo$quantile)) {
-  cat(sprintf("\nQuantile %.2f coefficients:\n", fit_mo$quantile[q]))
-  print(fit_mo$fit[[q]]$beta)
-}
+summary(fit_mo)
 
 ```
 
-### Multivariate and multidirectional case
+### Multivariate EM Algorithm
 
-The EM algorithm implementation allows to fit a multivariate and multidirectional model passing multiple quantiles
+We present examples for the bivariate and trivariate cases to illustrate the plotting functions, while emphasizing that the EM algorithm is applicable to response variables of arbitrary dimension.
+
+#### Bivariate Case
 
 ```{r}
-library(tauBayesW)
+n <- 600
+x <- rnorm(n)
+w <- runif(n, 0.5, 1.5)
 
-set.seed(1)
-n  <- 1200
-x1 <- rnorm(n)
-x2 <- rnorm(n)
-X  <- cbind(1, x1, x2)
+eps1 <- rnorm(n, sd = 0.6)
+eps2 <- rnorm(n, sd = 0.5)
+mu1  <-  0.8*x
+mu2  <- -0.5*x
+Y1 <- mu1 + eps1 * (0.5 + 0.3*abs(x))
+Y2 <- mu2 + eps2 * (0.4 + 0.2*abs(x))
 
-# Coeficientes "verdaderos" para cada componente de Y
-B <- rbind(
-  c( 1.00,  2.00, -0.50),  # y1
-  c(-0.50,  1.20,  0.80),  # y2
-  c( 0.30, -1.10,  0.20)   # y3
-)
-
-# Ruido (no tiene que ser ALD para este ejemplo)
-eps <- cbind(rnorm(n, 0, 0.6),
-             rnorm(n, 0, 0.6),
-             rnorm(n, 0, 0.6))
-
-Y <- X %*% t(B) + eps
-colnames(Y) <- c("y1","y2","y3")
-
-data <- data.frame(y1 = Y[,1], y2 = Y[,2], y3 = Y[,3], x1 = x1, x2 = x2)
-
-# Pesos de muestreo (opcionales)
-weights <- rexp(n, rate = 1)
-weights <- weights / mean(weights)  # normalizo por comodidad
-
-# Cuantiles a usar en los ejemplos
-quantiles <- c(0.5, 0.75) 
+df <- data.frame(Y1 = Y1, Y2 = Y2, x = x, w = w)
 ```
 
-#### Multivariate unidirectional
 
 ```{r}
-model_uni_dir <- mo.bqr.svy(
-  cbind(y1, y2, y3) ~ x1 + x2,
-  data      = data,
-  weights   = weights,
-  quantile  = quantiles,   # aquí 0.5
-  n_dir     = 1,           # UNA dirección
-  r         = 0,           # sin Gamma
-  em_mode   = "separable", # separable: betas por dirección (aquí K=1)
-  max_iter  = 1200,
-  verbose   = FALSE
-)
-
-print(model_uni_dir)
-summary(model_uni_dir)
-```
-
-### Multivariate multidirectional
-
-```{r}
-K_dirs <- 60  # número típico de direcciones en S^2
-
-model_multi_dirs <- mo.bqr.svy(
-  cbind(y1, y2, y3) ~ x1 + x2,
-  data      = data,
-  weights   = weights,
-  quantile  = quantiles,   # 0.5
-  n_dir     = K_dirs,      # muchas direcciones
-  r         = 0,           # sin Gamma (poliedro definido sólo por betas_X)
-  em_mode   = "separable", # estable y rápido
+fit <- mo.bqr.svy(
+  formula   = cbind(Y1, Y2) ~ x,
+  data      = df,
+  weights   = df$w,
+  quantile  = c(0.5, 0.8),
+  n_dir     = 14,
   max_iter  = 2000,
+  epsilon   = 1e-8,
   verbose   = FALSE
 )
-
-print(model_multi_dirs)
-summary(model_multi_dirs)
 ```
 
-#### Multivariate Multidirectional (r>0)
 
 ```{r}
-K_dirs_r <- 50
+summary(fit)
+```
+```{r}
+xgrid <- data.frame(x = c(-1, 1))
+drawQuantileRegion(
+  fit, datafile=df, response=c("Y1","Y2"),
+  xValue = xgrid,
+  paintedArea = FALSE,           
+  comparison  = TRUE,            
+  show_data   = TRUE
+)
+```
 
-model_multi_dirs_r <- mo.bqr.svy(
-  cbind(y1, y2, y3) ~ x1 + x2,
-  data      = data,
-  weights   = weights,
-  quantile  = quantiles,    # 0.5 (puedes poner varios)
-  n_dir     = K_dirs_r,     # muchas direcciones
-  r         = 2,            # <-- usa 2 dimensiones ortogonales por dirección
-  em_mode   = "separable",  # betas por dirección + gammas por dirección
+#### Trivariate Case
+
+```{r}
+# --- 1) Datos simulados (3 respuestas)
+set.seed(123)
+n <- 400
+x <- rnorm(n)
+w <- runif(n, 0.5, 1.5)
+
+mu1 <-  0.7 * x
+mu2 <- -0.5 * x
+mu3 <-  0.3 * x
+
+Y1 <- mu1 + (0.5 + 0.3*abs(x)) * rnorm(n, sd = 0.6)
+Y2 <- mu2 + (0.4 + 0.2*abs(x)) * rnorm(n, sd = 0.5)
+Y3 <- mu3 + (0.3 + 0.2*abs(x)) * rnorm(n, sd = 0.7)
+
+df <- data.frame(Y1=Y1, Y2=Y2, Y3=Y3, x=x, w=w)
+```
+
+```{r}
+fit3 <- mo.bqr.svy(
+  formula   = cbind(Y1, Y2, Y3) ~ x,
+  data      = df,
+  weights   = df$w,
+  quantile  = c(0.5, 0.8),
+  n_dir     = 75,
   max_iter  = 2000,
+  epsilon   = 1e-8,
   verbose   = FALSE
 )
-
-print(model_multi_dirs_r)
-summary(model_multi_dirs_r)
 ```
 
-
-## Joint vs. Separable and the Role of *r*
-
-In multivariate quantile regression with directional EM estimation, two key modeling choices are:
-
-1. **Mode**: whether coefficients are fit in a *separable* way (each direction has its own parameters) or in a *joint* way (a single set of parameters shared across directions).  
-2. **Orthogonal dimension `r`**: how many extra “orthogonal” directions are included per quantile surface, beyond the main projection.
-
----
-
-### Separable mode
-
-- In *separable* mode, each direction \( u_k \) is fit with its own coefficient vector.  
-- This means the model can flexibly adapt to directional asymmetry.  
-- Since the data live in a \(d\)-dimensional response space, each direction already consumes one dimension. The maximum number of orthogonal components is therefore \( d - 1 \).  
 
 ```{r}
-model_joint <- mo.bqr.svy(
-  cbind(y1, y2, y3) ~ x1 + x2,
-  data      = data,
-  weights   = weights,
-  quantile  = 0.5,
-  n_dir     = 40,        
-  r         = 0,        
-  em_mode   = "joint",   
-  max_iter  = 800,
-  verbose   = FALSE
+drawQuantileRegion_3D(
+  fit3,
+  xValue = data.frame(x = c(-1, 0, 1)),
+  opacity = 0.4,
+  datafile = df, response = c("Y1","Y2","Y3"),
+  show_points = TRUE, point_opacity = 0.2, point_size = 2,
+  nrows = 1, ncols = NULL, show_titles = TRUE
 )
-
-# Ajuste con modo separable
-model_sep <- mo.bqr.svy(
-  cbind(y1, y2, y3) ~ x1 + x2,
-  data      = data,
-  weights   = weights,
-  quantile  = 0.5,
-  n_dir     = 40,        
-  r         = 2,
-  em_mode   = "separable", 
-  max_iter  = 800,
-  verbose   = FALSE
-)
-
-# Comparar resúmenes
-summary(model_joint)
-summary(model_sep)
 ```
-
-
-#### Visualization 3D
-
-```{r}
-p3d <- plot_quantile_body3d.mo.bqr.svy(
-    object       = model_multi_dirs,
-    tau          = 0.5,                     
-    data         = data,                   
-    fixed_values = list(x1 = 0, x2 = 0),     
-    engine       = "plotly",
-    col          = "#1f77b4",
-    opacity      = 0.6,
-    show_points  = TRUE
-  )
-p3d
-```
-
 
 
 ## Methodology

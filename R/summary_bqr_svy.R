@@ -15,10 +15,6 @@
   a
 }
 
-# =============================================================================
-# Vehtari diagnostics (ESS, R-hat) — internal utilities
-# =============================================================================
-
 #' Autocovariance calculation for Vehtari method
 #' @keywords internal
 .autocovariance_vehtari <- function(x, max_lag = NULL) {
@@ -51,7 +47,6 @@
   max(1, tau_int)
 }
 
-#' ESS (bulk) for single chain — Vehtari et al. (2021)
 #' @keywords internal
 .ess_vehtari_single <- function(x, split_chains = TRUE) {
   x <- as.numeric(x)
@@ -84,7 +79,6 @@
   max(1, ess)
 }
 
-#' ESS (tails) for single chain — Vehtari et al. (2021)
 #' @keywords internal
 .ess_tail_vehtari_single <- function(x, prob = c(0.05, 0.95), split_chains = TRUE) {
   x <- as.numeric(x)
@@ -251,7 +245,7 @@ print.bqr.svy <- function(x, digits = 3, ...) {
       cat("\nPosterior means (by tau):\n")
       print(round(x$beta, digits))
     } else {
-      cat("\n(Use summary() para estadísticas detalladas.)\n")
+      cat("\n(Use summary() for detailed output.)\n")
     }
     return(invisible(x))
   }
@@ -269,54 +263,6 @@ print.bqr.svy <- function(x, digits = 3, ...) {
   invisible(x)
 }
 
-
-#' Print method for mo.bqr.svy objects
-#'
-#' @param x An object of class \code{"mo.bqr.svy"}.
-#' @param digits Integer, number of significant digits to print.
-#' @param ... Additional arguments passed to \code{\link[base]{print}}.
-#' @method print mo.bqr.svy
-#' @export
-print.mo.bqr.svy <- function(x, digits = 3, show_directions = TRUE, ...) {
-  cat("\nMultiple-Output Bayesian Quantile Regression (class 'mo.bqr.svy')\n")
-  cat("Algorithm :", x$algorithm, "\n")
-  cat("Quantiles :", paste(x$quantile, collapse = ", "), "\n")
-  cat("Directions:", x$n_dir, "\n")
-
-  for (qi in seq_along(x$quantile)) {
-    cat(sprintf("\n--- Quantile %.3f ---\n", x$quantile[qi]))
-    fit_q <- x$fit[[qi]]
-    dirs  <- fit_q$directions
-
-    conv_vec  <- vapply(dirs, function(dr) isTRUE(dr$converged), logical(1))
-    iter_vec  <- vapply(dirs, function(dr) if (is.null(dr$iter)) NA_real_ else as.numeric(dr$iter), numeric(1))
-
-    cat(" Converged (all directions):", if (all(conv_vec, na.rm = TRUE)) "Yes" else "No", "\n")
-
-    if (all(is.na(iter_vec))) {
-      cat(" Iterations: -\n")
-    } else {
-      cat(sprintf(" Iterations: avg %.1f, min %d, max %d\n",
-                  mean(iter_vec, na.rm = TRUE),
-                  as.integer(min(iter_vec, na.rm = TRUE)),
-                  as.integer(max(iter_vec, na.rm = TRUE))))
-    }
-
-    if (isTRUE(show_directions)) {
-      for (k in seq_along(dirs)) {
-        dr <- dirs[[k]]
-        cat(sprintf("  Direction %d:\n", k))
-        print(round(dr$beta, digits))
-        cat("    sigma:", round(dr$sigma, digits),
-            " | converged:", dr$converged,
-            " | iter:", if (is.null(dr$iter)) "-" else dr$iter, "\n")
-      }
-    }
-  }
-
-  cat("\nUse summary() for a tabular view.\n")
-  invisible(x)
-}
 #' Summary method for bwqr_fit objects
 #'
 #' @param object An object of class \code{"bwqr_fit"}.
@@ -477,7 +423,6 @@ summary.bqr.svy <- function(object,
   )
 
   if (is.list(object$draws)) {
-    # ----- MULTI-τ -----
     taus   <- object$quantile
     dl     <- object$draws
 
@@ -500,7 +445,6 @@ summary.bqr.svy <- function(object,
     return(out)
   }
 
-  # ----- SINGLE-τ (ARREGLADO) -----
   tau1  <- as.numeric(object$quantile %||% NA_real_)
   block <- make_block(object$draws, tau = tau1, meta = meta)
 
@@ -655,7 +599,7 @@ summary.mo.bqr.svy <- function(object, digits = 3, ...) {
 
   out <- do.call(rbind, quantile_summaries)
   rownames(out) <- NULL
-  class(out) <- c("summary.mo_bqr.svy", "data.frame")  # <- esta clase está bien con _
+  class(out) <- c("summary.mo_bqr.svy", "data.frame")
 
   return(out)
 }
@@ -681,7 +625,6 @@ print.summary.mo_bqr.svy <- function(x, ...) {
   for (q in taus) {
     df_q <- x[x$quantile == q, , drop = FALSE]
 
-    # Calcular desde columnas (sin atributos)
     has_conv <- "converged" %in% names(df_q)
     has_iter <- "iter" %in% names(df_q)
     conv_global  <- if (has_conv) all(df_q$converged, na.rm = TRUE) else NA
@@ -694,13 +637,11 @@ print.summary.mo_bqr.svy <- function(x, ...) {
     cat("  Avg iterations:", if (is.finite(iter_summary)) round(iter_summary, 1) else "-", "\n\n")
 
     cat("  Per-direction results:\n")
-    # ---- IMPRESIÓN SIN RECURSIÓN ----
     df_show <- df_q
-    # opcional: reordenar/ocultar columnas redundantes
     cols <- c("direction", setdiff(names(df_show), c("quantile", "direction")))
     df_show <- df_show[, cols, drop = FALSE]
-    class(df_show) <- "data.frame"             # quitar clase para evitar S3 recursivo
-    print.data.frame(df_show, row.names = FALSE)  # imprimir explícitamente como data.frame
+    class(df_show) <- "data.frame"
+    print.data.frame(df_show, row.names = FALSE)
     cat("\n")
   }
 
@@ -761,9 +702,9 @@ convergence_check <- function(object,
   UseMethod("convergence_check")
 }
 
-#' Convergence diagnostics for `bqr.svy` objects (single or multi-τ)
+#' Convergence diagnostics for `bqr.svy` objects
 #'
-#' Computes the rank-normalized \eqn{\hat{R}} (Gelman–Rubin) and Effective Sample Size (ESS)
+#' Computes the rank-normalized \eqn{\hat{R}} (Gelman Rubin) and Effective Sample Size (ESS)
 #' for parameters from MCMC output produced by \code{\link{bqr.svy}}.
 #' Works with both single-quantile fits (one \eqn{\tau}) and multi-quantile fits.
 #'
@@ -847,7 +788,7 @@ convergence_check.bqr.svy <- function(object,
       out_list[[i]] <- res_i
 
       if (isTRUE(verbose)) {
-        cat("=== Convergence diagnostics (bqr.svy) — ", nm[i], " ===\n", sep = "")
+        cat("=== Convergence diagnostics (bqr.svy) ", nm[i], " ===\n", sep = "")
         if (length(res_i$not_converged)) {
           cat("Parameters with R-hat >", rhat_threshold, ":\n",
               paste(res_i$not_converged, collapse = ", "), "\n")

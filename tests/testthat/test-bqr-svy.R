@@ -74,3 +74,4 @@ test_that("bqr.svy input validation", {
   data_na <- data.frame(x = c(1, 2, NA), y = c(1, 2, 3))
   expect_error(bqr.svy(y ~ x, data = data_na, quantile = 0.5))
 })
+

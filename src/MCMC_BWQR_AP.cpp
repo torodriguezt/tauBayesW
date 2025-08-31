@@ -6,11 +6,19 @@ using namespace Rcpp;
 using namespace arma;
 
 constexpr double PI = 3.14159265358979323846;
-inline arma::vec rmvnorm(const arma::vec& m, const arma::mat& L)
-{
+
+// Generador: m + L z, con L lower-triangular (p x p)
+inline arma::vec rmvnorm(const arma::vec& m, const arma::mat& L) {
   return m + L * randn<vec>(m.n_elem);
 }
 
+/*
+ * log_post: prior Normal(b0, B_inv^{-1}) + "approximate" basado en score
+ * s_tau(β) = X' [ w ⊙ (τ - 1{y - Xβ < 0}) ]
+ * Var(s_tau) ≈ τ(1-τ) X' diag(w) X    (manejo de pesos correcto)
+ * Usamos:  ℓ(β) ∝ -0.5 * λ * s' Var^{-1} s  con λ = sum(w)
+ *          + constante normalización de N(0, Var/λ)
+ */
 static double log_post(const arma::vec& beta,
                        const arma::vec& b0,
                        const arma::mat& B_inv,
@@ -18,51 +26,47 @@ static double log_post(const arma::vec& beta,
                        const arma::mat& X,
                        const arma::vec& w,
                        double tau,
-                       arma::mat& S,
+                       arma::mat& /*S (no usado)*/,
                        arma::mat& wcA,
                        arma::mat& wc)
 {
   const double ridge = 1e-8;
 
+  const int p = beta.n_elem;
+  const double lambda = arma::accu(w);     // tamaño efectivo ~ n si w=1
+
+  // Prior normal
   arma::vec diff = beta - b0;
   double lp = -0.5 * dot(diff, B_inv * diff);
 
+  // Score en el punto β
   arma::vec res = y - X * beta;
-  arma::vec ind = tau - arma::conv_to<arma::vec>::from(res < 0);
+  arma::vec ind = tau - arma::conv_to<arma::vec>::from(res < 0); // τ - 1{r<0}
+  arma::vec s_tau = X.t() * (w % ind);                            // X' (w ⊙ ind)
 
-  arma::vec tmp   = w % ind;        // w ⊙ ind
-  arma::vec s_tau = X.t() * tmp;    // X' (w ⊙ ind)
-
-  S.each_col() = w % ind;
-  S %= X;
-
+  // Var(score) ≈ τ(1-τ) X' diag(w) X  (independiente de β)
   bool w_all_one = arma::approx_equal(w, arma::ones<arma::vec>(w.n_elem), "absdiff", 1e-12);
-
   if (w_all_one) {
     wcA = tau * (1.0 - tau) * (X.t() * X);
   } else {
-    arma::vec invw = 1.0 / w;
-    arma::vec fac  = (1.0 - invw) / arma::square(invw); // = w^2 - w
-    wcA = (S.each_col() % fac).t() * S;
-
-    // Guard extra por si el fac produce casi-cero:
-    if (!wcA.is_finite() || wcA.max() < 1e-12) {
-      wcA = tau * (1.0 - tau) * (X.t() * X); // fallback estable
-    }
+    // X' diag(w) X = X' ( (diag(sqrt(w)) X) )
+    arma::mat Xw = X.each_col() % arma::sqrt(w);
+    wcA = tau * (1.0 - tau) * (Xw.t() * Xw);
   }
+  wcA.diag() += ridge; // SPD
 
-  // Asegurar SPD
-  wcA.diag() += ridge;
-
+  // wc = Var^{-1}(score)
   bool ok = arma::inv_sympd(wc, wcA);
   if (!ok) wc = arma::pinv(wcA, 1e-12);
 
-  // Log det estable para SPD
+  // log |Var|
   double ld = arma::log_det_sympd(wcA);
 
-  // Término cuadrático y normalización
+  // Término cuadrático (concentración con λ) y normalización N(0, Var/λ)
   double quad = dot(s_tau, wc * s_tau);
-  lp += -0.5 * quad - 0.5 * (std::log(2.0 * PI) + ld);
+  lp += -0.5 * lambda * quad
+  - 0.5 * ( p * std::log(2.0 * PI) + ld - p * std::log(lambda) );
+
   return lp;
 }
 
@@ -87,7 +91,9 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
 
   const int p = X.n_cols;
   const int n = y.n_elem;
+  const double ridge = 1e-8;
 
+  // Prior
   arma::vec b0 = b_prior_mean.isNotNull() ? Rcpp::as<arma::vec>(b_prior_mean) : arma::zeros<vec>(p);
   if (b0.n_elem != p)
     stop("b_prior_mean must have length equal to ncol(X)");
@@ -98,22 +104,42 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
     if (B_inv.n_rows != p || B_inv.n_cols != p)
       stop("B_prior_prec must be a pxp matrix");
   } else {
-    B_inv = arma::eye<mat>(p, p) / 100.0;
+    B_inv = arma::eye<mat>(p, p) / 100.0; // prior débil
   }
 
-  arma::mat XtWX = X.t() * (X.each_col() % square(w));
-  arma::mat Sigma_prop = (tau * (1.0 - tau) / n) * inv_sympd(XtWX);
+  // ===== Propuesta coherente con la curvatura =====
+  // Var(score) ≈ τ(1−τ) X' diag(w) X
+  arma::mat wcA_prop;
+  {
+    if (arma::approx_equal(w, arma::ones<arma::vec>(w.n_elem), "absdiff", 1e-12)) {
+      wcA_prop = tau * (1.0 - tau) * (X.t() * X);
+    } else {
+      arma::mat Xw = X.each_col() % arma::sqrt(w);
+      wcA_prop = tau * (1.0 - tau) * (Xw.t() * Xw);
+    }
+    wcA_prop.diag() += ridge;
+  }
+  double lambda = arma::accu(w);                     // ≈ n
+  arma::mat post_prec = lambda * wcA_prop + B_inv;   // precisión aprox.
+  arma::mat Sigma_prop = arma::inv_sympd(post_prec); // ~ cov posterior
+  // por robustez, un pequeño ridge por si acaso
+  Sigma_prop.diag() += 1e-12;
+
   arma::mat L_prop = chol(Sigma_prop, "lower");
 
-  arma::mat S(n, p, fill::zeros);
+  // Buffers
+  arma::mat S(n, p, fill::zeros); // no usado, pero mantenido para firma de log_post
   arma::mat wcA(p, p), wc(p, p);
 
   const int n_keep = (n_mcmc - burnin) / thin;
-  arma::mat beta_out(n_keep, p, fill::none);
+  arma::mat beta_out((n_keep > 0 ? n_keep : 0), p, fill::none);
   int accept = 0;
 
-  arma::vec beta_curr = solve(X, y);
-  double ct = 2.38;
+  // Inicialización: OLS (si X no es cuadrada -> MCO por SVD)
+  arma::vec beta_curr = arma::solve(X, y); // alternativa: iniciar en rq(τ) desde R
+
+  // Escala adaptativa multiplicativa
+  double ct = 2.38; // se ajusta hacia aceptar ~0.234
   int k_out = 0;
 
   for (int k = 0; k < n_mcmc; ++k) {
@@ -130,10 +156,12 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
       ++accept;
     }
 
+    // Actualización Robbins-Monro de la escala (sin tocar la forma de Sigma_prop)
     ct = std::exp(std::log(ct) + std::pow(k + 1.0, -0.8) * (acc_prob - 0.234));
 
-    if (k >= burnin && ((k - burnin) % thin == 0))
-      beta_out.row(k_out++) = beta_curr.t();
+    if (k >= burnin && ((k - burnin) % thin == 0)) {
+      if (k_out < n_keep) beta_out.row(k_out++) = beta_curr.t();
+    }
   }
 
   return List::create(
@@ -143,5 +171,6 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
     _["burnin"]      = burnin,
     _["thin"]        = thin,
     _["n_samples"]   = n_keep,
-    _["call"]        = "MCMC_BWQR_AP") ;
+    _["call"]        = "MCMC_BWQR_AP"
+  );
 }

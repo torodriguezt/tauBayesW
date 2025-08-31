@@ -2,7 +2,7 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{convergence_check.bqr.svy}
 \alias{convergence_check.bqr.svy}
-\title{Convergence diagnostics for \code{bqr.svy} objects (single or multi-τ)}
+\title{Convergence diagnostics for \code{bqr.svy} objects}
 \usage{
 \method{convergence_check}{bqr.svy}(
   object,
@@ -33,7 +33,7 @@ If \emph{multiple} \eqn{\tau} values are present: a named list where each elemen
 to a \eqn{\tau} and has the same structure as above.
 }
 \description{
-Computes the rank-normalized \eqn{\hat{R}} (Gelman–Rubin) and Effective Sample Size (ESS)
+Computes the rank-normalized \eqn{\hat{R}} (Gelman Rubin) and Effective Sample Size (ESS)
 for parameters from MCMC output produced by \code{\link{bqr.svy}}.
 Works with both single-quantile fits (one \eqn{\tau}) and multi-quantile fits.
 }
