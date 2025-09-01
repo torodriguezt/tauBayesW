@@ -37,5 +37,6 @@ Suggests:
     testthat (>= 3.0.0)
 VignetteBuilder: knitr
 Config/testthat/edition: 3
+SystemRequirements: BLAS, LAPACK
 URL: https://github.com/torodriguezt/tauBayesW
 BugReports: https://github.com/torodriguezt/tauBayesW/issues
