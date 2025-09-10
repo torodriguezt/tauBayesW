@@ -17,7 +17,8 @@ drawQuantileRegion(
   facet_nrow = 1,
   facet_ncol = NULL,
   facet_scales = "fixed",
-  round_digits = 10
+  round_digits = 10,
+  main = NULL
 )
 }
 \arguments{
@@ -59,6 +60,8 @@ creating one panel per \eqn{\tau}.}
 
 \item{round_digits}{Integer, number of digits to round projected points before
 computing convex hulls (helps remove duplicates).}
+
+\item{main}{Main title for the plot. If \code{NULL}, a default is constructed.}
 }
 \value{
 Either a \pkg{ggplot2} object (if \code{print_plot = TRUE}) showing
@@ -92,3 +95,4 @@ drawQuantileRegion(fit2, datafile=df2, response=c("Y1","Y2"),
                    facet_by_tau=TRUE)
 }
 }
+\keyword{internal}

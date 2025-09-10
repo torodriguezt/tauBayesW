@@ -79,7 +79,8 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
                              int thin,
                              double tau = 0.5,
                              Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean = R_NilValue,
-                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue)
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue,
+                             int print_progress = 0)
 {
   if (y.n_elem != X.n_rows || w.n_elem != y.n_elem)
     stop("Dimensions of y, X and w must match.");
@@ -143,6 +144,12 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
   int k_out = 0;
 
   for (int k = 0; k < n_mcmc; ++k) {
+    // Progress printing
+    if (print_progress > 0 && k % print_progress == 0) {
+      Rcpp::Rcout << "Iteration " << k << " of " << n_mcmc << std::endl;
+      R_CheckUserInterrupt();
+    }
+
     arma::vec beta_prop = rmvnorm(beta_curr, std::sqrt(ct) * L_prop);
 
     double logp_prop = log_post(beta_prop, b0, B_inv, y, X, w, tau, S, wcA, wc);

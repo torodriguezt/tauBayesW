@@ -39,8 +39,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // MCMC_BWQR_AL_wrap
-Rcpp::List MCMC_BWQR_AL_wrap(const arma::vec& y, const arma::mat& X, const arma::vec& w, double tau, int n_mcmc, int burnin, int thin, Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec, double c0, double C0);
-RcppExport SEXP _tauBayesW_MCMC_BWQR_AL_wrap(SEXP ySEXP, SEXP XSEXP, SEXP wSEXP, SEXP tauSEXP, SEXP n_mcmcSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP b_prior_meanSEXP, SEXP B_prior_precSEXP, SEXP c0SEXP, SEXP C0SEXP) {
+Rcpp::List MCMC_BWQR_AL_wrap(const arma::vec& y, const arma::mat& X, const arma::vec& w, double tau, int n_mcmc, int burnin, int thin, Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec, double c0, double C0, int print_progress);
+RcppExport SEXP _tauBayesW_MCMC_BWQR_AL_wrap(SEXP ySEXP, SEXP XSEXP, SEXP wSEXP, SEXP tauSEXP, SEXP n_mcmcSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP b_prior_meanSEXP, SEXP B_prior_precSEXP, SEXP c0SEXP, SEXP C0SEXP, SEXP print_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -55,13 +55,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericMatrix> >::type B_prior_prec(B_prior_precSEXP);
     Rcpp::traits::input_parameter< double >::type c0(c0SEXP);
     Rcpp::traits::input_parameter< double >::type C0(C0SEXP);
-    rcpp_result_gen = Rcpp::wrap(MCMC_BWQR_AL_wrap(y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec, c0, C0));
+    Rcpp::traits::input_parameter< int >::type print_progress(print_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(MCMC_BWQR_AL_wrap(y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec, c0, C0, print_progress));
     return rcpp_result_gen;
 END_RCPP
 }
 // MCMC_BWQR_AP_wrap
-Rcpp::List MCMC_BWQR_AP_wrap(const arma::vec& y, const arma::mat& X, const arma::vec& w, int n_mcmc, int burnin, int thin, double tau, Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec);
-RcppExport SEXP _tauBayesW_MCMC_BWQR_AP_wrap(SEXP ySEXP, SEXP XSEXP, SEXP wSEXP, SEXP n_mcmcSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP tauSEXP, SEXP b_prior_meanSEXP, SEXP B_prior_precSEXP) {
+Rcpp::List MCMC_BWQR_AP_wrap(const arma::vec& y, const arma::mat& X, const arma::vec& w, int n_mcmc, int burnin, int thin, double tau, Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec, int print_progress);
+RcppExport SEXP _tauBayesW_MCMC_BWQR_AP_wrap(SEXP ySEXP, SEXP XSEXP, SEXP wSEXP, SEXP n_mcmcSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP tauSEXP, SEXP b_prior_meanSEXP, SEXP B_prior_precSEXP, SEXP print_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -74,13 +75,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type b_prior_mean(b_prior_meanSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericMatrix> >::type B_prior_prec(B_prior_precSEXP);
-    rcpp_result_gen = Rcpp::wrap(MCMC_BWQR_AP_wrap(y, X, w, n_mcmc, burnin, thin, tau, b_prior_mean, B_prior_prec));
+    Rcpp::traits::input_parameter< int >::type print_progress(print_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(MCMC_BWQR_AP_wrap(y, X, w, n_mcmc, burnin, thin, tau, b_prior_mean, B_prior_prec, print_progress));
     return rcpp_result_gen;
 END_RCPP
 }
 // MCMC_BWQR_SL_wrap
-Rcpp::List MCMC_BWQR_SL_wrap(const arma::vec& y, const arma::mat& X, const arma::vec& w, double tau, int n_mcmc, int burnin, int thin, Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec);
-RcppExport SEXP _tauBayesW_MCMC_BWQR_SL_wrap(SEXP ySEXP, SEXP XSEXP, SEXP wSEXP, SEXP tauSEXP, SEXP n_mcmcSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP b_prior_meanSEXP, SEXP B_prior_precSEXP) {
+Rcpp::List MCMC_BWQR_SL_wrap(const arma::vec& y, const arma::mat& X, const arma::vec& w, double tau, int n_mcmc, int burnin, int thin, Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec, int print_progress);
+RcppExport SEXP _tauBayesW_MCMC_BWQR_SL_wrap(SEXP ySEXP, SEXP XSEXP, SEXP wSEXP, SEXP tauSEXP, SEXP n_mcmcSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP b_prior_meanSEXP, SEXP B_prior_precSEXP, SEXP print_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -93,7 +95,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type thin(thinSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type b_prior_mean(b_prior_meanSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericMatrix> >::type B_prior_prec(B_prior_precSEXP);
-    rcpp_result_gen = Rcpp::wrap(MCMC_BWQR_SL_wrap(y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec));
+    Rcpp::traits::input_parameter< int >::type print_progress(print_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(MCMC_BWQR_SL_wrap(y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec, print_progress));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -114,9 +117,9 @@ RcppExport SEXP _tauBayesW_RcppExport_registerCCallable() {
 
 static const R_CallMethodDef CallEntries[] = {
     {"_tauBayesW_bwqr_weighted_em_cpp_sep_wrap", (DL_FUNC) &_tauBayesW_bwqr_weighted_em_cpp_sep_wrap, 13},
-    {"_tauBayesW_MCMC_BWQR_AL_wrap", (DL_FUNC) &_tauBayesW_MCMC_BWQR_AL_wrap, 11},
-    {"_tauBayesW_MCMC_BWQR_AP_wrap", (DL_FUNC) &_tauBayesW_MCMC_BWQR_AP_wrap, 9},
-    {"_tauBayesW_MCMC_BWQR_SL_wrap", (DL_FUNC) &_tauBayesW_MCMC_BWQR_SL_wrap, 9},
+    {"_tauBayesW_MCMC_BWQR_AL_wrap", (DL_FUNC) &_tauBayesW_MCMC_BWQR_AL_wrap, 12},
+    {"_tauBayesW_MCMC_BWQR_AP_wrap", (DL_FUNC) &_tauBayesW_MCMC_BWQR_AP_wrap, 10},
+    {"_tauBayesW_MCMC_BWQR_SL_wrap", (DL_FUNC) &_tauBayesW_MCMC_BWQR_SL_wrap, 10},
     {"_tauBayesW_RcppExport_registerCCallable", (DL_FUNC) &_tauBayesW_RcppExport_registerCCallable, 0},
     {NULL, NULL, 0}
 };

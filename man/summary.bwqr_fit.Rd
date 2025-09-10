@@ -2,21 +2,24 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{summary.bwqr_fit}
 \alias{summary.bwqr_fit}
-\title{Summary method for bwqr_fit objects}
+\title{Resumen para objetos bwqr_fit (con Rhat y ESS)}
 \usage{
 \method{summary}{bwqr_fit}(object, probs = c(0.025, 0.975), digits = 3, max_lag = 200, ...)
 }
 \arguments{
-\item{object}{An object of class \code{"bwqr_fit"}.}
+\item{object}{Objeto \code{bwqr_fit}.}
 
-\item{probs}{Numeric vector of probabilities for summary statistics.}
+\item{probs}{Probabilidades para IC.}
 
-\item{digits}{Integer, number of significant digits to display.}
+\item{digits}{Decimales para impresión.}
 
-\item{max_lag}{Integer, maximum lag for autocorrelation diagnostics.}
+\item{max_lag}{Máximo rezago autocorrelación.}
 
-\item{...}{Additional arguments passed to other methods.}
+\item{...}{Ignorado.}
+}
+\value{
+Objeto de clase \code{summary.bwqr_fit}.
 }
 \description{
-Summary method for bwqr_fit objects
+Resumen para objetos bwqr_fit (con Rhat y ESS)
 }

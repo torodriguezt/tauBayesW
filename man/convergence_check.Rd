@@ -13,35 +13,16 @@ convergence_check(
 )
 }
 \arguments{
-\item{object}{An object of class \code{"bqr.svy"} or \code{"mo.bqr.svy"}.}
+\item{object}{\code{bqr.svy}, \code{mo.bqr.svy}, \code{bwqr_fit} o matriz/data.frame de draws.}
 
-\item{rhat_threshold}{Numeric scalar. The threshold for the Gelman-Rubin \eqn{\hat{R}} statistic
-above which a parameter is considered not converged. Default is \code{1.1}.}
+\item{rhat_threshold}{Umbral R-hat.}
 
-\item{ess_ratio_threshold}{Numeric scalar. The threshold for the ratio of Effective Sample Size (ESS)
-to total draws below which a parameter is considered to have low sampling efficiency. Default is \code{0.1}.}
+\item{ess_ratio_threshold}{Umbral ESS relativo a draws.}
 
-\item{verbose}{Logical; if \code{TRUE}, prints a summary of convergence diagnostics to the console.
-Default is \code{TRUE}.}
+\item{verbose}{Mostrar resumen.}
 
-\item{...}{Additional arguments passed to specific methods.}
-}
-\value{
-A list containing:
-\describe{
-\item{\code{rhat}}{Named numeric vector of \eqn{\hat{R}} values for each parameter (if available).}
-\item{\code{ess_ratio}}{Named numeric vector of ESS ratios for each parameter (if available).}
-\item{\code{not_converged}}{Character vector of parameter names failing \eqn{\hat{R}} threshold.}
-\item{\code{low_ess}}{Character vector of parameter names failing ESS ratio threshold.}
-}
+\item{...}{Ignorado.}
 }
 \description{
-This is a generic function that dispatches to specific methods depending on
-the class of the object (e.g., \code{bqr.svy}, \code{mo.bqr.svy}).
-}
-\examples{
-\dontrun{
-fit <- bqr.svy(y ~ x, data = mydata, quantile = 0.5, method = "ald")
-convergence_check(fit)
-}
+Check convergence diagnostics for tauBayesW model objects
 }

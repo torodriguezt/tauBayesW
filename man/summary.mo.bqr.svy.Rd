@@ -2,50 +2,20 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{summary.mo.bqr.svy}
 \alias{summary.mo.bqr.svy}
-\title{Summary method for Multiple-Output Bayesian Quantile Regression}
+\title{Resumen para objetos mo.bqr.svy (EM)}
 \usage{
 \method{summary}{mo.bqr.svy}(object, digits = 3, ...)
 }
 \arguments{
-\item{object}{An object of class \code{"mo.bqr.svy"}, typically returned by
-\code{\link{mo.bqr.svy}}.}
+\item{object}{Objeto \code{mo.bqr.svy}.}
 
-\item{digits}{Integer, number of decimal places to use for rounding numeric
-results. Defaults to \code{3}.}
+\item{digits}{Decimales.}
 
-\item{...}{Additional arguments (currently unused).}
+\item{...}{Ignorado.}
 }
 \value{
-A \code{summary.mo_bqr.svy} object, which is a data frame containing:
-\itemize{
-\item \code{quantile}: quantile level \eqn{\tau}.
-\item \code{direction}: index of the direction used in the EM algorithm.
-\item coefficient columns: estimated regression parameters for each covariate.
-\item \code{sigma}: estimated scale parameter for that direction.
-\item \code{iter}: number of EM iterations taken for that direction.
-\item \code{converged}: logical indicating convergence for that direction.
-}
-
-Additionally, each block of rows corresponding to a quantile
-has two attributes:
-\itemize{
-\item \code{"conv_global"}: TRUE if all directions converged, FALSE otherwise.
-\item \code{"iter_summary"}: average number of iterations across directions.
-}
-
-The object has class \code{c("summary.mo_bqr.svy", "data.frame")}, and its
-default print method displays both per-quantile summaries and per-direction
-details.
+Objeto \code{summary.mo_bqr.svy} (data.frame con atributos).
 }
 \description{
-Provides a tabular summary of fitted Bayesian quantile regression models
-estimated with \code{mo.bqr.svy}. The output contains, for each quantile
-and direction, the estimated coefficients, scale parameter, iteration count,
-and convergence status. In addition, summary attributes at the quantile level
-(average iterations, global convergence) are stored for use by the print method.
-}
-\seealso{
-\code{\link{mo.bqr.svy}}, \code{\link{print.summary.mo_bqr.svy}}
-Summary method for Multiple-Output Bayesian Quantile Regression
-(doc igual que ya tienes)
+Resumen para objetos mo.bqr.svy (EM)
 }

@@ -44,18 +44,23 @@ test_that("prior_default() and as_bqr_prior() work correctly", {
 
 test_that("bqr.svy integrates with informative and default priors", {
   skip_if_not(exists("bqr.svy"), "bqr.svy not available")
-  skip_if_not(exists("simulate_bqr_data"), "simulate_bqr_data not available")
   skip_if_not(exists(".MCMC_BWQR_SL"), "C++ backend .MCMC_BWQR_SL (score) not available")
 
   set.seed(101)
-  sim <- simulate_bqr_data(n = 30, betas = c(1, 0.5, -0.5), sigma = 1)
+  # Generate test data directly
+  n <- 30
+  x1 <- rnorm(n)
+  x2 <- runif(n, -1, 1)
+  y <- 1 + 0.5*x1 - 0.5*x2 + rnorm(n)
+  weights <- runif(n, 0.5, 2)
+  data <- data.frame(y = y, x1 = x1, x2 = x2)
 
   # --- Prior as classed object (default) ---
   pr_obj <- prior_default(p = 3, b0 = 0, B0 = 100, names = c("(Intercept)", "x1", "x2"))
   fit_obj <- bqr.svy(
     y ~ x1 + x2,
-    weights  = sim$weights,
-    data     = sim$data,
+    weights  = weights,
+    data     = data,
     quantile = 0.5,
     method   = "score",
     niter    = 1500,
@@ -77,8 +82,8 @@ test_that("bqr.svy integrates with informative and default priors", {
   )
   fit_inf <- bqr.svy(
     y ~ x1 + x2,
-    weights  = sim$weights,
-    data     = sim$data,
+    weights  = weights,
+    data     = data,
     quantile = 0.5,
     method   = "score",
     niter    = 1500,
@@ -92,18 +97,23 @@ test_that("bqr.svy integrates with informative and default priors", {
 
 test_that("bqr.svy works with approximate method and legacy-list prior", {
   skip_if_not(exists("bqr.svy"), "bqr.svy not available")
-  skip_if_not(exists("simulate_bqr_data"), "simulate_bqr_data not available")
   skip_if_not(exists(".MCMC_BWQR_AP"), "C++ backend .MCMC_BWQR_AP (approximate) not available")
 
   set.seed(202)
-  sim <- simulate_bqr_data(n = 25, betas = c(0.5, 0.8, -0.3), sigma = 1)
+  # Generate test data directly
+  n <- 25
+  x1 <- rnorm(n)
+  x2 <- runif(n, -1, 1)
+  y <- 0.5 + 0.8*x1 - 0.3*x2 + rnorm(n)
+  weights <- runif(n, 0.5, 2)
+  data <- data.frame(y = y, x1 = x1, x2 = x2)
 
   # Legacy list prior (will be coerced)
   pr_legacy <- list(b0 = 0, B0 = 200)
   fit <- bqr.svy(
     y ~ x1 + x2,
-    weights  = sim$weights,
-    data     = sim$data,
+    weights  = weights,
+    data     = data,
     quantile = 0.5,
     method   = "approximate",
     niter    = 1200,

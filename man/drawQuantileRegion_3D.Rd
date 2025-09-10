@@ -16,7 +16,8 @@ drawQuantileRegion_3D(
   nrows = 1,
   ncols = NULL,
   show_titles = TRUE,
-  round_digits = 10
+  round_digits = 10,
+  main = NULL
 )
 }
 \arguments{
@@ -54,6 +55,8 @@ above each subplot.}
 
 \item{round_digits}{Integer, number of digits to round projected points
 before computing convex hulls (helps remove duplicates).}
+
+\item{main}{Main title for the plot. If \code{NULL}, a default is constructed.}
 }
 \value{
 A \pkg{plotly} object with one 3D scene per quantile, each containing
@@ -89,3 +92,4 @@ drawQuantileRegion_3D(fit3,
 }
 
 }
+\keyword{internal}

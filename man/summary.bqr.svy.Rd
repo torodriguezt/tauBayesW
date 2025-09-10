@@ -2,19 +2,23 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{summary.bqr.svy}
 \alias{summary.bqr.svy}
-\title{Summary method for bqr.svy objects}
+\title{Resumen para objetos bqr.svy (media posterior, IC, Rhat, ESS)}
 \usage{
 \method{summary}{bqr.svy}(object, probs = c(0.025, 0.975), digits = 3, ...)
 }
 \arguments{
-\item{object}{An object of class \code{"bqr.svy"}.}
+\item{object}{Objeto \code{bqr.svy}.}
 
-\item{probs}{Numeric vector of probabilities for summary statistics.}
+\item{probs}{Probabilidades para IC creíbles. Default \code{c(0.025, 0.975)}.}
 
-\item{digits}{Integer, number of significant digits to display.}
+\item{digits}{Decimales al imprimir (almacenamos sin redondear; se redondea en print).}
 
-\item{...}{Additional arguments passed to other methods.}
+\item{...}{Ignorado.}
+}
+\value{
+Objeto de clase \code{summary.bqr.svy}.
 }
 \description{
-Summary method for bqr.svy objects
+Genera un resumen con media a posterior, intervalos de credibilidad,
+\eqn{\hat{R}} y tamaño muestral efectivo por parámetro.
 }

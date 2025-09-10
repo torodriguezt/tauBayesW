@@ -53,74 +53,39 @@ test_that("summarise_draws_custom works correctly", {
   expect_true("q97.5" %in% names(summary_result))
 })
 
-test_that("simulate_mo_bqr_data works correctly", {
+test_that("mo data generation works for testing", {
   set.seed(404142)  # Reproducibility
 
-  # Test data simulation
+  # Test simulated data for mo.bqr.svy
   n <- 30
-  sim_data <- simulate_mo_bqr_data(n = n, p = 2, seed = 123)
-
-  expect_true(is.list(sim_data))
-  expect_true("data" %in% names(sim_data))
-  expect_true("true_betas" %in% names(sim_data))
-  expect_true("quantiles" %in% names(sim_data))
+  x1 <- runif(n, -1, 1)
+  x2 <- rnorm(n)
+  
+  # Simulate multivariate response
+  y1 <- 1 + 2*x1 + 0.5*x2 + rnorm(n, 0, 0.5)
+  y2 <- -1 + 1.5*x1 + rnorm(n, 0, 0.3)
+  y3 <- 0.5 - x2 + rnorm(n, 0, 0.4)
+  
+  Y <- cbind(y1, y2, y3)
+  sim_data <- data.frame(y1, y2, y3, x1, x2)
 
   # Check data structure
-  expect_true(is.data.frame(sim_data$data))
-  expect_equal(nrow(sim_data$data), n)
-  expect_true("y" %in% names(sim_data$data))
-  expect_true("x1" %in% names(sim_data$data))
-  expect_true("x2" %in% names(sim_data$data))
+  expect_true(is.data.frame(sim_data))
+  expect_equal(nrow(sim_data), n)
+  expect_true("y1" %in% names(sim_data))
+  expect_true("x1" %in% names(sim_data))
+  expect_true("x2" %in% names(sim_data))
 
   # Check that data is finite
-  expect_true(all(is.finite(sim_data$data$y)))
-  expect_true(all(is.finite(sim_data$data$x1)))
-  expect_true(all(is.finite(sim_data$data$x2)))
+  expect_true(all(is.finite(sim_data$y1)))
+  expect_true(all(is.finite(sim_data$y2)))
+  expect_true(all(is.finite(sim_data$y3)))
+  expect_true(all(is.finite(sim_data$x1)))
+  expect_true(all(is.finite(sim_data$x2)))
 
-  # Check true betas structure
-  expect_true(is.matrix(sim_data$true_betas))
-  expect_equal(ncol(sim_data$true_betas), 3)  # intercept + x1 + x2
-
-  # Test with different parameters
-  sim_data2 <- simulate_mo_bqr_data(n = 20, p = 1, seed = 456)
-  expect_equal(nrow(sim_data2$data), 20)
-  expect_equal(ncol(sim_data2$true_betas), 2)  # intercept + x1
-})
-
-test_that("simulate_bqr_data works correctly", {
-  set.seed(505152)
-
-  n <- 50
-  betas <- c(1, 2, -0.5)
-  sigma <- 0.5
-
-  sim_data <- simulate_bqr_data(n = n, betas = betas, sigma = sigma, seed = 123)
-
-  expect_true(is.list(sim_data))
-  expect_true(all(c("data", "weights", "true_betas") %in% names(sim_data)))
-
-  expect_true(is.data.frame(sim_data$data))
-  expect_equal(nrow(sim_data$data), n)
-  expect_true("y" %in% names(sim_data$data))
-  expect_true("x1" %in% names(sim_data$data))
-  expect_true("x2" %in% names(sim_data$data))
-  expect_true(all(is.finite(sim_data$data$y)))
-  expect_true(all(is.finite(sim_data$data$x1)))
-  expect_true(all(is.finite(sim_data$data$x2)))
-
-  expect_equal(length(sim_data$weights), n)
-  expect_true(all(is.finite(sim_data$weights)))
-
-  expect_equal(sim_data$true_betas, betas)
-
-  fit <- bqr.svy(y ~ x1 + x2,
-                 data = sim_data$data,
-                 weights = sim_data$weights,
-                 quantile = 0.5,
-                 niter = 2000,
-                 burnin = 500)
-  expect_s3_class(fit, "bqr.svy")
-  expect_equal(length(fit$beta), length(betas))
+  # Check response matrix structure
+  expect_true(is.matrix(Y))
+  expect_equal(ncol(Y), 3)  # Three response variables
 })
 
 

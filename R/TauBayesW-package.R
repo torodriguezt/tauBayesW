@@ -12,9 +12,10 @@
 #' \describe{
 #'   \item{\code{\link{bqr.svy}}}{Fits Bayesian quantile regression for a single quantile using MCMC methods (ALD, Score, Approximate)}
 #'   \item{\code{\link{mo.bqr.svy}}}{Fits Bayesian quantile regression for multiple quantiles using EM algorithm}
-#'   \item{\code{\link{plot_quantile.bqr.svy}}}{Visualization function for fitted quantile regression models}
-#'   \item{\code{\link{summary.bwqr_fit}}}{Summary method for single quantile fits}
-#'   \item{\code{\link{summary.mo.bqr.svy}}}{Summary method for multiple quantile fits}
+#'   \item{\code{\link{plot_quantile_1D}}}{Unified visualization function for 1D quantile regression (works with both bqr.svy and mo.bqr.svy)}
+#'   \item{\code{\link{plot.bqr.svy}}}{Standard plot method for bqr.svy objects}
+#'   \item{\code{\link{summary}}}{Unified summary method for all tauBayesW model objects}
+#'   \item{\code{\link{prior}}}{Unified interface for creating prior distributions}
 #' }
 #'
 #' @section MCMC Methods:

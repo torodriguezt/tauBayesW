@@ -1,22 +1,13 @@
 # =============================================================================
-# Helpers
+# Helpers internos
 # =============================================================================
 
-# Safe scalar "or" operator:
-# - Does not attempt is.na() on 'language' (calls) objects or non-scalar vectors.
-# - If 'a' is NULL -> returns 'b'
-# - If 'a' is atomic and scalar and NA -> returns 'b'
-# - In any other case -> returns 'a'
 `%||%` <- function(a, b) {
   if (is.null(a)) return(b)
-  if (is.atomic(a) && length(a) == 1L) {
-    return(if (is.na(a)) b else a)
-  }
+  if (is.atomic(a) && length(a) == 1L) return(if (is.na(a)) b else a)
   a
 }
 
-#' Autocovariance calculation for Vehtari method
-#' @keywords internal
 .autocovariance_vehtari <- function(x, max_lag = NULL) {
   n <- length(x)
   if (is.null(max_lag)) max_lag <- n - 1
@@ -24,17 +15,12 @@
   x_centered <- x - mean(x)
   autocov <- numeric(max_lag + 1)
   for (lag in 0:max_lag) {
-    if (lag == 0) {
-      autocov[lag + 1] <- mean(x_centered^2)
-    } else {
-      autocov[lag + 1] <- mean(x_centered[1:(n - lag)] * x_centered[(lag + 1):n])
-    }
+    if (lag == 0) autocov[lag + 1] <- mean(x_centered^2)
+    else autocov[lag + 1] <- mean(x_centered[1:(n - lag)] * x_centered[(lag + 1):n])
   }
   autocov
 }
 
-#' Integrated autocorrelation time for Vehtari method
-#' @keywords internal
 .integrated_time_vehtari <- function(autocov) {
   if (length(autocov) < 2) return(1)
   autocov <- autocov / autocov[1]
@@ -47,124 +33,73 @@
   max(1, tau_int)
 }
 
-#' @keywords internal
 .ess_vehtari_single <- function(x, split_chains = TRUE) {
-  x <- as.numeric(x)
-  n <- length(x)
+  x <- as.numeric(x); n <- length(x)
   if (n < 4 || all(is.na(x))) return(NA_real_)
-  if (sd(x, na.rm = TRUE) == 0) return(NA_real_)
-  if (split_chains) {
-    half <- floor(n / 2)
-    x_matrix <- matrix(c(x[1:half], x[(n - half + 1):n]), ncol = 2)
-  } else {
-    x_matrix <- matrix(x, ncol = 1)
-  }
-  x_ranked <- apply(x_matrix, 2, function(chain) {
-    (rank(chain, ties.method = "average") - 0.5) / length(chain)
-  })
-  x_normal <- qnorm(x_ranked)
-  autocov_chains <- apply(x_normal, 2, function(chain) {
-    .autocovariance_vehtari(chain, max_lag = min(length(chain) - 1, 200))
-  })
-  n_iter <- nrow(x_normal)
-  n_chains <- ncol(x_normal)
+  if (sd(x, na.rm = TRUE) == 0)  return(NA_real_)
+  x_matrix <- if (isTRUE(split_chains)) {
+    half <- floor(n / 2); matrix(c(x[1:half], x[(n - half + 1):n]), ncol = 2)
+  } else matrix(x, ncol = 1)
+  x_ranked <- apply(x_matrix, 2, function(chain) (rank(chain) - 0.5) / length(chain))
+  x_normal <- qnorm(pmax(pmin(x_ranked, 1 - 1e-15), 1e-15))
+  autocov_chains <- apply(x_normal, 2, function(chain)
+    .autocovariance_vehtari(chain, max_lag = min(length(chain) - 1, 200)))
+  n_iter <- nrow(x_normal); n_chains <- ncol(x_normal)
   max_lag <- min(nrow(autocov_chains), 200)
-  autocov_mean <- if (n_chains > 1) {
-    rowMeans(autocov_chains[1:max_lag, , drop = FALSE])
-  } else {
-    autocov_chains[1:max_lag]
-  }
+  autocov_mean <- if (n_chains > 1) rowMeans(autocov_chains[1:max_lag, , drop = FALSE])
+  else autocov_chains[1:max_lag]
   tau_int <- .integrated_time_vehtari(autocov_mean)
-  ess <- n_chains * n_iter / (2 * tau_int + 1)
-  max(1, ess)
+  max(1, n_chains * n_iter / (2 * tau_int + 1))
 }
 
-#' @keywords internal
 .ess_tail_vehtari_single <- function(x, prob = c(0.05, 0.95), split_chains = TRUE) {
-  x <- as.numeric(x)
-  n <- length(x)
+  x <- as.numeric(x); n <- length(x)
   if (n < 4 || all(is.na(x))) return(NA_real_)
-  if (sd(x, na.rm = TRUE) == 0) return(NA_real_)
-  if (split_chains) {
-    half <- floor(n / 2)
-    x_matrix <- matrix(c(x[1:half], x[(n - half + 1):n]), ncol = 2)
-  } else {
-    x_matrix <- matrix(x, ncol = 1)
+  if (sd(x, na.rm = TRUE) == 0)  return(NA_real_)
+  x_matrix <- if (isTRUE(split_chains)) {
+    half <- floor(n / 2); matrix(c(x[1:half], x[(n - half + 1):n]), ncol = 2)
+  } else matrix(x, ncol = 1)
+  n_iter <- nrow(x_matrix); n_chains <- ncol(x_matrix)
+  pooled <- as.vector(x_matrix)
+  ql <- stats::quantile(pooled, prob[1]); qu <- stats::quantile(pooled, prob[2])
+
+  tail_ess <- function(ind) {
+    xr <- apply(ind, 2, function(chain) (rank(chain) - 0.5) / length(chain))
+    xn <- qnorm(pmax(pmin(xr, 1 - 1e-15), 1e-15))
+    ac <- apply(xn, 2, function(chain)
+      .autocovariance_vehtari(chain, max_lag = min(length(chain) - 1, 200)))
+    max_lag <- min(nrow(ac), 200)
+    acm <- if (n_chains > 1) rowMeans(ac[1:max_lag, , drop = FALSE]) else ac[1:max_lag]
+    tau <- .integrated_time_vehtari(acm)
+    max(1, n_chains * n_iter / (2 * tau + 1))
   }
-  n_iter <- nrow(x_matrix)
-  n_chains <- ncol(x_matrix)
-  pooled_data <- as.vector(x_matrix)
-  q_lower <- quantile(pooled_data, prob[1])
-  q_upper <- quantile(pooled_data, prob[2])
 
-  x_lower_tail <- apply(x_matrix, 2, function(chain) as.numeric(chain <= q_lower))
-  x_upper_tail <- apply(x_matrix, 2, function(chain) as.numeric(chain >= q_upper))
-
-  ess_lower <- tryCatch({
-    x_ranked_lower <- apply(x_lower_tail, 2, function(chain) {
-      (rank(chain, ties.method = "average") - 0.5) / length(chain)
-    })
-    x_normal_lower <- qnorm(pmax(pmin(x_ranked_lower, 1 - 1e-15), 1e-15))
-    autocov_chains_lower <- apply(x_normal_lower, 2, function(chain) {
-      .autocovariance_vehtari(chain, max_lag = min(length(chain) - 1, 200))
-    })
-    max_lag <- min(nrow(autocov_chains_lower), 200)
-    autocov_mean_lower <- if (n_chains > 1) {
-      rowMeans(autocov_chains_lower[1:max_lag, , drop = FALSE])
-    } else {
-      autocov_chains_lower[1:max_lag]
-    }
-    tau_int_lower <- .integrated_time_vehtari(autocov_mean_lower)
-    max(1, n_chains * n_iter / (2 * tau_int_lower + 1))
-  }, error = function(e) NA_real_)
-
-  ess_upper <- tryCatch({
-    x_ranked_upper <- apply(x_upper_tail, 2, function(chain) {
-      (rank(chain, ties.method = "average") - 0.5) / length(chain)
-    })
-    x_normal_upper <- qnorm(pmax(pmin(x_ranked_upper, 1 - 1e-15), 1e-15))
-    autocov_chains_upper <- apply(x_normal_upper, 2, function(chain) {
-      .autocovariance_vehtari(chain, max_lag = min(length(chain) - 1, 200))
-    })
-    max_lag <- min(nrow(autocov_chains_upper), 200)
-    autocov_mean_upper <- if (n_chains > 1) {
-      rowMeans(autocov_chains_upper[1:max_lag, , drop = FALSE])
-    } else {
-      autocov_chains_upper[1:max_lag]
-    }
-    tau_int_upper <- .integrated_time_vehtari(autocov_mean_upper)
-    max(1, n_chains * n_iter / (2 * tau_int_upper + 1))
-  }, error = function(e) NA_real_)
-
-  if (is.na(ess_lower) && is.na(ess_upper)) return(NA_real_)
-  if (is.na(ess_lower)) return(ess_upper)
-  if (is.na(ess_upper)) return(ess_lower)
-  min(ess_lower, ess_upper)
+  lower_ind <- apply(x_matrix, 2, function(chain) as.numeric(chain <= ql))
+  upper_ind <- apply(x_matrix, 2, function(chain) as.numeric(chain >= qu))
+  el <- tryCatch(tail_ess(lower_ind), error = function(e) NA_real_)
+  eu <- tryCatch(tail_ess(upper_ind), error = function(e) NA_real_)
+  if (is.na(el) && is.na(eu)) return(NA_real_)
+  if (is.na(el)) return(eu)
+  if (is.na(eu)) return(el)
+  min(el, eu)
 }
 
-#' Rank-normalized R-hat (Vehtari et al., 2021)
-#' @keywords internal
 .rhat_rank <- function(x, split_chains = TRUE) {
-  x <- as.numeric(x)
-  n <- length(x)
+  x <- as.numeric(x); n <- length(x)
   if (n < 4 || all(is.na(x))) return(NA_real_)
-  if (sd(x, na.rm = TRUE) == 0) return(NA_real_)
+  if (sd(x, na.rm = TRUE) == 0)  return(NA_real_)
   if (!split_chains) return(NA_real_)
   half <- floor(n / 2)
-  x_matrix <- matrix(c(x[1:half], x[(n - half + 1):n]), ncol = 2)
-  x_ranked <- apply(x_matrix, 2, function(chain) {
-    (rank(chain, ties.method = "average") - 0.5) / length(chain)
-  })
-  x_normal <- qnorm(x_ranked)
-  chain_means <- colMeans(x_normal)
-  B <- nrow(x_normal) * var(chain_means)
-  W <- mean(apply(x_normal, 2, var))
-  var_plus <- ((nrow(x_normal) - 1) / nrow(x_normal)) * W + B / nrow(x_normal)
+  xm <- matrix(c(x[1:half], x[(n - half + 1):n]), ncol = 2)
+  xr <- apply(xm, 2, function(chain) (rank(chain) - 0.5) / length(chain))
+  xn <- qnorm(xr)
+  cm <- colMeans(xn)
+  B <- nrow(xn) * stats::var(cm)
+  W <- mean(apply(xn, 2, stats::var))
+  var_plus <- ((nrow(xn) - 1) / nrow(xn)) * W + B / nrow(xn)
   sqrt(var_plus / W)
 }
 
-#' Convergence check helper (silent)
-#' @keywords internal
 .check_convergence_and_warn <- function(stats, n_samples, rhat_threshold = 1.01, ess_ratio_threshold = 0.30) {
   if (is.null(stats) || nrow(stats) == 0) return(invisible(NULL))
   rhat_issues <- stats$rhat > rhat_threshold | is.na(stats$rhat)
@@ -173,109 +108,95 @@
   !(any(rhat_issues) || any(ess_issues))
 }
 
-#' Summaries and diagnostics for MCMC draws (Vehtari et al., 2021)
-#' @keywords internal
+# Resumen y diagnósticos a partir de una matriz de draws
 summarise_draws_custom <- function(draws, max_lag = 200) {
   if (!is.matrix(draws)) draws <- as.matrix(draws)
-  var_names <- colnames(draws)
-  if (is.null(var_names)) var_names <- paste0("V", seq_len(ncol(draws)))
-  results <- data.frame(
+  var_names <- colnames(draws); if (is.null(var_names)) var_names <- paste0("V", seq_len(ncol(draws)))
+  out <- data.frame(
     variable = var_names,
-    mean  = round(apply(draws, 2, mean,   na.rm = TRUE), 3),
-    median= round(apply(draws, 2, median, na.rm = TRUE), 3),
-    sd    = round(apply(draws, 2, sd,     na.rm = TRUE), 3),
-    mad   = round(apply(draws, 2, mad,    na.rm = TRUE), 3),
-    q2.5    = round(apply(draws, 2, quantile, probs = 0.025, na.rm = TRUE), 3),
-    q97.5   = round(apply(draws, 2, quantile, probs = 0.975, na.rm = TRUE), 3),
+    mean     = apply(draws, 2, mean,   na.rm = TRUE),
+    median   = apply(draws, 2, median, na.rm = TRUE),
+    sd       = apply(draws, 2, sd,     na.rm = TRUE),
+    q2.5     = apply(draws, 2, stats::quantile, probs = 0.025, na.rm = TRUE),
+    q97.5    = apply(draws, 2, stats::quantile, probs = 0.975, na.rm = TRUE),
     stringsAsFactors = FALSE
   )
-  results$rhat <- round(apply(draws, 2, function(x) .rhat_rank(x, split_chains = TRUE)), 3)
-  results$ess_bulk <- round(apply(draws, 2, function(x) .ess_vehtari_single(x, split_chains = TRUE)), 0)
-  results$ess_tail <- round(apply(draws, 2, function(x) .ess_tail_vehtari_single(x, prob = c(0.05, 0.95), split_chains = TRUE)), 0)
-  results
+  out$rhat      <- apply(draws, 2, function(x) .rhat_rank(x, split_chains = TRUE))
+  out$ess_bulk  <- apply(draws, 2, function(x) .ess_vehtari_single(x, split_chains = TRUE))
+  out$ess_tail  <- apply(draws, 2, function(x) .ess_tail_vehtari_single(x, prob = c(0.05, 0.95), split_chains = TRUE))
+  out
 }
 
-#' Print method for bwqr_fit objects
+# =============================================================================
+# SUMMARY (usar genérico de base: NO redefinir summary())
+# =============================================================================
+
+#' Resumen para objetos bqr.svy (media posterior, IC, Rhat, ESS)
 #'
-#' @param x An object of class \code{"bwqr_fit"}.
-#' @param digits Integer, number of significant digits to print.
-#' @param ... Additional arguments passed to \code{\link[base]{print}}.
-#' @export
-print.bwqr_fit <- function(x, digits = 3, ...) {
-  cat("\nBayesian Quantile Regression fit (class 'bwqr_fit')\n")
-  cat("Method    :", x$method, "\n")
-  cat("Quantile  :", x$quantile, "\n")
-  cat("Draws     :", nrow(x$draws), "\n")
-  if (!is.null(x$accept_rate) && !is.na(x$accept_rate)) {
-    cat("Accept rate:", sprintf("%.3f", x$accept_rate), "\n")
+#' Genera un resumen con media a posterior, intervalos de credibilidad,
+#' \eqn{\hat{R}} y tamaño muestral efectivo por parámetro.
+#'
+#' @param object Objeto \code{bqr.svy}.
+#' @param probs Probabilidades para IC creíbles. Default \code{c(0.025, 0.975)}.
+#' @param digits Decimales al imprimir (almacenamos sin redondear; se redondea en print).
+#' @param ... Ignorado.
+#' @return Objeto de clase \code{summary.bqr.svy}.
+#' @exportS3Method summary bqr.svy
+summary.bqr.svy <- function(object, probs = c(0.025, 0.975), digits = 3, ...) {
+  stopifnot(inherits(object, "bqr.svy"))
+  meta <- list(
+    n_chains    = object$n_chains %||% 1L,
+    warmup      = object$warmup   %||% 0L,
+    thin        = object$thin     %||% 1L,
+    accept_rate = object$accept_rate %||% NA_real_,
+    runtime     = object$runtime  %||% NA_real_
+  )
+
+  make_block <- function(D, tau) {
+    D <- as.matrix(D)
+    stats <- summarise_draws_custom(D)
+
+    # tabla principal (excluye sigma) + IC pedidas
+    coef_idx <- stats$variable != "sigma"
+    coef_stats <- stats[coef_idx, , drop = FALSE]
+    coef_stats$lower_ci <- apply(D[, coef_idx, drop = FALSE], 2, stats::quantile, probs = probs[1], na.rm = TRUE)
+    coef_stats$upper_ci <- apply(D[, coef_idx, drop = FALSE], 2, stats::quantile, probs = probs[2], na.rm = TRUE)
+
+    list(
+      tau          = tau,
+      coef_summary = coef_stats,
+      full_summary = stats,
+      n_draws      = nrow(D),
+      meta         = meta,
+      probs        = probs,
+      digits       = digits
+    )
   }
-  cat("\nPosterior summary:\n")
-  summary_stats <- summarise_draws_custom(x$draws)
-  print(summary_stats[, c("variable", "mean", "sd", "q2.5", "q97.5")],
-        row.names = FALSE, digits = digits)
-  invisible(x)
+
+  per_tau <- if (is.list(object$draws)) {
+    Map(make_block, object$draws, object$quantile)
+  } else list(make_block(object$draws, object$quantile))
+
+  res <- list(
+    call      = object$call %||% NULL,
+    method    = object$method %||% object$algorithm %||% NA_character_,
+    quantiles = object$quantile,
+    per_tau   = per_tau
+  )
+  class(res) <- "summary.bqr.svy"
+  res
 }
 
-#' Print method for bqr.svy objects
+#' Resumen para objetos bwqr_fit (con Rhat y ESS)
 #'
-#' @param x An object of class \code{"bqr.svy"}.
-#' @param digits Integer, number of significant digits to print.
-#' @param ... Additional arguments passed to \code{\link[base]{print}}.
-#' @export
-print.bqr.svy <- function(x, digits = 3, ...) {
-  cat("\nBayesian Quantile Regression (class 'bqr.svy')\n")
-  cat("Method    :", x$method, "\n")
-
-  # --- Caso multi-tau: draws es lista ---
-  if (is.list(x$draws)) {
-    taus <- x$quantile
-    nm   <- names(x$draws)
-    if (is.null(nm)) nm <- paste0("tau=", formatC(taus, format = "f", digits = 3))
-    cat("Quantiles :", paste(taus, collapse = ", "), "\n")
-    cat("Draws     :\n")
-    for (i in seq_along(x$draws)) {
-      n_i <- tryCatch(nrow(x$draws[[i]]), error = function(e) NA_integer_)
-      cat("  ", nm[i], ":", n_i, "draws")
-      if (!is.null(x$accept_rate) && length(x$accept_rate) >= i && !is.na(x$accept_rate[i])) {
-        cat(", accept rate:", sprintf("%.3f", x$accept_rate[i]))
-      }
-      cat("\n")
-    }
-    if (!is.null(x$beta) && is.matrix(x$beta)) {
-      cat("\nPosterior means (by tau):\n")
-      print(round(x$beta, digits))
-    } else {
-      cat("\n(Use summary() for detailed output.)\n")
-    }
-    return(invisible(x))
-  }
-
-  # --- Caso single-tau (comportamiento previo) ---
-  cat("Quantile  :", x$quantile, "\n")
-  cat("Draws     :", nrow(x$draws), "\n")
-  if (!is.null(x$accept_rate) && !is.na(x$accept_rate)) {
-    cat("Accept rate:", sprintf("%.3f", x$accept_rate), "\n")
-  }
-  cat("\nPosterior means:\n")
-  means <- round(apply(x$draws, 2, mean, na.rm = TRUE), digits)
-  print(means)
-  cat("\nUse summary() for detailed posterior statistics and diagnostics.\n")
-  invisible(x)
-}
-
-#' Summary method for bwqr_fit objects
-#'
-#' @param object An object of class \code{"bwqr_fit"}.
-#' @param probs Numeric vector of probabilities for summary statistics.
-#' @param digits Integer, number of significant digits to display.
-#' @param max_lag Integer, maximum lag for autocorrelation diagnostics.
-#' @param ... Additional arguments passed to other methods.
-#' @export
-summary.bwqr_fit <- function(object,
-                             probs   = c(0.025, 0.975),
-                             digits  = 3,
-                             max_lag = 200,
-                             ...) {
+#' @param object Objeto \code{bwqr_fit}.
+#' @param probs Probabilidades para IC.
+#' @param digits Decimales para impresión.
+#' @param max_lag Máximo rezago autocorrelación.
+#' @param ... Ignorado.
+#' @return Objeto de clase \code{summary.bwqr_fit}.
+#' @exportS3Method summary bwqr_fit
+summary.bwqr_fit <- function(object, probs = c(0.025, 0.975), digits = 3, max_lag = 200, ...) {
   draws <- object$draws
   if (is.data.frame(draws)) draws <- data.matrix(draws)
   draws <- as.matrix(draws)
@@ -283,23 +204,18 @@ summary.bwqr_fit <- function(object,
   if (nrow(draws) == 0L || ncol(draws) == 0L)
     stop("'object$draws' empty or not numeric.", call. = FALSE)
 
-  # Base stats + diagnostics (usa tu summarise_draws_custom existente)
   stats <- summarise_draws_custom(draws, max_lag = max_lag)
+  stats$lower_ci <- apply(draws, 2, stats::quantile, probs = probs[1], na.rm = TRUE)
+  stats$upper_ci <- apply(draws, 2, stats::quantile, probs = probs[2], na.rm = TRUE)
 
-  # Credible intervals
-  stats$lower_ci <- round(apply(draws, 2, quantile, probs = probs[1], na.rm = TRUE), digits)
-  stats$upper_ci <- round(apply(draws, 2, quantile, probs = probs[2], na.rm = TRUE), digits)
-
-  # Back-compat: tabla de coeficientes sin sigma
   coef_df <- stats[stats$variable != "sigma",
                    c("variable","mean","sd","lower_ci","upper_ci")]
-  names(coef_df) <- c("Variable","Mean","SD","Lower","Upper")
 
   summary_obj <- list(
     call              = object$call %||% NULL,
     method            = object$method %||% NA_character_,
     quantile          = object$quantile %||% NA_real_,
-    n_draws           = nrow(draws),
+    n_draws_total     = nrow(draws),
     n_chains          = object$n_chains %||% 1L,
     warmup            = object$warmup   %||% 0L,
     thin              = object$thin     %||% 1L,
@@ -310,276 +226,24 @@ summary.bwqr_fit <- function(object,
     probs             = probs,
     digits            = digits
   )
-
-  class(summary_obj) <- c("summary.bwqr_fit", "summary.bqr.svy")
+  class(summary_obj) <- "summary.bwqr_fit"
   summary_obj
 }
 
-#' Print method for summary.bwqr_fit objects
-#'
-#' @param x An object of class \code{"summary.bwqr_fit"}.
-#' @param ... Additional arguments passed to \code{\link[base]{print}}.
-#' @export
-print.summary.bwqr_fit <- function(x, ...) {
-  cat("\nBayesian Quantile Regression Summary\n")
-  cat("====================================\n\n")
-  cat("Model Information:\n")
-  cat("  Method           :", x$method, "\n")
-  cat("  Quantile (tau)   :", x$quantile, "\n")
-
-  n_chains_val <- if (is.null(x$n_chains) || is.na(x$n_chains)) 1L else as.integer(x$n_chains)
-  warmup_val   <- if (is.null(x$warmup)   || is.na(x$warmup))   0L else as.integer(x$warmup)
-  thin_val     <- if (is.null(x$thin)     || is.na(x$thin))     1L else as.integer(x$thin)
-
-  cat("  Chains           :", n_chains_val, "\n")
-  cat("  Post-warmup draws:", x$n_draws, "per chain\n")
-  cat("  Warmup           :", warmup_val, "draws\n")
-  cat("  Thinning         :", thin_val, "\n")
-  if (!is.null(x$accept_rate) && !is.na(x$accept_rate))
-    cat("  Accept rate      :", sprintf("%.3f", x$accept_rate), "\n")
-  if (!is.null(x$runtime) && !is.na(x$runtime))
-    cat("  Runtime          :", sprintf("%.2f", x$runtime), "seconds\n")
-
-  ps <- as.data.frame(x$posterior_summary, stringsAsFactors = FALSE)
-  needed <- c("variable","mean","sd","lower_ci","upper_ci","rhat","ess_bulk","ess_tail")
-  missing_cols <- setdiff(needed, names(ps))
-  if (length(missing_cols)) for (m in missing_cols) ps[[m]] <- rep(NA_real_, nrow(ps))
-
-  cat("\nPosterior Estimates:\n")
-  prob_lower <- sprintf("%.1f%%", x$probs[1] * 100)
-  prob_upper <- sprintf("%.1f%%", x$probs[2] * 100)
-  fmt_num <- function(v, d) ifelse(is.na(v), "---", sprintf(paste0("%.", d, "f"), as.numeric(v)))
-
-  display_table <- data.frame(
-    Variable = ps$variable,
-    Mean     = fmt_num(ps$mean,     x$digits),
-    SD       = fmt_num(ps$sd,       x$digits),
-    CI_Lower = fmt_num(ps$lower_ci, x$digits),
-    CI_Upper = fmt_num(ps$upper_ci, x$digits),
-    Rhat     = ifelse(is.na(ps$rhat),     "---", sprintf("%.3f", ps$rhat)),
-    ESS_bulk = ifelse(is.na(ps$ess_bulk), "---", sprintf("%.0f", ps$ess_bulk)),
-    ESS_tail = ifelse(is.na(ps$ess_tail), "---", sprintf("%.0f", ps$ess_tail)),
-    check.names = FALSE
-  )
-  names(display_table) <- c("Variable", "Mean", "SD",
-                            paste0(prob_lower, " CI"), paste0(prob_upper, " CI"),
-                            "Rhat", "ESS_bulk", "ESS_tail")
-  print(display_table, row.names = FALSE, right = FALSE)
-
-  .check_convergence_and_warn(ps, x$n_draws)
-
-  cat("Methods: Rank-normalization R-hat and ESS (Vehtari et al., 2021).\n")
-  cat("Note: ESS_bulk measures center of distribution, ESS_tail measures tails.\n")
-  cat("      Convergence diagnostics computed for all parameters including sigma.\n")
-  invisible(x)
-}
-
-
-
-#' Summary method for bqr.svy objects
-#'
-#' @param object An object of class \code{"bqr.svy"}.
-#' @param probs Numeric vector of probabilities for summary statistics.
-#' @param digits Integer, number of significant digits to display.
-#' @param ... Additional arguments passed to other methods.
-#' @export
-summary.bqr.svy <- function(object,
-                            probs = c(0.025, 0.975),
-                            digits = 3,
-                            ...) {
-  if (!inherits(object, "bqr.svy"))
-    stop("Object must be of class 'bqr.svy'")
-
-  make_block <- function(draws_mat, tau, meta) {
-    d <- if (is.data.frame(draws_mat)) data.matrix(draws_mat) else as.matrix(draws_mat)
-    storage.mode(d) <- "numeric"
-    if (nrow(d) == 0L || ncol(d) == 0L)
-      stop("Empty or non-numeric draws matrix for tau=", tau)
-
-    stats <- summarise_draws_custom(d)
-    stats$lower_ci <- round(apply(d, 2, quantile, probs = probs[1], na.rm = TRUE), digits)
-    stats$upper_ci <- round(apply(d, 2, quantile, probs = probs[2], na.rm = TRUE), digits)
-
-    list(
-      tau               = tau,
-      posterior_summary = stats,
-      n_draws           = nrow(d),
-      n_chains          = meta$n_chains %||% 1L,
-      warmup            = meta$warmup   %||% 0L,
-      thin              = meta$thin     %||% 1L,
-      accept_rate       = meta$accept_rate %||% NA_real_,
-      runtime           = meta$runtime  %||% NA_real_,
-      probs             = probs,
-      digits            = digits
-    )
-  }
-
-  meta <- list(
-    n_chains    = object$n_chains %||% 1L,
-    warmup      = object$warmup   %||% 0L,
-    thin        = object$thin     %||% 1L,
-    accept_rate = object$accept_rate,
-    runtime     = object$runtime
-  )
-
-  if (is.list(object$draws)) {
-    taus   <- object$quantile
-    dl     <- object$draws
-
-    per_tau <- vector("list", length(dl))
-    for (i in seq_along(dl)) {
-      meta_i <- meta
-      if (!is.null(meta$accept_rate) && length(meta$accept_rate) >= i) meta_i$accept_rate <- meta$accept_rate[i]
-      if (!is.null(meta$runtime)     && length(meta$runtime)     >= i) meta_i$runtime     <- meta$runtime[i]
-      per_tau[[i]] <- make_block(dl[[i]], tau = taus[i], meta = meta_i)
-    }
-    names(per_tau) <- paste0("tau=", formatC(taus, format="f", digits=3))
-
-    out <- list(
-      call      = object$call %||% NULL,
-      method    = object$method %||% object$algorithm %||% NA_character_,
-      quantiles = taus,
-      per_tau   = per_tau
-    )
-    class(out) <- "summary.bqr.svy"
-    return(out)
-  }
-
-  tau1  <- as.numeric(object$quantile %||% NA_real_)
-  block <- make_block(object$draws, tau = tau1, meta = meta)
-
-  out <- list(
-    call      = object$call %||% NULL,
-    method    = object$method %||% object$algorithm %||% NA_character_,
-    quantiles = tau1,
-    per_tau   = list(block)
-  )
-  names(out$per_tau) <- paste0("tau=", formatC(tau1, format="f", digits=3))
-  class(out) <- "summary.bqr.svy"
-  out
-}
-
-
-
-
-#' Print method for summary.bqr.svy objects
-#'
-#' @param x An object of class \code{"summary.bqr.svy"}.
-#' @param ... Additional arguments passed to \code{\link[base]{print}}.
-#' @export
-print.summary.bqr.svy <- function(x, ...) {
-  cat("\nBayesian Quantile Regression Summary\n")
-  cat("====================================\n\n")
-  cat("Model Information:\n")
-  cat("  Method           :", x$method, "\n")
-  if (length(x$quantiles) > 1L) {
-    cat("  Quantiles (tau)  :", paste(x$quantiles, collapse = ", "), "\n\n")
-  } else {
-    cat("  Quantile (tau)   :", x$quantiles, "\n\n")
-  }
-
-  fmt_num <- function(v, d) ifelse(is.na(v), "---", sprintf(paste0("%.", d, "f"), as.numeric(v)))
-
-  # One block per tau (identical format for single/multi)
-  for (i in seq_along(x$per_tau)) {
-    b <- x$per_tau[[i]]
-    cat(sprintf("----- Quantile tau = %.3f -----\n", b$tau))
-    cat("  Chains           :", b$n_chains, "\n")
-    cat("  Post-warmup draws:", b$n_draws, "per chain\n")
-    cat("  Warmup           :", b$warmup, "draws\n")
-    cat("  Thinning         :", b$thin, "\n")
-    if (!is.null(b$accept_rate) && !is.na(b$accept_rate))
-      cat("  Accept rate      :", sprintf("%.3f", b$accept_rate), "\n")
-    if (!is.null(b$runtime) && !is.na(b$runtime))
-      cat("  Runtime          :", sprintf("%.2f", b$runtime), "seconds\n")
-
-    ps <- as.data.frame(b$posterior_summary, stringsAsFactors = FALSE)
-    needed <- c("variable","mean","sd","lower_ci","upper_ci","rhat","ess_bulk","ess_tail")
-    miss <- setdiff(needed, names(ps)); if (length(miss)) for (m in miss) ps[[m]] <- NA_real_
-
-    cat("\n  Posterior Estimates:\n")
-    prob_lower <- sprintf("%.1f%%", b$probs[1] * 100)
-    prob_upper <- sprintf("%.1f%%", b$probs[2] * 100)
-
-    display <- data.frame(
-      Variable = ps$variable,
-      Mean     = fmt_num(ps$mean,     b$digits),
-      SD       = fmt_num(ps$sd,       b$digits),
-      CI_Lower = fmt_num(ps$lower_ci, b$digits),
-      CI_Upper = fmt_num(ps$upper_ci, b$digits),
-      Rhat     = ifelse(is.na(ps$rhat),     "---", sprintf("%.3f", ps$rhat)),
-      ESS_bulk = ifelse(is.na(ps$ess_bulk), "---", sprintf("%.0f", ps$ess_bulk)),
-      ESS_tail = ifelse(is.na(ps$ess_tail), "---", sprintf("%.0f", ps$ess_tail)),
-      check.names = FALSE
-    )
-    names(display)[which(names(display) %in% c("CI_Lower","CI_Upper"))] <-
-      c(paste0(prob_lower, " CI"), paste0(prob_upper, " CI"))
-    print(display, row.names = FALSE, right = FALSE)
-
-    .check_convergence_and_warn(ps, b$n_draws)
-    cat("\n")
-  }
-  cat("Methods: Rank-normalization R-hat and ESS (Vehtari et al., 2021).\n")
-  cat("Note: ESS_bulk measures center, ESS_tail measures tails; diagnostics include sigma.\n")
-  invisible(x)
-}
-
-
-
-#' Summary method for Multiple-Output Bayesian Quantile Regression
-#'
-#' Provides a tabular summary of fitted Bayesian quantile regression models
-#' estimated with \code{mo.bqr.svy}. The output contains, for each quantile
-#' and direction, the estimated coefficients, scale parameter, iteration count,
-#' and convergence status. In addition, summary attributes at the quantile level
-#' (average iterations, global convergence) are stored for use by the print method.
-#'
-#' @param object An object of class \code{"mo.bqr.svy"}, typically returned by
-#'   \code{\link{mo.bqr.svy}}.
-#' @param digits Integer, number of decimal places to use for rounding numeric
-#'   results. Defaults to \code{3}.
-#' @param ... Additional arguments (currently unused).
-#'
-#' @return A \code{summary.mo_bqr.svy} object, which is a data frame containing:
-#'   \itemize{
-#'     \item \code{quantile}: quantile level \eqn{\tau}.
-#'     \item \code{direction}: index of the direction used in the EM algorithm.
-#'     \item coefficient columns: estimated regression parameters for each covariate.
-#'     \item \code{sigma}: estimated scale parameter for that direction.
-#'     \item \code{iter}: number of EM iterations taken for that direction.
-#'     \item \code{converged}: logical indicating convergence for that direction.
-#'   }
-#'
-#'   Additionally, each block of rows corresponding to a quantile
-#'   has two attributes:
-#'   \itemize{
-#'     \item \code{"conv_global"}: TRUE if all directions converged, FALSE otherwise.
-#'     \item \code{"iter_summary"}: average number of iterations across directions.
-#'   }
-#'
-#' The object has class \code{c("summary.mo_bqr.svy", "data.frame")}, and its
-#' default print method displays both per-quantile summaries and per-direction
-#' details.
-#'
-#' @seealso \code{\link{mo.bqr.svy}}, \code{\link{print.summary.mo_bqr.svy}}
-#' Summary method for Multiple-Output Bayesian Quantile Regression
-#' (doc igual que ya tienes)
-#' @method summary mo.bqr.svy
-#' @export
+#' Resumen para objetos mo.bqr.svy (EM)
+#' @param object Objeto \code{mo.bqr.svy}.
+#' @param digits Decimales.
+#' @param ... Ignorado.
+#' @return Objeto \code{summary.mo_bqr.svy} (data.frame con atributos).
+#' @exportS3Method summary mo.bqr.svy
 summary.mo.bqr.svy <- function(object, digits = 3, ...) {
-  if (!inherits(object, "mo.bqr.svy"))
-    stop("Object must be of class 'mo.bqr.svy'")
+  stopifnot(inherits(object, "mo.bqr.svy"))
+  taus <- object$quantile; fit_list <- object$fit
 
-  taus <- object$quantile
-  fit_list <- object$fit
-
-  quantile_summaries <- lapply(seq_along(taus), function(i) {
-    q  <- taus[i]
-    fi <- fit_list[[i]]
-    dir_results <- fi$directions
-
-    df <- do.call(rbind, lapply(seq_along(dir_results), function(k) {
-      dr <- dir_results[[k]]
+  qsum <- lapply(seq_along(taus), function(i) {
+    q  <- taus[i]; fi <- fit_list[[i]]; drs <- fi$directions
+    df <- do.call(rbind, lapply(seq_along(drs), function(k) {
+      dr <- drs[[k]]
       data.frame(
         quantile   = q,
         direction  = k,
@@ -591,108 +255,428 @@ summary.mo.bqr.svy <- function(object, digits = 3, ...) {
         check.names = FALSE
       )
     }))
-
     attr(df, "conv_global")  <- all(df$converged)
     attr(df, "iter_summary") <- mean(df$iter, na.rm = TRUE)
     df
   })
 
-  out <- do.call(rbind, quantile_summaries)
-  rownames(out) <- NULL
+  out <- do.call(rbind, qsum); rownames(out) <- NULL
   class(out) <- c("summary.mo_bqr.svy", "data.frame")
-
-  return(out)
+  out
 }
 
+# =============================================================================
+# PRINT (usar genérico de base: NO redefinir print())
+# =============================================================================
+# =============================================================================
+# PRINT (usar genérico base; definir métodos S3 minimalistas)
+# =============================================================================
 
+#' @exportS3Method print bqr.svy
+print.bqr.svy <- function(x, digits = 3, ...) {
+  stopifnot(inherits(x, "bqr.svy"))
 
-#' Print method for summary.mo_bqr.svy objects
-#'
-#' @param x An object of class \code{"summary.mo_bqr.svy"}.
-#' @param ... Additional arguments (currently unused).
-#' @export
-print.summary.mo_bqr.svy <- function(x, ...) {
-  cat("\nMultiple-Output Bayesian Quantile Regression Summary\n")
-  cat("===================================================\n\n")
-
-  if (!is.data.frame(x) || !"quantile" %in% names(x)) {
-    cat("(empty summary)\n")
-    return(invisible(x))
+  # Preferir beta; si no existe, calcular medias de los draws (excluyendo "sigma")
+  if (!is.null(x$beta)) {
+    beta <- x$beta
+  } else {
+    D <- x$draws
+    if (is.list(D)) {
+      beta <- sapply(D, function(m) {
+        m <- as.matrix(m)
+        keep <- setdiff(colnames(m), "sigma")
+        colMeans(m[, keep, drop = FALSE])
+      })
+      if (is.null(dim(beta))) beta <- matrix(beta, ncol = 1)
+      # Fijar nombres si es posible
+      base_cols <- colnames(as.matrix(D[[1]]))
+      rn <- setdiff(base_cols, "sigma")
+      if (!is.null(rn)) rownames(beta) <- rn
+      colnames(beta) <- paste0("tau=", formatC(x$quantile, format = "f", digits = 3))
+    } else {
+      D <- as.matrix(D)
+      keep <- setdiff(colnames(D), "sigma")
+      beta <- colMeans(D[, keep, drop = FALSE])
+      names(beta) <- keep
+    }
   }
 
-  taus <- unique(x$quantile)
-
-  for (q in taus) {
-    df_q <- x[x$quantile == q, , drop = FALSE]
-
-    has_conv <- "converged" %in% names(df_q)
-    has_iter <- "iter" %in% names(df_q)
-    conv_global  <- if (has_conv) all(df_q$converged, na.rm = TRUE) else NA
-    iter_summary <- if (has_iter) mean(df_q$iter, na.rm = TRUE) else NA_real_
-
-    conv_txt <- if (isTRUE(conv_global)) "Yes" else if (identical(conv_global, FALSE)) "No" else "-"
-
-    cat(sprintf("Quantile tau = %.3f:\n", q))
-    cat("  Converged (all directions):", conv_txt, "\n")
-    cat("  Avg iterations:", if (is.finite(iter_summary)) round(iter_summary, 1) else "-", "\n\n")
-
-    cat("  Per-direction results:\n")
-    df_show <- df_q
-    cols <- c("direction", setdiff(names(df_show), c("quantile", "direction")))
-    df_show <- df_show[, cols, drop = FALSE]
-    class(df_show) <- "data.frame"
-    print.data.frame(df_show, row.names = FALSE)
-    cat("\n")
+  cat("\nCoeficientes (medias posteriores)\n")
+  if (is.matrix(beta)) {
+    print(round(beta, digits))
+  } else {
+    out <- data.frame(Estimate = round(beta, digits),
+                      row.names = names(beta), check.names = FALSE)
+    print(out)
   }
+  invisible(x)
+}
+
+# Mantener la misma salida minimalista para clases alias
+#' @exportS3Method print bwqr_fit
+print.bwqr_fit <- function(x, digits = 3, ...) {
+  print.bqr.svy(x, digits = digits, ...)
+}
+
+#' @exportS3Method print bwqr_fit_multi
+print.bwqr_fit_multi <- function(x, digits = 3, ...) {
+  print.bqr.svy(x, digits = digits, ...)
+}
+
+# (Opcional) extractor conveniente
+#' @exportS3Method coef bqr.svy
+coef.bqr.svy <- function(object, ...) object$beta
+
+
+#' @exportS3Method print mo.bqr.svy
+print.mo.bqr.svy <- function(x, ...) {
+  cat("\nMultiple-Output Bayesian Quantile Regression (EM Algorithm)\n")
+  cat(rep("=", 60), "\n", sep = "")
+
+  if (!is.null(x$call)) {
+    cat("Call: "); print(x$call)
+  }
+
+  cat("Quantiles estimated : ", paste(sprintf("τ=%.3f", x$quantile), collapse = ", "), "\n")
+  cat("EM Algorithm        : Multiple-output approach\n")
+  cat("Response dimension  : ", x$response_dim, "\n")
+  cat("Number of directions: ", x$n_dir, "\n")
+
+  for (qi in seq_along(x$quantile)) {
+    cat(sprintf("\n%s τ = %.3f %s\n", rep("-", 20), x$quantile[qi], rep("-", 20)), sep = "")
+    dir_results <- x$fit[[qi]]$directions
+
+    for (k in seq_along(dir_results)) {
+      dr <- dir_results[[k]]
+      cat(sprintf("\nDirection %d:\n", k))
+
+      # Format coefficients nicely
+      if (is.numeric(dr$beta) && length(dr$beta) > 0) {
+        coef_df <- data.frame(
+          Coefficient = if(!is.null(names(dr$beta))) names(dr$beta) else paste0("β", seq_along(dr$beta)),
+          Estimate = round(dr$beta, 4),
+          stringsAsFactors = FALSE
+        )
+        print(coef_df, row.names = FALSE)
+      }
+
+      # Convergence info
+      status_symbol <- if(dr$converged) "✓" else "✗"
+      cat(sprintf("  %s Converged: %s | Sigma: %.4f | Iterations: %d\n",
+                  status_symbol, dr$converged, dr$sigma, dr$iter))
+    }
+  }
+
+  cat("\nUse summary() for detailed convergence diagnostics\n")
+  invisible(x)
+}
+
+#' @exportS3Method print summary.bqr.svy
+print.summary.bqr.svy <- function(x, ...) {
+  # Header
+  cat("\nBayesian Weighted Quantile Regression - MCMC Summary\n")
+  cat(rep("=", 55), "\n", sep = "")
+
+  # Model information
+  qs <- x$quantiles
+  method <- x$method %||% "<unknown>"
+
+  if (length(qs) > 1L) {
+    cat("Quantiles estimated: ", paste(sprintf("τ=%.3f", qs), collapse = ", "), "\n")
+  } else {
+    cat("Quantile estimated : τ=", sprintf("%.3f", qs), "\n")
+  }
+  cat("MCMC method        : ", method, "\n")
+
+  b1 <- x$per_tau[[1]]
+  cat("Credible intervals : ", sprintf("[%.1f%%, %.1f%%]\n", 100*b1$probs[1], 100*b1$probs[2]))
+  cat("Burn-in draws      : ", b1$meta$warmup, "\n")
+  cat("Retained draws     : ", b1$n_draws, "\n")
+
+  if (!is.na(b1$meta$accept_rate)) {
+    cat("Acceptance rate    : ", sprintf("%.3f", b1$meta$accept_rate), "\n")
+  }
+
+  # Coefficient tables for each quantile
+  for (blk in x$per_tau) {
+    if (length(qs) > 1L) {
+      cat(sprintf("\n%s τ = %.3f %s\n", rep("-", 20), blk$tau, rep("-", 20)), sep = "")
+    } else {
+      cat("\nPosterior Summary:\n")
+      cat(rep("-", 35), "\n", sep = "")
+    }
+
+    cs <- blk$coef_summary
+    fnum <- function(v, d = blk$digits) ifelse(is.na(v), "---", sprintf(paste0("%.", d, "f"), as.numeric(v)))
+
+    tab <- data.frame(
+      Parameter        = cs$variable,
+      `Posterior Mean` = fnum(cs$mean),
+      `Lower CI`       = fnum(cs$lower_ci),
+      `Upper CI`       = fnum(cs$upper_ci),
+      `R-hat`          = ifelse(is.na(cs$rhat),     "---", sprintf("%.3f", cs$rhat)),
+      `ESS`            = ifelse(is.na(cs$ess_bulk), "---", sprintf("%.0f", cs$ess_bulk)),
+      check.names = FALSE
+    )
+    print(tab, row.names = FALSE, right = TRUE)
+
+    # Diagnostic warnings
+    prob_rhat <- cs$variable[!is.na(cs$rhat)     & cs$rhat     > 1.1]
+    prob_ess  <- cs$variable[!is.na(cs$ess_bulk) & cs$ess_bulk < 0.1 * blk$n_draws]
+
+    if (length(prob_rhat) || length(prob_ess)) {
+      cat("\nDiagnostic Warnings:\n")
+      if (length(prob_rhat)) {
+        cat(" ⚠ High R-hat (>1.1): ", paste(prob_rhat, collapse = ", "), "\n")
+      }
+      if (length(prob_ess)) {
+        cat(" ⚠ Low ESS (<10%):    ", paste(prob_ess, collapse = ", "), "\n")
+      }
+    } else {
+      cat("\n✓ All diagnostics look good!\n")
+    }
+  }
+
+  cat("\nDiagnostic Notes:\n")
+  cat(rep("-", 20), "\n", sep = "")
+  cat(" • R-hat ≈ 1.0 indicates good chain mixing\n")
+  cat(" • ESS measures effective sample size (higher is better)\n")
+  cat(" • Use posterior package for detailed chain diagnostics\n")
+  cat(" • 'sigma' parameter omitted from coefficient table\n")
 
   invisible(x)
 }
 
+#' @exportS3Method print summary.bwqr_fit
+print.summary.bwqr_fit <- function(x, ...) {
+  cat("\nBayesian Weighted Quantile Regression - MCMC Summary\n")
+  cat(rep("=", 55), "\n", sep = "")
 
+  # Model information
+  cat("Model Information:\n")
+  cat("  Method             :", x$method, "\n")
+  cat("  Quantile (τ)       :", sprintf("%.3f", x$quantile), "\n")
 
-#' Generic summary function for Bayesian Quantile Regression objects
-#'
-#' @param object An object containing model fit results.
-#' @param ... Additional arguments passed to other methods.
-#' @export
-summary_bqr <- function(object, ...) {
-  UseMethod("summary_bqr")
+  # Call information
+  if (!is.null(x$call)) {
+    cat("  Call               :"); print(x$call)
+  }
+
+  # MCMC details
+  n_ch <- if (is.null(x$n_chains) || is.na(x$n_chains)) 1L else as.integer(x$n_chains)
+  per_chain <- if (x$n_draws_total %% n_ch == 0L) x$n_draws_total / n_ch else NA
+
+  cat("\nMCMC Configuration:\n")
+  cat("  Chains             :", n_ch, "\n")
+  cat("  Post-warmup draws  :", if (is.na(per_chain)) x$n_draws_total else paste0(per_chain, " per chain, ", x$n_draws_total, " total"), "\n")
+  cat("  Warmup draws       :", x$warmup %||% 0L, "\n")
+  cat("  Thinning interval  :", x$thin   %||% 1L, "\n")
+
+  if (!is.na(x$accept_rate)) {
+    cat("  Acceptance rate    :", sprintf("%.3f", x$accept_rate), "\n")
+  }
+  if (!is.na(x$runtime)) {
+    cat("  Runtime            :", sprintf("%.2f", x$runtime), "seconds\n")
+  }
+
+  # Posterior summary table
+  cat("\nPosterior Summary:\n")
+  cat(rep("-", 80), "\n", sep = "")
+
+  ps <- as.data.frame(x$posterior_summary, stringsAsFactors = FALSE)
+  need <- c("variable","mean","sd","lower_ci","upper_ci","rhat","ess_bulk","ess_tail")
+  for (m in setdiff(need, names(ps))) ps[[m]] <- NA_real_
+
+  prob_lower <- sprintf("%.1f%%", x$probs[1] * 100)
+  prob_upper <- sprintf("%.1f%%", x$probs[2] * 100)
+  fmt <- function(v, d) ifelse(is.na(v), "---", sprintf(paste0("%.", d, "f"), as.numeric(v)))
+
+  # Split between coefficients and sigma
+  coef_idx <- ps$variable != "sigma"
+  sigma_idx <- ps$variable == "sigma"
+
+  # Coefficients table
+  if (any(coef_idx)) {
+    ps_coef <- ps[coef_idx, , drop = FALSE]
+
+    cat("Coefficients:\n")
+    disp_coef <- data.frame(
+      Parameter = ps_coef$variable,
+      Mean      = fmt(ps_coef$mean, x$digits),
+      SD        = fmt(ps_coef$sd, x$digits),
+      CI_Lower  = fmt(ps_coef$lower_ci, x$digits),
+      CI_Upper  = fmt(ps_coef$upper_ci, x$digits),
+      Rhat      = ifelse(is.na(ps_coef$rhat), "---", sprintf("%.3f", ps_coef$rhat)),
+      ESS_bulk  = ifelse(is.na(ps_coef$ess_bulk), "---", sprintf("%.0f", ps_coef$ess_bulk)),
+      ESS_tail  = ifelse(is.na(ps_coef$ess_tail), "---", sprintf("%.0f", ps_coef$ess_tail)),
+      check.names = FALSE
+    )
+    names(disp_coef)[4:5] <- c(paste0(prob_lower, " CI"), paste0(prob_upper, " CI"))
+    print(disp_coef, row.names = FALSE, right = FALSE)
+  }
+
+  # Scale parameter table
+  if (any(sigma_idx)) {
+    ps_sigma <- ps[sigma_idx, , drop = FALSE]
+
+    cat("\nScale Parameter:\n")
+    disp_sigma <- data.frame(
+      Parameter = "σ (sigma)",
+      Mean      = fmt(ps_sigma$mean, x$digits),
+      SD        = fmt(ps_sigma$sd, x$digits),
+      CI_Lower  = fmt(ps_sigma$lower_ci, x$digits),
+      CI_Upper  = fmt(ps_sigma$upper_ci, x$digits),
+      Rhat      = ifelse(is.na(ps_sigma$rhat), "---", sprintf("%.3f", ps_sigma$rhat)),
+      ESS_bulk  = ifelse(is.na(ps_sigma$ess_bulk), "---", sprintf("%.0f", ps_sigma$ess_bulk)),
+      ESS_tail  = ifelse(is.na(ps_sigma$ess_tail), "---", sprintf("%.0f", ps_sigma$ess_tail)),
+      check.names = FALSE
+    )
+    names(disp_sigma)[4:5] <- c(paste0(prob_lower, " CI"), paste0(prob_upper, " CI"))
+    print(disp_sigma, row.names = FALSE, right = FALSE)
+  }
+
+  # Convergence diagnostics
+  cat("\nConvergence Diagnostics:\n")
+  cat(rep("-", 30), "\n", sep = "")
+
+  # Check for problematic parameters
+  prob_rhat <- ps$variable[!is.na(ps$rhat) & ps$rhat > 1.1]
+  prob_ess_bulk <- ps$variable[!is.na(ps$ess_bulk) & ps$ess_bulk < 0.1 * x$n_draws_total]
+  prob_ess_tail <- ps$variable[!is.na(ps$ess_tail) & ps$ess_tail < 0.1 * x$n_draws_total]
+
+  if (length(prob_rhat) || length(prob_ess_bulk) || length(prob_ess_tail)) {
+    if (length(prob_rhat)) {
+      cat(" ⚠ High R-hat (>1.1)  :", paste(prob_rhat, collapse = ", "), "\n")
+    }
+    if (length(prob_ess_bulk)) {
+      cat(" ⚠ Low ESS bulk (<10%):", paste(prob_ess_bulk, collapse = ", "), "\n")
+    }
+    if (length(prob_ess_tail)) {
+      cat(" ⚠ Low ESS tail (<10%):", paste(prob_ess_tail, collapse = ", "), "\n")
+    }
+
+    cat("\n", rep("!", 60), "\n", sep = "")
+    cat("CONVERGENCE WARNING: Some parameters show poor convergence.\n")
+    cat("Consider:\n")
+    cat("  - Running more iterations\n")
+    cat("  - Checking model specification\n")
+    cat("  - Using different priors or starting values\n")
+    cat(rep("!", 60), "\n", sep = "")
+  } else {
+    cat(" ✓ All parameters show good convergence (R-hat ≈ 1.0)\n")
+    cat(" ✓ Effective sample sizes are adequate (ESS > 10%)\n")
+  }
+
+  cat("\nDiagnostic Notes:\n")
+  cat(rep("-", 20), "\n", sep = "")
+  cat(" • R-hat measures chain mixing (should be ≈ 1.0)\n")
+  cat(" • ESS_bulk: effective sample size for central estimates\n")
+  cat(" • ESS_tail: effective sample size for tail quantiles\n")
+  cat(" • Use traceplots to visualize chain behavior\n")
+
+  invisible(x)
 }
 
-#' @export
-summary_bqr.bqr.svy <- function(object, ...) summary.bqr.svy(object, ...)
-#' @export
-summary_bqr.mo.bqr.svy <- function(object, ...) summary.mo.bqr.svy(object, ...)
-#' @export
-summary_bqr.default <- function(object, ...) summary(object, ...)
+#' @exportS3Method print summary.mo_bqr.svy
+print.summary.mo_bqr.svy <- function(x, ...) {
+  cat("\nMultiple-Output Bayesian Quantile Regression Summary\n")
+  cat(rep("=", 60), "\n", sep = "")
+
+  if (!is.data.frame(x) || !"quantile" %in% names(x)) {
+    cat("(empty summary)\n");
+    return(invisible(x))
+  }
+
+  taus <- unique(x$quantile)
+  cat("Quantiles estimated :", paste(sprintf("τ=%.3f", taus), collapse = ", "), "\n")
+  cat("EM Algorithm        : Multiple-output approach\n")
+
+  # Overall convergence assessment
+  all_converged <- TRUE
+  for (q in taus) {
+    df_q <- x[x$quantile == q, , drop = FALSE]
+    if ("converged" %in% names(df_q)) {
+      if (!all(df_q$converged, na.rm = TRUE)) {
+        all_converged <- FALSE
+        break
+      }
+    }
+  }
+
+  cat("Overall convergence :", ifelse(all_converged, "✓ CONVERGED", "⚠ NOT CONVERGED"), "\n")
+
+  for (q in taus) {
+    cat(sprintf("\n%s τ = %.3f %s\n", rep("=", 20), q, rep("=", 20)), sep = "")
+
+    df_q <- x[x$quantile == q, , drop = FALSE]
+    has_conv <- "converged" %in% names(df_q)
+    has_iter <- "iter" %in% names(df_q)
+
+    # Quantile-level convergence
+    conv_global <- if (has_conv) all(df_q$converged, na.rm = TRUE) else NA
+    iter_summary <- if (has_iter) mean(df_q$iter, na.rm = TRUE) else NA_real_
+
+    status_symbol <- if (isTRUE(conv_global)) "✓" else if (identical(conv_global, FALSE)) "✗" else "?"
+    conv_txt <- if (isTRUE(conv_global)) "All directions converged" else if (identical(conv_global, FALSE)) "Some directions failed" else "Unknown"
+
+    cat(sprintf("Status: %s %s\n", status_symbol, conv_txt))
+    if (is.finite(iter_summary)) {
+      cat(sprintf("Average iterations: %.1f\n", iter_summary))
+    }
+
+    cat("\nPer-direction Details:\n")
+    cat(rep("-", 40), "\n", sep = "")
+
+    # Display results table with better formatting
+    cols <- c("direction", setdiff(names(df_q), c("quantile", "direction")))
+    df_display <- df_q[, cols, drop = FALSE]
+
+    # Format numeric columns
+    for (col in names(df_display)) {
+      if (is.numeric(df_display[[col]]) && !col %in% c("direction", "converged", "iter")) {
+        df_display[[col]] <- round(df_display[[col]], 4)
+      }
+    }
+
+    print(df_display, row.names = FALSE)
+
+    # Warnings for non-converged directions
+    if (has_conv && !isTRUE(conv_global)) {
+      failed_dirs <- df_q[!df_q$converged, "direction", drop = TRUE]
+      if (length(failed_dirs) > 0) {
+        cat(sprintf("\n⚠ Warning: Direction(s) %s did not converge\n",
+                    paste(failed_dirs, collapse = ", ")))
+      }
+    }
+    cat("\n")
+  }
+
+  if (!all_converged) {
+    cat(rep("!", 50), "\n", sep = "")
+    cat("⚠ CONVERGENCE WARNING:\n")
+    cat("Some quantiles/directions did not converge.\n")
+    cat("Consider:\n")
+    cat("  - Increasing maximum iterations\n")
+    cat("  - Checking data quality and model specification\n")
+    cat("  - Trying different starting values or tolerances\n")
+    cat(rep("!", 50), "\n", sep = "")
+  }
+
+  cat("Note: Use plot() to visualize quantile estimates\n")
+  invisible(x)
+}
+
+# =============================================================================
+# Convergence check (genérico propio)
+# =============================================================================
 
 #' Check convergence diagnostics for tauBayesW model objects
 #'
-#' This is a generic function that dispatches to specific methods depending on
-#' the class of the object (e.g., \code{bqr.svy}, \code{mo.bqr.svy}).
-#'
-#' @param object An object of class \code{"bqr.svy"} or \code{"mo.bqr.svy"}.
-#' @param rhat_threshold Numeric scalar. The threshold for the Gelman-Rubin \eqn{\hat{R}} statistic
-#'   above which a parameter is considered not converged. Default is \code{1.1}.
-#' @param ess_ratio_threshold Numeric scalar. The threshold for the ratio of Effective Sample Size (ESS)
-#'   to total draws below which a parameter is considered to have low sampling efficiency. Default is \code{0.1}.
-#' @param verbose Logical; if \code{TRUE}, prints a summary of convergence diagnostics to the console.
-#'   Default is \code{TRUE}.
-#' @param ... Additional arguments passed to specific methods.
-#'
-#' @return A list containing:
-#' \describe{
-#'   \item{\code{rhat}}{Named numeric vector of \eqn{\hat{R}} values for each parameter (if available).}
-#'   \item{\code{ess_ratio}}{Named numeric vector of ESS ratios for each parameter (if available).}
-#'   \item{\code{not_converged}}{Character vector of parameter names failing \eqn{\hat{R}} threshold.}
-#'   \item{\code{low_ess}}{Character vector of parameter names failing ESS ratio threshold.}
-#' }
-#'
-#' @examples
-#' \dontrun{
-#' fit <- bqr.svy(y ~ x, data = mydata, quantile = 0.5, method = "ald")
-#' convergence_check(fit)
-#' }
+#' @param object \code{bqr.svy}, \code{mo.bqr.svy}, \code{bwqr_fit} o matriz/data.frame de draws.
+#' @param rhat_threshold Umbral R-hat.
+#' @param ess_ratio_threshold Umbral ESS relativo a draws.
+#' @param verbose Mostrar resumen.
+#' @param ... Ignorado.
 #' @export
 convergence_check <- function(object,
                               rhat_threshold = 1.1,
@@ -702,144 +686,50 @@ convergence_check <- function(object,
   UseMethod("convergence_check")
 }
 
-#' Convergence diagnostics for `bqr.svy` objects
-#'
-#' Computes the rank-normalized \eqn{\hat{R}} (Gelman Rubin) and Effective Sample Size (ESS)
-#' for parameters from MCMC output produced by \code{\link{bqr.svy}}.
-#' Works with both single-quantile fits (one \eqn{\tau}) and multi-quantile fits.
-#'
-#' @inheritParams convergence_check
-#'
-#' @details
-#' For single-quantile fits, \code{object$draws} must be a numeric matrix or data frame with
-#' rows = iterations and columns = parameters.
-#' For multi-quantile fits, \code{object$draws} must be a list of such matrices (one per \eqn{\tau}).
-#' Diagnostics are computed via \code{\link{summarise_draws_custom}} following Vehtari et al. (2021).
-#'
-#' @return
-#' If a \emph{single} \eqn{\tau} is present: a list with components \code{rhat}, \code{neff},
-#' \code{ess_ratio}, \code{not_converged}, \code{low_ess}, and \code{converged}.
-#' If \emph{multiple} \eqn{\tau} values are present: a named list where each element corresponds
-#' to a \eqn{\tau} and has the same structure as above.
-#'
-#' @examples
-#' \dontrun{
-#' set.seed(1)
-#' dat <- data.frame(y = rnorm(50), x = rnorm(50))
-#' fit1 <- bqr.svy(y ~ x, data = dat, quantile = 0.5, method = "ald")
-#' convergence_check(fit1)
-#'
-#' fitk <- bqr.svy(y ~ x, data = dat, quantile = c(0.25, 0.5, 0.75), method = "ald")
-#' convergence_check(fitk)
-#' }
-#'
-#' @export
+#' @exportS3Method convergence_check bqr.svy
 convergence_check.bqr.svy <- function(object,
                                       rhat_threshold = 1.1,
                                       ess_ratio_threshold = 0.1,
-                                      verbose = TRUE,
-                                      ...) {
-  if (is.null(object$draws))
-    stop("No MCMC draws found in object.")
-
-  # --- Helper: diagnostics for a draws matrix ---
-  .diag_one <- function(d) {
-    if (is.data.frame(d)) d <- data.matrix(d)
-    d <- as.matrix(d)
-    storage.mode(d) <- "numeric"
-    n_samples <- nrow(d)
-    if (!is.finite(n_samples) || n_samples <= 1)
-      stop("Not enough samples to compute convergence diagnostics.")
-
-    stats <- summarise_draws_custom(d)  # usa R-hat rank-normalized y ESS (Vehtari)
-    # Asegurar nombres
-    var_names <- stats$variable
-    rhat_vals <- stats$rhat;     names(rhat_vals) <- var_names
-    neff_vals <- stats$ess_bulk; names(neff_vals) <- var_names
-
-    ess_ratio <- neff_vals / n_samples
-    not_conv  <- names(rhat_vals)[which(!is.na(rhat_vals) & rhat_vals > rhat_threshold)]
-    low_ess   <- names(ess_ratio)[which(ess_ratio < ess_ratio_threshold)]
-    conv_vec  <- !(names(rhat_vals) %in% union(not_conv, low_ess))
-    names(conv_vec) <- names(rhat_vals)
-
+                                      verbose = TRUE) {
+  stopifnot(inherits(object, "bqr.svy"))
+  diag_one <- function(D) {
+    D <- as.matrix(D); n <- nrow(D)
+    st <- summarise_draws_custom(D)
+    ess_ratio <- st$ess_bulk / n
     list(
-      rhat          = rhat_vals,
-      neff          = neff_vals,          # nombre conservado por compatibilidad
-      ess_ratio     = ess_ratio,
-      not_converged = not_conv,
-      low_ess       = low_ess,
-      converged     = conv_vec
+      rhat = stats::setNames(st$rhat, st$variable),
+      neff = stats::setNames(st$ess_bulk, st$variable),
+      ess_ratio = stats::setNames(ess_ratio, st$variable),
+      not_converged = st$variable[!is.na(st$rhat) & st$rhat > rhat_threshold],
+      low_ess = st$variable[ess_ratio < ess_ratio_threshold]
     )
   }
-
-  # --- Multi-tau: lista por tau ---
   if (is.list(object$draws)) {
     taus <- object$quantile
-    dl   <- object$draws
-    nm   <- names(dl)
-    if (is.null(nm)) nm <- paste0("tau=", formatC(taus, format = "f", digits = 3))
-
-    out_list <- vector("list", length(dl))
-    names(out_list) <- nm
-
-    for (i in seq_along(dl)) {
-      res_i <- .diag_one(dl[[i]])
-      out_list[[i]] <- res_i
-
+    out <- setNames(vector("list", length(taus)),
+                    paste0("tau=", formatC(taus, format = "f", digits = 3)))
+    for (i in seq_along(taus)) {
+      res <- diag_one(object$draws[[i]])
       if (isTRUE(verbose)) {
-        cat("=== Convergence diagnostics (bqr.svy) ", nm[i], " ===\n", sep = "")
-        if (length(res_i$not_converged)) {
-          cat("Parameters with R-hat >", rhat_threshold, ":\n",
-              paste(res_i$not_converged, collapse = ", "), "\n")
-        } else {
-          cat("All parameters meet R-hat threshold.\n")
-        }
-        if (length(res_i$low_ess)) {
-          cat("Parameters with ESS ratio <", ess_ratio_threshold, ":\n",
-              paste(res_i$low_ess, collapse = ", "), "\n")
-        } else {
-          cat("All parameters meet ESS ratio threshold.\n")
-        }
+        cat("=== Convergence (bqr.svy) tau=", formatC(taus[i], format = "f", digits = 3), " ===\n", sep = "")
+        if (length(res$not_converged)) cat("R-hat >", rhat_threshold, ": ", paste(res$not_converged, collapse = ", "), "\n", sep = "") else cat("All parameters meet R-hat threshold.\n")
+        if (length(res$low_ess))      cat("ESS ratio <", ess_ratio_threshold, ": ", paste(res$low_ess, collapse = ", "), "\n", sep = "") else cat("All parameters meet ESS ratio threshold.\n")
       }
+      out[[i]] <- res
     }
-    return(out_list)
+    return(out)
+  } else {
+    res <- diag_one(object$draws)
+    if (isTRUE(verbose)) {
+      cat("=== Convergence (bqr.svy) ===\n")
+      if (length(res$not_converged)) cat("R-hat >", rhat_threshold, ": ", paste(res$not_converged, collapse = ", "), "\n", sep = "") else cat("All parameters meet R-hat threshold.\n")
+      if (length(res$low_ess))      cat("ESS ratio <", ess_ratio_threshold, ": ", paste(res$low_ess, collapse = ", "), "\n", sep = "") else cat("All parameters meet ESS ratio threshold.\n")
+    }
+    return(res)
   }
-
-  # --- Single tau: previous behavior (but using Vehtari) ---
-  res <- .diag_one(object$draws)
-  if (isTRUE(verbose)) {
-    cat("=== Convergence diagnostics (bqr.svy) ===\n")
-    if (length(res$not_converged)) {
-      cat("Parameters with R-hat >", rhat_threshold, ":\n",
-          paste(res$not_converged, collapse = ", "), "\n")
-    } else {
-      cat("All parameters meet R-hat threshold.\n")
-    }
-    if (length(res$low_ess)) {
-      cat("Parameters with ESS ratio <", ess_ratio_threshold, ":\n",
-          paste(res$low_ess, collapse = ", "), "\n")
-    } else {
-      cat("All parameters meet ESS ratio threshold.\n")
-    }
-  }
-  res
 }
 
-
-#' Convergence diagnostics for mo.bqr.svy objects
-#'
-#' Checks convergence for EM algorithm fits produced by \code{\link{mo.bqr.svy}}.
-#' Since EM is deterministic, this method reports the number of iterations and
-#' whether convergence was achieved for each quantile.
-#'
-#' @inheritParams convergence_check
-#'
-#' @details For EM-based \code{mo.bqr.svy} fits, no MCMC draws are available, so
-#'   this function reports iteration counts and convergence flags instead of
-#'   R-hat/ESS statistics.
-#'
-#' @export
+#' @exportS3Method convergence_check mo.bqr.svy
 convergence_check.mo.bqr.svy <- function(object,
                                          rhat_threshold = 1.1,
                                          ess_ratio_threshold = 0.1,
@@ -847,10 +737,8 @@ convergence_check.mo.bqr.svy <- function(object,
                                          ...) {
   if (is.null(object$fit) || length(object$fit) == 0)
     stop("No fit results found in object.")
-
   iter_counts <- sapply(object$fit, function(f) f$iter)
   converged_flags <- sapply(object$fit, function(f) isTRUE(f$converged))
-
   if (verbose) {
     cat("=== Convergence diagnostics (mo.bqr.svy, EM) ===\n")
     for (i in seq_along(object$quantile)) {
@@ -858,51 +746,20 @@ convergence_check.mo.bqr.svy <- function(object,
                   object$quantile[i], iter_counts[i], converged_flags[i]))
     }
   }
-
-  list(
-    iterations = iter_counts,
-    converged = converged_flags
-  )
+  list(iterations = iter_counts, converged = converged_flags)
 }
 
-#' Default convergence check
-#'
-#' Allows \code{convergence_check()} to work on generic matrices or data frames
-#' containing MCMC draws (each column = parameter, each row = draw).
-#'
-#' @param object A numeric matrix or data frame of draws.
-#' @param rhat_threshold Numeric, threshold for R-hat diagnostic (default 1.01).
-#' @param ess_ratio_threshold Numeric, threshold for effective sample size ratio (default 0.10).
-#' @param ... Not used.
-#'
-#' @return A list with components \code{rhat}, \code{neff}, and \code{converged}.
-#' @export
+#' @exportS3Method convergence_check default
 convergence_check.default <- function(object,
                                       rhat_threshold = 1.01,
                                       ess_ratio_threshold = 0.10,
                                       ...) {
-  # Convert to matrix if needed
-  if (is.data.frame(object)) {
-    object <- data.matrix(object)
-  }
-  if (!is.matrix(object) || !is.numeric(object)) {
+  if (is.data.frame(object)) object <- data.matrix(object)
+  if (!is.matrix(object) || !is.numeric(object))
     stop("Default method for convergence_check expects a numeric matrix or data.frame.")
-  }
-
   stats <- summarise_draws_custom(object)
   n_samples <- nrow(object)
-
-  converged_flags <- !(
-    stats$rhat > rhat_threshold |
-      (stats$ess_bulk / n_samples) < ess_ratio_threshold
-  )
-
-  list(
-    rhat      = stats$rhat,
-    neff      = stats$ess_bulk,
-    converged = converged_flags
-  )
+  converged_flags <- !(stats$rhat > rhat_threshold |
+                         (stats$ess_bulk / n_samples) < ess_ratio_threshold)
+  list(rhat = stats$rhat, neff = stats$ess_bulk, converged = converged_flags)
 }
-
-
-

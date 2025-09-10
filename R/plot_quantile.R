@@ -12,6 +12,375 @@
 #' @importFrom stats model.matrix terms delete.response median quantile
 NULL
 
+# =============================================================================
+# Unified Plot Interface for tauBayesW
+# =============================================================================
+
+#' Unified Plot Method for tauBayesW Objects
+#'
+#' This is a unified interface for plotting objects from the tauBayesW package.
+#' It automatically detects the type of object and its dimensionality, then applies 
+#' the appropriate plotting method.
+#'
+#' @param x An object to plot. Can be of class \code{"bqr.svy"} or \code{"mo.bqr.svy"}.
+#' @param data Data frame containing the variables for plotting (required for most plots).
+#' @param predictor Character string specifying the predictor variable name (for 1D plots).
+#' @param response Character vector specifying response variable name(s).
+#'   For 1D: single variable name. For 2D: vector of 2 names. For 3D: vector of 3 names.
+#' @param ... Additional arguments passed to specific plotting methods.
+#'
+#' @return Invisibly returns the plot object or NULL, depending on the plotting method used.
+#'
+#' @details
+#' This function automatically chooses the appropriate plotting method based on:
+#' \itemize{
+#'   \item \strong{Object type}: \code{bqr.svy} vs \code{mo.bqr.svy}
+#'   \item \strong{Response dimensionality}:
+#'     \itemize{
+#'       \item \strong{1D}: Uses \code{plot_quantile_1D()} for both object types
+#'       \item \strong{2D}: Uses \code{drawQuantileRegion()} for \code{mo.bqr.svy}
+#'       \item \strong{3D}: Uses \code{drawQuantileRegion_3D()} for \code{mo.bqr.svy}
+#'     }
+#' }
+#'
+#' For \code{bqr.svy} objects (always 1D response):
+#' \itemize{
+#'   \item Always uses \code{plot_quantile_1D()}
+#'   \item Requires \code{data} and \code{predictor} arguments
+#' }
+#'
+#' For \code{mo.bqr.svy} objects:
+#' \itemize{
+#'   \item \strong{1D response}: Uses \code{plot_quantile_1D()}
+#'   \item \strong{2D response}: Uses \code{drawQuantileRegion()}
+#'   \item \strong{3D response}: Uses \code{drawQuantileRegion_3D()}
+#'   \item Dimensionality is detected from \code{x$response_dim} or \code{length(response)}
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # 1D examples (works for both bqr.svy and mo.bqr.svy)
+#' fit1 <- bqr.svy(y ~ x, data = mydata, quantile = 0.5)
+#' plot(fit1, data = mydata, predictor = "x")
+#'
+#' fit2 <- mo.bqr.svy(y ~ x, data = mydata, quantile = c(0.25, 0.75))  # 1D response
+#' plot(fit2, data = mydata, predictor = "x", response = "y")
+#'
+#' # 2D example (mo.bqr.svy only)
+#' fit3 <- mo.bqr.svy(cbind(y1, y2) ~ x, data = mydata, quantile = 0.5)
+#' plot(fit3, data = mydata, response = c("y1", "y2"))
+#'
+#' # 3D example (mo.bqr.svy only)  
+#' fit4 <- mo.bqr.svy(cbind(y1, y2, y3) ~ x, data = mydata, quantile = 0.5)
+#' plot(fit4, data = mydata, response = c("y1", "y2", "y3"))
+#' }
+#'
+#' @export
+plot <- function(x, ...) {
+  UseMethod("plot")
+}
+
+#' @rdname plot
+#' @keywords internal
+plot.bqr.svy <- function(x, data = NULL, datafile = NULL, predictor = NULL, 
+                         response = NULL, x_var = NULL, ...) {
+  # bqr.svy objects are always 1D, so use plot_quantile_1D
+  
+  # Handle backwards compatibility for argument names
+  data <- data %||% datafile
+  predictor <- predictor %||% x_var
+  
+  if (is.null(data)) {
+    stop("'data' or 'datafile' argument is required for plotting bqr.svy objects.")
+  }
+  if (is.null(predictor)) {
+    stop("'predictor' or 'x_var' argument is required for plotting bqr.svy objects.")
+  }
+  
+  # Extract response name from formula if not provided
+  if (is.null(response)) {
+    # Try to extract from the object
+    if (!is.null(x$terms)) {
+      response_vars <- all.vars(x$terms)[1]  # First variable is usually the response
+      response <- response_vars
+    } else if (!is.null(x$formula)) {
+      response_vars <- all.vars(x$formula)[1]
+      response <- response_vars
+    }
+  }
+  
+  plot_quantile_1D(
+    object = x,
+    data = data,
+    predictor = predictor,
+    response = response,
+    ...
+  )
+}
+
+#' @rdname plot
+#' @keywords internal
+plot.mo.bqr.svy <- function(x, data = NULL, datafile = NULL, 
+                            response = NULL, predictor = NULL, ...) {
+  
+  # Helper operator
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+  
+  # Determine data source (prioritize 'data' over 'datafile' for consistency)
+  plot_data <- data %||% datafile
+  if (is.null(plot_data)) {
+    stop("Either 'data' or 'datafile' argument is required for plotting mo.bqr.svy objects.")
+  }
+  
+  # Determine response dimensionality
+  response_dim <- x$response_dim %||% length(response) %||% 1
+  
+  # Default response names if not provided
+  if (is.null(response)) {
+    if (response_dim == 1) {
+      response <- "Y"  # Default for 1D
+    } else if (response_dim == 2) {
+      response <- c("Y1", "Y2")  # Default for 2D
+    } else if (response_dim == 3) {
+      response <- c("Y1", "Y2", "Y3")  # Default for 3D
+    } else {
+      stop("Cannot determine appropriate response variables for dimension ", response_dim, 
+           ". Please specify 'response' argument.")
+    }
+  }
+  
+  # Validate response dimension consistency
+  if (length(response) != response_dim) {
+    warning("Length of 'response' (", length(response), 
+            ") doesn't match object's response_dim (", response_dim, 
+            "). Using response_dim from object.")
+    response_dim <- x$response_dim
+  }
+  
+  # Route to appropriate plotting function based on dimensionality
+  if (response_dim == 1) {
+    # Use 1D plotting
+    if (is.null(predictor)) {
+      stop("'predictor' argument is required for 1D plots.")
+    }
+    plot_quantile_1D(
+      object = x,
+      data = plot_data,
+      predictor = predictor,
+      response = response[1],  # Use first response name
+      ...
+    )
+  } else if (response_dim == 2) {
+    # Use 2D plotting
+    drawQuantileRegion(
+      fit = x,
+      datafile = plot_data,
+      response = response[1:2],  # Use first two response names
+      print_plot = TRUE,
+      ...
+    )
+  } else if (response_dim == 3) {
+    # Use 3D plotting
+    drawQuantileRegion_3D(
+      fit = x,
+      datafile = plot_data,
+      response = response[1:3],  # Use first three response names
+      print_plot = TRUE,
+      ...
+    )
+  } else {
+    stop("Plotting not supported for response dimension ", response_dim, 
+         ". Supported dimensions: 1, 2, 3.")
+  }
+}
+
+# =====================================================
+# UNIFIED 1D QUANTILE PLOTTING
+# =====================================================
+
+#' Unified 1D Quantile Plotting for Bayesian Quantile Regression
+#'
+#' A unified interface for plotting univariate quantile regression curves from
+#' fitted \code{bqr.svy} or \code{mo.bqr.svy} objects (with response_dim = 1).
+#' This function automatically detects the model type and uses the appropriate
+#' plotting method, providing a consistent interface for both model types.
+#'
+#' @param object A fitted quantile regression object of class \code{bqr.svy} or
+#'   \code{mo.bqr.svy} (with response_dim = 1).
+#' @param data A \code{data.frame} containing the variables used in the model.
+#'   Must include the predictor specified in \code{predictor} and any covariates
+#'   in the fitted model.
+#' @param predictor A character string giving the name of the predictor variable
+#'   to plot on the x-axis.
+#' @param show_data Logical; if \code{TRUE}, shows the observed data points as a 
+#'   scatter plot underneath the quantile curves.
+#' @param response Character string giving the name of the response variable.
+#'   For \code{bqr.svy} objects, this is extracted automatically from the formula.
+#'   For \code{mo.bqr.svy} objects, specify the response column name.
+#' @param grid_length Integer; number of grid points to generate for continuous
+#'   predictors. Ignored for categorical predictors.
+#' @param fixed_values Optional named list giving fixed values for covariates other
+#'   than \code{predictor}. If not supplied, numeric covariates are fixed at their
+#'   median and factors at their most frequent level.
+#' @param use_ggplot Logical; if \code{TRUE}, uses ggplot2 for plotting,
+#'   otherwise uses base R graphics. If \code{NULL} (default), automatically
+#'   selects ggplot2 for multiple quantiles and base R for single quantiles.
+#' @param paintedArea Logical; if \code{TRUE} and multiple quantiles are present,
+#'   fills the area between extreme quantiles (only when \code{use_ggplot = TRUE}).
+#' @param band_choice Character; for painted areas, either \code{"minmax"}
+#'   (between min and max quantiles) or \code{"symmetric"} (between quantiles
+#'   around 0.5). Only used when \code{use_ggplot = TRUE}.
+#' @param line_col Color for the regression line(s). For multiple quantiles, can be
+#'   a vector of colors or a single color (recycled).
+#' @param line_lwd Line width for the regression line.
+#' @param line_type Line type for the regression line.
+#' @param data_col Color for the observed data points (when \code{show_data = TRUE}).
+#' @param data_alpha Transparency for the observed data points (0-1, when \code{show_data = TRUE}).
+#' @param main Main title for the plot. If \code{NULL}, a default is constructed.
+#' @param add Logical; if \code{TRUE}, adds the curve to an existing plot instead of
+#'   creating a new one (only for base R graphics).
+#' @param ... Additional graphical parameters passed to the underlying plotting functions.
+#'
+#' @return For ggplot2: a ggplot object. For base R: invisibly returns a data.frame
+#'   with prediction results.
+#'
+#' @details
+#' This function provides a unified interface that works with both:
+#' \itemize{
+#'   \item \code{bqr.svy} objects (univariate Bayesian quantile regression)
+#'   \item \code{mo.bqr.svy} objects with \code{response_dim = 1} (multivariate setup with 1D response)
+#' }
+#'
+#' For \code{bqr.svy} objects, it uses the optimized \code{plot_quantile.bqr.svy} method.
+#' For \code{mo.bqr.svy} objects with 1D response, it uses \code{drawQuantile1D}.
+#'
+#' The function automatically detects:
+#' \itemize{
+#'   \item Model type (bqr.svy vs mo.bqr.svy)
+#'   \item Response variable name (for bqr.svy)
+#'   \item Whether to use ggplot2 or base R graphics
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Works with bqr.svy objects
+#' fit1 <- bqr.svy(y ~ x, data = mydata, quantile = 0.5)
+#' plot_quantile_1D(fit1, data = mydata, predictor = "x")
+#' plot_quantile_1D(fit1, data = mydata, predictor = "x", show_data = TRUE)
+#'
+#' # Works with mo.bqr.svy objects (1D response)
+#' fit2 <- mo.bqr.svy(y ~ x, data = mydata, quantile = c(0.1, 0.5, 0.9))
+#' plot_quantile_1D(fit2, data = mydata, predictor = "x", response = "y")
+#' plot_quantile_1D(fit2, data = mydata, predictor = "x", response = "y", 
+#'                  show_data = TRUE, use_ggplot = TRUE)
+#' }
+#'
+#' @keywords internal
+plot_quantile_1D <- function(object, data, predictor,
+                             show_data = FALSE,
+                             response = NULL,
+                             grid_length = 100,
+                             fixed_values = NULL,
+                             use_ggplot = NULL,
+                             paintedArea = FALSE,
+                             band_choice = c("minmax", "symmetric"),
+                             line_col = NULL,
+                             line_lwd = 2,
+                             line_type = 1,
+                             data_col = "steelblue",
+                             data_alpha = 0.4,
+                             main = NULL,
+                             add = FALSE,
+                             ...) {
+  
+  # Validate inputs
+  if (!is.data.frame(data))
+    stop("'data' must be a data.frame.", call. = FALSE)
+  if (!predictor %in% names(data))
+    stop("Predictor '", predictor, "' not found in data.", call. = FALSE)
+  
+  # Detect model type and validate
+  if (inherits(object, "bqr.svy")) {
+    # For bqr.svy: use the existing optimized function
+    if (!is.null(response)) {
+      warning("'response' parameter is ignored for bqr.svy objects (extracted from formula).",
+              call. = FALSE)
+    }
+    
+    return(plot_quantile.bqr.svy(
+      object = object,
+      data = data,
+      predictor = predictor,
+      show_data = show_data,
+      grid_length = grid_length,
+      fixed_values = fixed_values,
+      add = add,
+      line_col = line_col,
+      line_lwd = line_lwd,
+      line_type = line_type,
+      data_col = data_col,
+      data_alpha = data_alpha,
+      main = main,
+      use_ggplot = use_ggplot,
+      paintedArea = paintedArea,
+      band_choice = band_choice,
+      ...
+    ))
+    
+  } else if (inherits(object, "mo.bqr.svy")) {
+    # For mo.bqr.svy: check if it's 1D and use drawQuantile1D
+    if (is.null(object$response_dim) || object$response_dim != 1) {
+      stop("plot_quantile_1D only supports mo.bqr.svy objects with response_dim = 1. ",
+           "For higher dimensions, use drawQuantileRegion() or drawQuantileRegion_3D().",
+           call. = FALSE)
+    }
+    
+    if (is.null(response)) {
+      stop("For mo.bqr.svy objects, 'response' parameter must specify the response column name.",
+           call. = FALSE)
+    }
+    
+    if (!response %in% names(data)) {
+      stop("Response variable '", response, "' not found in data.", call. = FALSE)
+    }
+    
+    # Set defaults for mo.bqr.svy
+    if (is.null(use_ggplot)) {
+      use_ggplot <- length(object$quantile) > 1
+    }
+    
+    # Build xValue for fixed_values if provided
+    xValue <- if (!is.null(fixed_values)) {
+      as.data.frame(fixed_values[!names(fixed_values) %in% predictor])
+    } else {
+      NULL
+    }
+    
+    return(drawQuantile1D(
+      fit = object,
+      datafile = if (show_data) data else NULL,
+      response = response,
+      x_var = predictor,
+      x_grid = if (is.factor(data[[predictor]]) || is.character(data[[predictor]])) {
+        NULL  # Let drawQuantile1D handle categorical predictors
+      } else {
+        rng <- range(data[[predictor]], na.rm = TRUE)
+        seq(rng[1], rng[2], length.out = grid_length)
+      },
+      xValue = xValue,
+      paintedArea = paintedArea,
+      band_choice = band_choice,
+      print_plot = TRUE,
+      show_data = show_data,
+      main = main
+    ))
+    
+  } else {
+    stop("Object must be of class 'bqr.svy' or 'mo.bqr.svy'.", call. = FALSE)
+  }
+}
+
+
 # =====================================================
 # bqr.svy plotting
 # =====================================================
@@ -19,8 +388,10 @@ NULL
 #' Plot predicted quantile regression curve for bqr.svy objects
 #'
 #' This function plots the predicted quantile regression curve from a fitted
-#' \code{bqr.svy} model. It can handle both numeric and categorical predictors
-#' and optionally overlays the curve on an existing plot.
+#' \code{bqr.svy} model. It can handle both numeric and categorical predictors,
+#' optionally overlays the curve on an existing plot, and can show observed data points.
+#' When the object contains multiple quantiles, all curves are plotted with different 
+#' colors and a legend is added automatically.
 #'
 #' @param object An object of class \code{bqr.svy}, typically the result of a call
 #'   to \code{\link{bqr.svy}}.
@@ -29,6 +400,8 @@ NULL
 #'   fitted model.
 #' @param predictor A character string giving the name of the predictor variable
 #'   to plot on the x-axis.
+#' @param show_data Logical; if \code{TRUE}, shows the observed data points as a 
+#'   scatter plot underneath the quantile curves.
 #' @param grid_length Integer; number of grid points to generate for continuous
 #'   predictors. Ignored for categorical predictors.
 #' @param fixed_values Optional named list giving fixed values for covariates other
@@ -36,41 +409,69 @@ NULL
 #'   median and factors at their most frequent level.
 #' @param add Logical; if \code{TRUE}, adds the curve to an existing plot instead of
 #'   creating a new one.
-#' @param line_col Color for the regression line.
+#' @param line_col Color for the regression line(s). For multiple quantiles, can be
+#'   a vector of colors or a single color (recycled).
 #' @param line_lwd Line width for the regression line.
 #' @param line_type Line type for the regression line.
 #' @param point_pch Plotting symbol to use for points (categorical predictors).
 #' @param point_cex Size of the plotting symbols for points (categorical predictors).
+#' @param data_col Color for the observed data points (when \code{show_data = TRUE}).
+#' @param data_alpha Transparency for the observed data points (0-1, when \code{show_data = TRUE}).
+#' @param data_pch Plotting symbol for the observed data points.
+#' @param data_cex Size of the observed data points.
 #' @param prefer_predict Logical; if \code{TRUE}, attempts to use the
 #'   \code{predict()} method for the fitted object first.
 #' @param main Main title for the plot. If \code{NULL}, a default is constructed.
+#' @param use_ggplot Logical; if \code{TRUE}, uses \code{drawQuantile1D} for multiple
+#'   quantiles (requires ggplot2), otherwise uses base R graphics.
+#' @param paintedArea Logical; if \code{TRUE} and multiple quantiles are present,
+#'   fills the area between extreme quantiles (only when \code{use_ggplot = TRUE}).
+#' @param band_choice Character; for painted areas, either \code{"minmax"}
+#'   (between min and max quantiles) or \code{"symmetric"} (between quantiles
+#'   around 0.5). Only used when \code{use_ggplot = TRUE}.
 #' @param ... Additional graphical parameters passed to \code{\link[graphics]{plot}},
 #'   \code{\link[graphics]{points}}, or \code{\link[graphics]{lines}}.
 #'
 #' @return Invisibly returns a \code{data.frame} with:
 #'   \item{predictor}{The sequence or factor levels of the predictor.}
 #'   \item{predicted}{The predicted quantile values.}
-#'   \item{quantile}{The tau value used.}
+#'   \item{quantile}{The tau value(s) used.}
 #'
 #' @examples
 #' \dontrun{
+#' # Single quantile without data points
 #' fit <- bqr.svy(y ~ x, data = mydata, quantile = 0.5)
 #' plot_quantile.bqr.svy(fit, data = mydata, predictor = "x")
+#' 
+#' # Single quantile with data points
+#' plot_quantile.bqr.svy(fit, data = mydata, predictor = "x", show_data = TRUE)
+#' 
+#' # Multiple quantiles with data points
+#' fit_multi <- bqr.svy(y ~ x, data = mydata, quantile = c(0.1, 0.5, 0.9))
+#' plot_quantile_1D(fit_multi, data = mydata, predictor = "x", show_data = TRUE)
 #' }
-#'
-#' @export
+#' @keywords internal
 plot_quantile.bqr.svy <- function(object, data, predictor,
+                                  show_data = FALSE,
                                   grid_length = 100,
                                   fixed_values = NULL,
                                   add = FALSE,
-                                  line_col = "red",
+                                  line_col = NULL,
                                   line_lwd = 2,
                                   line_type = 1,
                                   point_pch = 19,
                                   point_cex = 1.2,
+                                  data_col = "steelblue",
+                                  data_alpha = 0.4,
+                                  data_pch = 16,
+                                  data_cex = 1,
                                   prefer_predict = FALSE,
                                   main = NULL,
+                                  use_ggplot = NULL,
+                                  paintedArea = FALSE,
+                                  band_choice = c("minmax", "symmetric"),
                                   ...) {
+  
   if (!inherits(object, "bqr.svy"))
     stop("Object must be of class 'bqr.svy'.")
   if (!is.data.frame(data))
@@ -78,14 +479,53 @@ plot_quantile.bqr.svy <- function(object, data, predictor,
   if (!predictor %in% names(data))
     stop("Predictor not found in data.")
 
+  response_var <- all.vars(object$formula)[1]
+  taus <- object$quantile
+  
+  # Decide automáticamente si usar ggplot para múltiples cuantiles
+  if (is.null(use_ggplot)) {
+    use_ggplot <- length(taus) > 1
+  }
+
+  if (length(taus) > 1 && !use_ggplot) {
+    message("Multiple quantiles detected. Consider setting use_ggplot=TRUE for better visualization.")
+  }
+
+  # Para múltiples cuantiles, usar drawQuantile1D si está disponible
+  if (use_ggplot && length(taus) > 1) {
+    if (is.null(main)) {
+      main <- paste("Quantile Regression (tau =",
+                    paste(taus, collapse = ", "), ") vs", predictor)
+    }
+
+    band_choice <- match.arg(band_choice)
+
+    return(drawQuantile1D(
+      fit = object,
+      datafile = if (show_data) data else NULL,
+      response = response_var,
+      x_var = predictor,
+      paintedArea = paintedArea,
+      band_choice = band_choice,
+      print_plot = TRUE,
+      show_data = show_data
+    ))
+  }
+
+  # Código para el caso base R (un cuantil o múltiples cuantiles sin ggplot)
   formula_obj <- if (!is.null(object$formula)) object$formula else object$call$formula
   all_vars <- all.vars(formula_obj)
 
   if (is.null(main)) {
-    main <- paste("Quantile Regression (tau =", object$quantile, ") vs", predictor)
+    if (length(taus) == 1) {
+      main <- paste("Quantile Regression (tau =", taus, ") vs", predictor)
+    } else {
+      main <- paste("Quantile Regression (tau =",
+                    paste(taus, collapse = ", "), ") vs", predictor)
+    }
   }
 
-  # Predictor values
+  # Predictor values para las curvas
   pred_is_cat <- is.factor(data[[predictor]]) || is.character(data[[predictor]])
   if (pred_is_cat) {
     pred_values <- if (is.factor(data[[predictor]]))
@@ -116,20 +556,29 @@ plot_quantile.bqr.svy <- function(object, data, predictor,
     }
   }
 
-  # Prediction
-  if (prefer_predict) {
-    y_try <- try(predict(object, newdata = newdata), silent = TRUE)
-    if (!inherits(y_try, "try-error")) {
-      y_pred <- as.numeric(y_try)
+  # Función helper para hacer predicciones para un cuantil específico
+  predict_quantile <- function(obj, tau_idx = 1) {
+    # Prediction
+    if (prefer_predict) {
+      y_try <- try(predict(obj, newdata = newdata), silent = TRUE)
+      if (!inherits(y_try, "try-error")) {
+        return(as.numeric(y_try))
+      }
     }
-  }
-  if (!exists("y_pred")) {
+    
     # Get coefficients
-    if (!is.null(object$coefficients)) {
-      beta_hat <- as.numeric(object$coefficients)
-      names(beta_hat) <- names(object$coefficients)
-    } else if (!is.null(object$draws)) {
-      beta_hat <- colMeans(object$draws, na.rm = TRUE)
+    if (!is.null(obj$coefficients)) {
+      beta_hat <- as.numeric(obj$coefficients)
+      names(beta_hat) <- names(obj$coefficients)
+    } else if (!is.null(obj$beta) && is.matrix(obj$beta)) {
+      beta_hat <- obj$beta[, tau_idx]
+      names(beta_hat) <- rownames(obj$beta)
+    } else if (!is.null(obj$draws)) {
+      if (is.list(obj$draws) && length(obj$draws) >= tau_idx) {
+        beta_hat <- colMeans(obj$draws[[tau_idx]], na.rm = TRUE)
+      } else {
+        beta_hat <- colMeans(obj$draws, na.rm = TRUE)
+      }
       # drop potential non-beta columns by name if present (e.g., "sigma")
       if (!is.null(names(beta_hat))) {
         beta_hat <- beta_hat[!grepl("^sigma", names(beta_hat), ignore.case = TRUE)]
@@ -138,7 +587,7 @@ plot_quantile.bqr.svy <- function(object, data, predictor,
       stop("No coefficients or draws found for prediction.")
     }
 
-    terms_obj <- if (!is.null(object$terms)) object$terms else terms(formula_obj)
+    terms_obj <- if (!is.null(obj$terms)) obj$terms else terms(formula_obj)
     X_new <- model.matrix(delete.response(terms_obj), data = newdata)
 
     # Align beta_hat with X_new columns
@@ -152,76 +601,125 @@ plot_quantile.bqr.svy <- function(object, data, predictor,
       }
     }
 
-    y_pred <- as.vector(X_new %*% beta_hat)
+    return(as.vector(X_new %*% beta_hat))
   }
 
-  # Plot
+  # Configurar colores por defecto
+  if (is.null(line_col)) {
+    if (length(taus) == 1) {
+      line_col <- "red"
+    } else {
+      line_col <- if (requireNamespace("grDevices", quietly = TRUE)) {
+        grDevices::rainbow(length(taus))
+      } else {
+        rep(c("red", "blue", "green", "orange", "purple"), length.out = length(taus))
+      }
+    }
+  } else if (length(line_col) < length(taus)) {
+    line_col <- rep(line_col, length.out = length(taus))
+  }
+
+  # Plot inicial con datos observados si se requiere
   if (!add) {
-    if (pred_is_cat) {
-      xx <- seq_along(pred_values)
-      plot(xx, y_pred, type = "p", pch = point_pch, cex = point_cex, col = line_col,
-           xlab = predictor, ylab = bquote(tau == .(object$quantile)),
-           xaxt = "n", main = main, ...)
-      axis(1, at = xx, labels = pred_values)
-      lines(xx, y_pred, col = line_col, lwd = line_lwd, lty = line_type)
-    } else {
-      plot(pred_values, y_pred, type = "l", col = line_col, lwd = line_lwd, lty = line_type,
-           xlab = predictor, ylab = bquote(tau == .(object$quantile)),
+    if (show_data && response_var %in% names(data)) {
+      # Scatter plot de los datos observados
+      plot(data[[predictor]], data[[response_var]],
+           col = adjustcolor(data_col, data_alpha),
+           pch = data_pch, cex = data_cex,
+           xlab = predictor, ylab = response_var,
            main = main, ...)
+      grid()
+    } else {
+      # Plot vacío para las curvas - necesitamos determinar los rangos
+      if (length(taus) == 1) {
+        y_pred_temp <- predict_quantile(object, 1)
+      } else {
+        # Para múltiples cuantiles, calcular rango de todas las predicciones
+        all_preds <- sapply(seq_along(taus), function(i) predict_quantile(object, i))
+        y_pred_temp <- as.vector(all_preds)
+      }
+      
+      if (pred_is_cat) {
+        xx <- seq_along(pred_values)
+        plot(xx, rep(mean(y_pred_temp), length(xx)), type = "n",
+             ylim = range(y_pred_temp, na.rm = TRUE),
+             xlab = predictor, ylab = response_var,
+             xaxt = "n", main = main, ...)
+        axis(1, at = xx, labels = pred_values)
+      } else {
+        plot(pred_values, rep(mean(y_pred_temp), length(pred_values)), type = "n",
+             ylim = range(y_pred_temp, na.rm = TRUE),
+             xlab = predictor, ylab = response_var,
+             main = main, ...)
+      }
+      grid()
     }
-    grid()
-  } else {
+  }
+
+  # Graficar cuantiles
+  if (length(taus) == 1) {
+    # Caso de un solo cuantil
+    y_pred <- predict_quantile(object, 1)
+    
     if (pred_is_cat) {
       xx <- seq_along(pred_values)
-      points(xx, y_pred, col = line_col, pch = point_pch, cex = point_cex)
-      lines(xx, y_pred, col = line_col, lwd = line_lwd, lty = line_type)
+      if (!add) {
+        points(xx, y_pred, col = line_col[1], pch = point_pch, cex = point_cex)
+      }
+      lines(xx, y_pred, col = line_col[1], lwd = line_lwd, lty = line_type)
     } else {
-      lines(pred_values, y_pred, col = line_col, lwd = line_lwd, lty = line_type)
+      lines(pred_values, y_pred, col = line_col[1], lwd = line_lwd, lty = line_type)
     }
+    
+    return_df <- data.frame(predictor = pred_values, predicted = y_pred, quantile = taus[1])
+    
+  } else {
+    # Caso de múltiples cuantiles
+    return_list <- list()
+    
+    for (i in seq_along(taus)) {
+      y_pred <- predict_quantile(object, i)
+      
+      if (pred_is_cat) {
+        xx <- seq_along(pred_values)
+        if (!add && i == 1) {
+          points(xx, y_pred, col = line_col[i], pch = point_pch, cex = point_cex)
+        }
+        lines(xx, y_pred, col = line_col[i], lwd = line_lwd, lty = line_type)
+      } else {
+        lines(pred_values, y_pred, col = line_col[i], lwd = line_lwd, lty = line_type)
+      }
+      
+      return_list[[i]] <- data.frame(predictor = pred_values, predicted = y_pred, quantile = taus[i])
+    }
+    
+    # Agregar leyenda para múltiples cuantiles
+    if (!add) {
+      legend("topright",
+             legend = paste("τ =", formatC(taus, format = "f", digits = 2)),
+             col = line_col, lty = line_type, lwd = line_lwd, cex = 0.8, bg = "white")
+    }
+    
+    return_df <- do.call(rbind, return_list)
   }
 
-  invisible(data.frame(predictor = pred_values, predicted = y_pred,
-                       quantile = object$quantile))
+  invisible(return_df)
 }
 
-#' Plot observed points and predicted quantile regression curve for \code{bqr.svy}
-#'
-#' @param object An object of class \code{bqr.svy}.
-#' @param data A data frame containing the variables used in the model.
-#' @param predictor Character string with the name of the predictor variable.
-#' @param main Main title for the plot.
-#' @param ... Additional arguments passed to \code{plot_quantile.bqr.svy}.
-#' @export
-plot_quantile_with_points.bqr.svy <- function(object, data, predictor,
-                                              main = NULL, ...) {
-  if (!inherits(object, "bqr.svy"))
-    stop("Object must be of class 'bqr.svy'.")
-  response_var <- all.vars(object$formula)[1]
-
-  if (is.null(main)) {
-    main <- paste("Quantile Regression (tau =", object$quantile, ") vs", predictor)
-  }
-
-  plot(data[[predictor]], data[[response_var]],
-       col = adjustcolor("steelblue", 0.4),
-       pch = 16, xlab = predictor, ylab = response_var,
-       main = main)
-  grid()
-  plot_quantile.bqr.svy(object, data, predictor, add = TRUE, ...)
-}
-
-#' Plot method for \code{bqr.svy} objects
+#' Diagnostic plot method for \code{bqr.svy} objects
 #'
 #' @param x An object of class \code{bqr.svy}.
 #' @param type Type of plot: \code{"trace"}, \code{"intervals"}, or \code{"quantiles"}.
+#' @param main Main title for the plot. If \code{NULL}, a default is constructed.
 #' @param ... Additional plotting arguments.
-#' @export
-plot.bqr.svy <- function(x, type = c("trace", "intervals", "quantiles"), ...) {
+#' @keywords internal
+plot_diagnostics.bqr.svy <- function(x, type = c("trace", "intervals", "quantiles"), main = NULL, ...) {
   type <- match.arg(type)
 
   if (type == "trace") {
     if (is.null(x$draws))
       stop("No MCMC draws available for trace plot.")
+    if (is.null(main)) main <- "MCMC Trace Plots"
     op <- par(no.readonly = TRUE); on.exit(par(op))
     n_par <- ncol(x$draws); par(mfrow = c(ceiling(sqrt(n_par)), ceiling(n_par / ceiling(sqrt(n_par)))))
     for (j in seq_len(n_par)) {
@@ -235,13 +733,14 @@ plot.bqr.svy <- function(x, type = c("trace", "intervals", "quantiles"), ...) {
   } else if (type == "intervals") {
     if (is.null(x$draws))
       stop("No MCMC draws available for interval plot.")
+    if (is.null(main)) main <- "Posterior means with 95% CI"
     means <- apply(x$draws, 2, mean)
     lower <- apply(x$draws, 2, quantile, probs = 0.025)
     upper <- apply(x$draws, 2, quantile, probs = 0.975)
 
     plot(seq_along(means), means, ylim = range(c(lower, upper)), pch = 19,
          xaxt = "n", xlab = "Parameter", ylab = "Value",
-         main = "Posterior means with 95% CI", ...)
+         main = main, ...)
     axis(1, at = seq_along(means), labels = if (!is.null(colnames(x$draws))) colnames(x$draws) else paste0("Param", seq_along(means)))
     arrows(seq_along(means), lower, seq_along(means), upper, angle = 90, code = 3, length = 0.05)
     grid()
@@ -303,6 +802,9 @@ plot.bqr.svy <- function(x, type = c("trace", "intervals", "quantiles"), ...) {
 
 #' Draw univariate quantile curves/bands for mo.bqr.svy (d = 1)
 #'
+#' @note For a unified interface that works with both \code{bqr.svy} and 
+#'   \code{mo.bqr.svy} objects, consider using \code{\link{plot_quantile_1D}}.
+#'
 #' @param fit mo.bqr.svy object with response_dim = 1
 #' @param datafile optional data.frame to overlay observed points
 #' @param response name of Y column in datafile (character, length 1)
@@ -317,12 +819,13 @@ plot.bqr.svy <- function(x, type = c("trace", "intervals", "quantiles"), ...) {
 #'        - "symmetric": toma el mayor tau < 0.5 y el menor tau > 0.5 (si existen)
 #' @param print_plot if TRUE returns ggplot; if FALSE returns a data.frame with predictions
 #' @param show_data if TRUE and datafile/response/x_var available, shows observed points
+#' @param main Main title for the plot. If \code{NULL}, a default is constructed.
 #' @return ggplot object or data.frame with columns: xid, x, tau, yhat
-#' @export
+#' @keywords internal
 drawQuantile1D <- function(fit, datafile = NULL, response = "Y",
                            x_var = NULL, x_grid = NULL, xValue = NULL,
                            paintedArea = TRUE, band_choice = c("minmax","symmetric"),
-                           print_plot = TRUE, show_data = !is.null(datafile)) {
+                           print_plot = TRUE, show_data = !is.null(datafile), main = NULL) {
   band_choice <- match.arg(band_choice)
   taus <- as.numeric(fit$quantile)
   if (length(taus) == 0L) stop("The object has no levels in 'fit$quantile'.")
@@ -483,7 +986,8 @@ drawQuantile1D <- function(fit, datafile = NULL, response = "Y",
   ) +
     ggplot2::scale_color_discrete(name = expression(tau)) +
     ggplot2::scale_linetype_discrete(name = "xValue") +
-    ggplot2::labs(x = x_var, y = response, fill = "xValue") +
+    ggplot2::labs(x = x_var, y = response, fill = "xValue", 
+                  title = if (!is.null(main)) main else paste("Quantile Curves for", x_var)) +
     ggplot2::theme_bw()
 
   g
@@ -525,6 +1029,7 @@ drawQuantile1D <- function(fit, datafile = NULL, response = "Y",
 #'   \code{"free"}, etc.).
 #' @param round_digits Integer, number of digits to round projected points before
 #'   computing convex hulls (helps remove duplicates).
+#' @param main Main title for the plot. If \code{NULL}, a default is constructed.
 #'
 #' @return Either a \pkg{ggplot2} object (if \code{print_plot = TRUE}) showing
 #'   the quantile regions, or a \code{data.frame} with polygon coordinates
@@ -550,14 +1055,14 @@ drawQuantile1D <- function(fit, datafile = NULL, response = "Y",
 #'                    facet_by_tau=TRUE)
 #' }
 #' @importFrom ggplot2 ggplot geom_point aes geom_polygon geom_path facet_wrap labs coord_equal theme_bw
-#' @export
+#' @keywords internal
 drawQuantileRegion <- function(fit, datafile = NULL, response = c("Y1","Y2"),
                                xValue = NULL, paintedArea = FALSE,
                                comparison = FALSE, print_plot = TRUE,
                                show_data = !is.null(datafile),
                                facet_by_tau = TRUE, facet_nrow = 1, facet_ncol = NULL,
                                facet_scales = "fixed",
-                               round_digits = 10) {
+                               round_digits = 10, main = NULL) {
 
   if (is.null(fit$response_dim) || fit$response_dim != 2L)
     stop("drawQuantileRegion: a 'fit' with response_dim = 2 is required.")
@@ -648,7 +1153,8 @@ drawQuantileRegion <- function(fit, datafile = NULL, response = c("Y1","Y2"),
     g <- g + facet_wrap(~tau_f, nrow = facet_nrow, ncol = facet_ncol, scales = facet_scales)
   }
 
-  g + labs(x = "Y1", y = "Y2", colour = "xValue", fill = "xValue") +
+  g + labs(x = "Y1", y = "Y2", colour = "xValue", fill = "xValue",
+            title = if (!is.null(main)) main else "Quantile Regions") +
     coord_equal() + theme_bw()
 }
 
@@ -686,6 +1192,7 @@ drawQuantileRegion <- function(fit, datafile = NULL, response = c("Y1","Y2"),
 #'   above each subplot.
 #' @param round_digits Integer, number of digits to round projected points
 #'   before computing convex hulls (helps remove duplicates).
+#' @param main Main title for the plot. If \code{NULL}, a default is constructed.
 #'
 #' @return A \pkg{plotly} object with one 3D scene per quantile, each containing
 #'   a convex-hull mesh for every \code{xValue}, plus (optionally) the observed
@@ -712,13 +1219,13 @@ drawQuantileRegion <- function(fit, datafile = NULL, response = c("Y1","Y2"),
 #'                       show_points=TRUE)
 #' }
 #'
-#' @export
+#' @keywords internal
 drawQuantileRegion_3D <- function(fit, xValue = NULL, opacity = 0.5,
                                   datafile = NULL, response = c("Y1","Y2","Y3"),
                                   show_points = FALSE, point_opacity = 0.25,
                                   point_size = 2,
                                   nrows = 1, ncols = NULL, show_titles = TRUE,
-                                  round_digits = 10) {
+                                  round_digits = 10, main = NULL) {
   if (is.null(fit$response_dim) || fit$response_dim != 3L)
     stop("drawQuantileRegion_3D: a 'fit' with response_dim = 3 is required.")
   if (!requireNamespace("plotly", quietly = TRUE))
@@ -850,6 +1357,11 @@ drawQuantileRegion_3D <- function(fit, xValue = NULL, opacity = 0.5,
 
   if (isTRUE(show_titles) && length(ann_list)) {
     plt <- plotly::layout(plt, annotations = ann_list)
+  }
+  
+  # Add main title if provided
+  if (!is.null(main)) {
+    plt <- plotly::layout(plt, title = main)
   }
 
   plt

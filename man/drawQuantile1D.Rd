@@ -14,7 +14,8 @@ drawQuantile1D(
   paintedArea = TRUE,
   band_choice = c("minmax", "symmetric"),
   print_plot = TRUE,
-  show_data = !is.null(datafile)
+  show_data = !is.null(datafile),
+  main = NULL
 )
 }
 \arguments{
@@ -41,6 +42,8 @@ If multiple rows are provided, curves are colored by row (comparison).}
 \item{print_plot}{if TRUE returns ggplot; if FALSE returns a data.frame with predictions}
 
 \item{show_data}{if TRUE and datafile/response/x_var available, shows observed points}
+
+\item{main}{Main title for the plot. If \code{NULL}, a default is constructed.}
 }
 \value{
 ggplot object or data.frame with columns: xid, x, tau, yhat
@@ -48,3 +51,8 @@ ggplot object or data.frame with columns: xid, x, tau, yhat
 \description{
 Draw univariate quantile curves/bands for mo.bqr.svy (d = 1)
 }
+\note{
+For a unified interface that works with both \code{bqr.svy} and
+\code{mo.bqr.svy} objects, consider using \code{\link{plot_quantile_1D}}.
+}
+\keyword{internal}

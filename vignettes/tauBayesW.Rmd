@@ -193,7 +193,6 @@ model_em<- mo.bqr.svy(y ~ x1 + x2,
                                data = data,
                                weights = weights,
                                quantile = c(0.5, 0.95),
-                               method = "approximate",
                                max_iter = 1500,
                                epsilon = 1e-6,
                                verbose = FALSE)

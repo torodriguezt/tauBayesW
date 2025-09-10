@@ -28,7 +28,8 @@ Rcpp::List _mcmc_bwqr_al_cpp(const arma::vec& y,
                              Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean,
                              Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec,
                              double c0,
-                             double C0);
+                             double C0,
+                             int print_progress = 0);
 
 Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
                              const arma::mat& X,
@@ -38,7 +39,8 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
                              int thin,
                              double tau,
                              Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean,
-                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec);
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec,
+                             int print_progress = 0);
 
 Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              const arma::mat& X,
@@ -48,7 +50,8 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              int burnin,
                              int thin,
                              Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean,
-                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec);
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec,
+                             int print_progress = 1000);
 
 
 
@@ -84,9 +87,10 @@ Rcpp::List MCMC_BWQR_AL_wrap(const arma::vec& y,
                              Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean = R_NilValue,
                              Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue,
                              double c0 = 0.001,
-                             double C0 = 0.001) {
+                             double C0 = 0.001,
+                             int print_progress = 0) {
   return _mcmc_bwqr_al_cpp(y, X, w, tau, n_mcmc, burnin, thin,
-                           b_prior_mean, B_prior_prec, c0, C0);
+                           b_prior_mean, B_prior_prec, c0, C0, print_progress);
 }
 
 // [[Rcpp::export(name = ".MCMC_BWQR_AP")]]
@@ -98,8 +102,9 @@ Rcpp::List MCMC_BWQR_AP_wrap(const arma::vec& y,
                              int thin,
                              double tau = 0.5,
                              Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean = R_NilValue,
-                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue) {
-  return _mcmc_bwqr_ap_cpp(y, X, w, n_mcmc, burnin, thin, tau, b_prior_mean, B_prior_prec);
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue,
+                             int print_progress = 0) {
+  return _mcmc_bwqr_ap_cpp(y, X, w, n_mcmc, burnin, thin, tau, b_prior_mean, B_prior_prec, print_progress);
 }
 
 // [[Rcpp::export(name = ".MCMC_BWQR_SL")]]
@@ -111,6 +116,7 @@ Rcpp::List MCMC_BWQR_SL_wrap(const arma::vec& y,
                              int burnin = 2000,
                              int thin   = 10,
                              Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean = R_NilValue,
-                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue) {
-  return _mcmc_bwqr_sl_cpp(y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec);
+                             Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue,
+                             int print_progress = 1000) {
+  return _mcmc_bwqr_sl_cpp(y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec, print_progress);
 }

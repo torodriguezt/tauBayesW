@@ -14,6 +14,7 @@ bqr.svy(
   niter = 50000,
   burnin = 10000,
   thin = 1,
+  print_progress = 1000,
   ...
 )
 }
@@ -29,22 +30,27 @@ preprocessing like scaling.}
 \item{quantile}{Numeric scalar or vector in (0, 1): target quantile(s) \eqn{\tau}.
 Duplicates are automatically removed.}
 
-\item{method}{One of \code{"ald"}, \code{"score"}, \code{"approximate"}.}
+\item{method}{One of \code{"ald"}, \code{"score"}, \code{"approximate"}.
+Default is \code{"ald"} (Asymmetric Laplace Distribution).}
 
 \item{prior}{Prior specification. Can be:
 \itemize{
-\item A \code{bqr_prior} object from \code{\link{prior_default}}
+\item A \code{bqr_prior} object from \code{\link{prior}}
 \item A list with components \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}
 \item \code{NULL} (uses default vague priors)
 }
 For \code{"ald"}: uses \code{b0}, \code{B0}, \code{c0}, \code{C0}.
-For \code{"score"} and \code{"approximate"}: uses \code{b0}, \code{B0} only.}
+For \code{"score"} and \code{"approximate"}: uses \code{b0}, \code{B0} only.
+\strong{Tip:} Use \code{\link{prior}()} for a simpler unified interface.}
 
 \item{niter}{Integer. Number of MCMC iterations.}
 
 \item{burnin}{Integer. Number of burn-in iterations.}
 
 \item{thin}{Integer. Thinning interval.}
+
+\item{print_progress}{Integer. Print progress every \code{print_progress} iterations.
+Set to 0 to disable progress printing. Default is 1000.}
 
 \item{...}{Additional arguments passed to underlying functions (reserved for future use).}
 }
@@ -79,7 +85,7 @@ Survey weights are handled differently by each method:
 
 The prior can be specified in several ways:
 \enumerate{
-\item Using \code{\link{prior_default}} (recommended).
+\item Using \code{\link{prior}} (recommended).
 \item As a list with \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}.
 \item As \code{NULL}, in which case vague priors are used.
 }
@@ -89,26 +95,33 @@ adapts its class accordingly (\code{"bwqr_fit"} for one quantile,
 \code{"bwqr_fit_multi"} for several).
 }
 \examples{
-# Simulate data
-sim <- simulate_bqr_data(n = 100, betas = c(2, 1.5, -0.8))
+# Generate example data
+set.seed(123)
+n <- 100
+x1 <- rnorm(n)
+x2 <- runif(n, -1, 1)
+y <- 2 + 1.5*x1 - 0.8*x2 + rnorm(n)
+weights <- runif(n, 0.5, 2)
+data <- data.frame(y = y, x1 = x1, x2 = x2)
 
 # Basic usage with default priors
-fit1 <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights)
+fit1 <- bqr.svy(y ~ x1 + x2, data = data, weights = weights)
 
 # With informative priors
-prior <- prior_default(
-  p  = 3,
-  b0 = c(2, 1.5, -0.8),
-  B0 = diag(c(0.25, 0.25, 0.25)),
-  c0 = 3, C0 = 2
+prior <- prior(
+  p = 3,
+  type = "univariate",
+  beta_mean = c(2, 1.5, -0.8),
+  beta_cov = diag(c(0.25, 0.25, 0.25)),
+  sigma_shape = 3, sigma_rate = 2
 )
-fit2 <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
+fit2 <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
                 method = "ald", prior = prior)
 
 # Compare methods
-fit_score <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
+fit_score <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
                      method = "score")
-fit_approx <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
+fit_approx <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
                       method = "approximate")
 
 }

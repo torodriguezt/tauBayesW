@@ -1,126 +1,6 @@
 if (!exists("%||%"))
   `%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
 
-
-# ==== PRIOR: constructor, coercion, and print =================================
-
-new_bqr_prior <- function(b0, B0, c0 = NULL, C0 = NULL, names = NULL) {
-  if (!is.null(names)) {
-    names(b0) <- names
-    dimnames(B0) <- list(names, names)
-  }
-  structure(list(b0 = b0, B0 = B0, c0 = c0, C0 = C0),
-            class = "bqr_prior")
-}
-
-#' Default Prior for Bayesian Weighted Quantile Regression
-#'
-#' Creates a unified prior object (class \code{"bqr_prior"}) to be passed to
-#' \code{\link{bqr.svy}} (or \code{mo.bqr.svy}). It stores a multivariate normal
-#' prior on the regression coefficients and, for the \code{"ald"} kernel, optional
-#' Inverse-Gamma hyperparameters \code{c0}, \code{C0} for \eqn{\sigma^2}.
-#' Methods that do not use some fields simply ignore them.
-#'
-#' @param p Number of regression coefficients (including the intercept).
-#' @param b0 Numeric vector of prior means (length \code{p}). If a scalar is
-#'   supplied, it is expanded to length \code{p}.
-#' @param B0 Prior covariance. May be a \code{p x p} matrix, a scalar
-#'   (expanded to \code{diag(scalar, p)}), or a length-\code{p} vector
-#'   (expanded to \code{diag(vector)}).
-#' @param c0 Shape parameter of the Inverse-Gamma prior for \eqn{\sigma^2} (ALD).
-#' @param C0 Scale parameter of the Inverse-Gamma prior for \eqn{\sigma^2} (ALD).
-#' @param names Optional coefficient names to attach to \code{b0} and \code{B0}.
-#'
-#' @return An object of class \code{"bqr_prior"} with components \code{b0},
-#'   \code{B0}, and optionally \code{c0}, \code{C0}.
-#' @export
-prior_default <- function(p,
-                          b0    = rep(0, p),
-                          B0    = diag(1e6, p),
-                          c0    = 0.001,
-                          C0    = 0.001,
-                          names = NULL) {
-  # Expand scalars/vectors to matrix shape where needed
-  if (length(b0) == 1L) b0 <- rep(b0, p)
-  if (is.numeric(B0) && length(B0) == 1L) B0 <- diag(B0, p)
-  if (is.numeric(B0) && is.null(dim(B0)) && length(B0) == p) B0 <- diag(B0, p)
-
-  # Validate
-  if (length(b0) != p) stop("length(b0) must be ", p, ".", call. = FALSE)
-  if (!is.matrix(B0) || any(dim(B0) != c(p, p)))
-    stop("B0 must be a ", p, "x", p, " matrix.", call. = FALSE)
-  if (!is.null(c0) && (!is.numeric(c0) || length(c0) != 1L || c0 <= 0))
-    stop("'c0' must be a positive scalar.", call. = FALSE)
-  if (!is.null(C0) && (!is.numeric(C0) || length(C0) != 1L || C0 <= 0))
-    stop("'C0' must be a positive scalar.", call. = FALSE)
-
-  new_bqr_prior(b0 = b0, B0 = B0, c0 = c0, C0 = C0, names = names)
-}
-
-#' Coerce to a \code{bqr_prior} object (unified)
-#'
-#' Allows passing legacy list priors to \code{\link{bqr.svy}}. A valid list must
-#' contain at least \code{b0} and \code{B0}. Scalars/vectors are expanded as in
-#' \code{\link{prior_default}}. Optional fields \code{c0}, \code{C0} are relevant
-#' for \code{method = "ald"} and ignored otherwise.
-#'
-#' @param x A \code{bqr_prior} or a list with components \code{b0}, \code{B0},
-#'   and optionally \code{c0}, \code{C0}.
-#' @param p Number of coefficients.
-#' @param names Optional coefficient names.
-#' @param method One of \code{"ald"}, \code{"score"}, \code{"approximate"}.
-#'
-#' @return A \code{bqr_prior} object.
-#' @export
-as_bqr_prior <- function(x, p, names = NULL, method = c("ald", "score", "approximate")) {
-  method <- match.arg(method)
-  if (inherits(x, "bqr_prior")) {
-    # Attach names if not present
-    if (!is.null(names) && is.null(dimnames(x$B0))) {
-      x$b0 <- setNames(x$b0, names)
-      dimnames(x$B0) <- list(names, names)
-    }
-    return(x)
-  }
-
-  if (!is.list(x) || !all(c("b0", "B0") %in% names(x)))
-    stop("'prior' must be a 'bqr_prior' object or a list with b0 and B0.", call. = FALSE)
-
-  b0 <- x$b0
-  B0 <- x$B0
-  c0 <- x$c0
-  C0 <- x$C0
-
-  # Expand
-  if (length(b0) == 1L) b0 <- rep(b0, p)
-  if (is.numeric(B0) && length(B0) == 1L) B0 <- diag(B0, p)
-  if (is.numeric(B0) && is.null(dim(B0)) && length(B0) == p) B0 <- diag(B0, p)
-
-  # Validate
-  if (length(b0) != p) stop("length(b0) must be ", p, ".", call. = FALSE)
-  if (!is.matrix(B0) || any(dim(B0) != c(p, p)))
-    stop("B0 must be a ", p, "x", p, " matrix.", call. = FALSE)
-
-  # Method-specific sensible defaults (only for methods that use them)
-  if (identical(method, "ald")) {
-    c0 <- (c0 %||% 0.001)
-    C0 <- (C0 %||% 0.001)
-  }
-
-  new_bqr_prior(b0 = b0, B0 = B0, c0 = c0, C0 = C0, names = names)
-}
-
-#' @export
-print.bqr_prior <- function(x, ...) {
-  cat("bqr_prior\n")
-  cat("  b0: length", length(x$b0), "\n")
-  cat("  B0:", nrow(x$B0), "x", ncol(x$B0), "\n")
-  if (!is.null(x$c0)) cat("  c0:", x$c0, "\n")
-  if (!is.null(x$C0)) cat("  C0:", x$C0, "\n")
-  invisible(x)
-}
-
-
 # ==== MODEL FITTER ============================================================
 
 #' Bayesian Weighted Quantile Regression (Survey Design)
@@ -148,17 +28,21 @@ print.bqr_prior <- function(x, ...) {
 #' @param quantile Numeric scalar or vector in (0, 1): target quantile(s) \eqn{\tau}.
 #'   Duplicates are automatically removed.
 #' @param method One of \code{"ald"}, \code{"score"}, \code{"approximate"}.
+#'   Default is \code{"ald"} (Asymmetric Laplace Distribution).
 #' @param prior Prior specification. Can be:
 #'   \itemize{
-#'     \item A \code{bqr_prior} object from \code{\link{prior_default}}
+#'     \item A \code{bqr_prior} object from \code{\link{prior}}
 #'     \item A list with components \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}
 #'     \item \code{NULL} (uses default vague priors)
 #'   }
 #'   For \code{"ald"}: uses \code{b0}, \code{B0}, \code{c0}, \code{C0}.
 #'   For \code{"score"} and \code{"approximate"}: uses \code{b0}, \code{B0} only.
+#'   \strong{Tip:} Use \code{\link{prior}()} for a simpler unified interface.
 #' @param niter Integer. Number of MCMC iterations.
 #' @param burnin Integer. Number of burn-in iterations.
 #' @param thin Integer. Thinning interval.
+#' @param print_progress Integer. Print progress every \code{print_progress} iterations.
+#'   Set to 0 to disable progress printing. Default is 1000.
 #' @param ... Additional arguments passed to underlying functions (reserved for future use).
 #'
 #' @details
@@ -166,7 +50,7 @@ print.bqr_prior <- function(x, ...) {
 #'
 #' The prior can be specified in several ways:
 #' \enumerate{
-#'   \item Using \code{\link{prior_default}} (recommended).
+#'   \item Using \code{\link{prior}} (recommended).
 #'   \item As a list with \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}.
 #'   \item As \code{NULL}, in which case vague priors are used.
 #' }
@@ -185,26 +69,33 @@ print.bqr_prior <- function(x, ...) {
 #' \item{runtime}{Elapsed runtime in seconds.}
 #'
 #' @examples
-#' # Simulate data
-#' sim <- simulate_bqr_data(n = 100, betas = c(2, 1.5, -0.8))
+#' # Generate example data
+#' set.seed(123)
+#' n <- 100
+#' x1 <- rnorm(n)
+#' x2 <- runif(n, -1, 1)
+#' y <- 2 + 1.5*x1 - 0.8*x2 + rnorm(n)
+#' weights <- runif(n, 0.5, 2)
+#' data <- data.frame(y = y, x1 = x1, x2 = x2)
 #'
 #' # Basic usage with default priors
-#' fit1 <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights)
+#' fit1 <- bqr.svy(y ~ x1 + x2, data = data, weights = weights)
 #'
 #' # With informative priors
-#' prior <- prior_default(
-#'   p  = 3,
-#'   b0 = c(2, 1.5, -0.8),
-#'   B0 = diag(c(0.25, 0.25, 0.25)),
-#'   c0 = 3, C0 = 2
+#' prior <- prior(
+#'   p = 3,
+#'   type = "univariate",
+#'   beta_mean = c(2, 1.5, -0.8),
+#'   beta_cov = diag(c(0.25, 0.25, 0.25)),
+#'   sigma_shape = 3, sigma_rate = 2
 #' )
-#' fit2 <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
+#' fit2 <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
 #'                 method = "ald", prior = prior)
 #'
 #' # Compare methods
-#' fit_score <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
+#' fit_score <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
 #'                      method = "score")
-#' fit_approx <- bqr.svy(y ~ x1 + x2, data = sim$data, weights = sim$weights,
+#' fit_approx <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
 #'                       method = "approximate")
 #'
 #' @importFrom stats model.frame model.matrix model.response terms
@@ -218,6 +109,7 @@ bqr.svy <- function(formula,
                     niter    = 50000,
                     burnin   = 10000,
                     thin     = 1,
+                    print_progress = 1000,
                     ...) {
 
   tic    <- proc.time()[["elapsed"]]
@@ -235,6 +127,10 @@ bqr.svy <- function(formula,
 
   if (niter <= 0 || burnin < 0 || thin <= 0)
     stop("'niter' and 'thin' must be > 0, and 'burnin' >= 0.", call. = FALSE)
+
+  if (!is.numeric(print_progress) || length(print_progress) != 1 || print_progress < 0)
+    stop("'print_progress' must be a non-negative integer.", call. = FALSE)
+  print_progress <- as.integer(print_progress)
 
   if (is.null(data)) data <- environment(formula)
 
@@ -267,6 +163,14 @@ bqr.svy <- function(formula,
     as_bqr_prior(prior, p = p, names = coef_names, method = method)
   }
 
+  # Check for unused sigma hyperparameters in non-ALD methods
+  if (method %in% c("score", "approximate")) {
+    if (!is.null(prior$c0) || !is.null(prior$C0)) {
+      warning("Method '", method, "' does not estimate sigma, so hyperparameters 'c0' and 'C0' ",
+              "specified in the prior will be ignored.", call. = FALSE)
+    }
+  }
+
   # ALD/Score use normalized weights; Approximate uses raw weights
   w_norm <- w / mean(w)
 
@@ -282,7 +186,8 @@ bqr.svy <- function(formula,
                         b_prior_mean  = prior$b0,
                         B_prior_prec  = solve(prior$B0),
                         c0            = prior$c0 %||% 0.001,
-                        C0            = prior$C0 %||% 0.001
+                        C0            = prior$C0 %||% 0.001,
+                        print_progress = print_progress
                       ),
                       "score" = .MCMC_BWQR_SL(
                         y, X, w_norm,
@@ -291,7 +196,8 @@ bqr.svy <- function(formula,
                         burnin        = burnin,
                         thin          = thin,
                         b_prior_mean  = prior$b0,
-                        B_prior_prec  = solve(prior$B0)
+                        B_prior_prec  = solve(prior$B0),
+                        print_progress = print_progress
                       ),
                       "approximate" = .MCMC_BWQR_AP(
                         y, X, w,
@@ -300,7 +206,8 @@ bqr.svy <- function(formula,
                         thin          = thin,
                         tau           = tau_i,
                         b_prior_mean  = prior$b0,
-                        B_prior_prec  = solve(prior$B0)
+                        B_prior_prec  = solve(prior$B0),
+                        print_progress = print_progress
                       )
     )
 
@@ -393,62 +300,7 @@ bqr.svy <- function(formula,
 }
 
 
-#' Simulate data for Bayesian Weighted Quantile Regression
-#'
-#' Generates synthetic data compatible with \code{\link{bqr.svy}}, allowing the user
-#' to specify true regression coefficients, error scale, and optional survey weights.
-#'
-#' @param n Number of observations.
-#' @param betas Numeric vector of true coefficients (first element is intercept).
-#' @param sigma Standard deviation of the Gaussian error term.
-#' @param weights Optional numeric vector of survey weights. If \code{NULL}, generated
-#'   from Uniform(0.5, 2).
-#' @param seed Optional integer seed for reproducibility.
-#'
-#' @return A list with components:
-#' \describe{
-#'   \item{\code{data}}{\code{data.frame} with response \code{y} and predictors.}
-#'   \item{\code{weights}}{Numeric vector of survey weights.}
-#'   \item{\code{true_betas}}{The true coefficients used in data generation.}
-#' }
-#'
-#' @examples
-#' sim <- simulate_bqr_data(n = 50, betas = c(1, 2, -1), sigma = 0.5)
-#' head(sim$data)
-#'
-#' @export
-simulate_bqr_data <- function(n = 100,
-                              betas = c(1, 2, -0.5),
-                              sigma = 1,
-                              weights = NULL,
-                              seed = NULL) {
-  if (!is.null(seed)) set.seed(seed)
-
-  p <- length(betas) - 1
-  if (p < 1) stop("'betas' must include intercept and at least one slope.", call. = FALSE)
-
-  X <- replicate(p, rnorm(n))
-  colnames(X) <- paste0("x", seq_len(p))
-
-  y <- betas[1] + X %*% betas[-1] + rnorm(n, 0, sigma)
-
-  if (is.null(weights)) {
-    weights <- runif(n, 0.5, 2)
-  } else {
-    if (length(weights) != n)
-      stop("'weights' must be length n.", call. = FALSE)
-  }
-
-  data <- data.frame(y = as.numeric(y), X)
-
-  list(
-    data = data,
-    weights = weights,
-    true_betas = betas
-  )
-}
-
-#' @export
+#' @keywords internal
 plot.bqr.svy <- function(x, ..., datafile = NULL, response = "Y", x_var = NULL,
                          paintedArea = TRUE, band_choice = c("minmax","symmetric"),
                          show_data = !is.null(datafile)) {
@@ -463,4 +315,3 @@ plot.bqr.svy <- function(x, ..., datafile = NULL, response = "Y", x_var = NULL,
     show_data   = show_data
   )
 }
-
