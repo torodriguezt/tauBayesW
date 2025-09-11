@@ -31,17 +31,19 @@ x1 <- rnorm(n)
 x2 <- runif(n)
 y <- 1 + 2*x1 - 0.5*x2 + rnorm(n)
 weights <- runif(n, 0.5, 2)
-data_single <- data.frame(y, x1, x2)
+data_df <- data.frame(y, x1, x2)
 
 # =====================================================
-# Informative prior
+# Create prior using new unified interface
 # =====================================================
-prior_info <- prior_default(
-  p     = 3,                                     # intercept + 2 slopes
-  b0    = c(0.5, 1.8, -0.8),                     # prior means
-  B0    = diag(c(0.3, 0.2, 0.2)),                # small variances -> concentrated prior
-  c0    = 2,                                     # ALD hyperparameter (more informative)
-  C0    = 1,
+# Informative prior for univariate models
+prior_info <- prior(
+  p = 3,                                         # intercept + 2 slopes
+  type = "univariate",                           # for bqr.svy models
+  beta_mean = c(1, 2, -0.5),                     # prior means close to true values
+  beta_cov = diag(c(0.5, 0.3, 0.3)),             # informative covariances
+  sigma_shape = 3,                               # for ALD method
+  sigma_rate = 2,
   names = c("(Intercept)", "x1", "x2")
 )
 
@@ -50,76 +52,54 @@ prior_info <- prior_default(
 # =====================================================
 fit_ald <- bqr.svy(
   y ~ x1 + x2,
-  data     = data_single,
-  weights  = weights,
+  data = data_df,
+  weights = weights,
   quantile = 0.5,                               # single quantile
-  method   = "ald",
-  prior    = prior_info,
-  niter    = 5000,
-  burnin   = 1000
+  method = "ald",
+  prior = prior_info,
+  niter = 5000,
+  burnin = 1000
 )
 
 # =====================================================
-# Fit: Multiple quantiles (Score method)
+# Fit: Multiple quantiles (Score method) 
 # =====================================================
 fit_score_multi <- bqr.svy(
   y ~ x1 + x2,
-  data     = data_single,
-  weights  = weights,
+  data = data_df,
+  weights = weights,
   quantile = c(0.25, 0.5, 0.75),               # multiple quantiles
-  method   = "score",
-  prior    = prior_info,
-  niter    = 5000,
-  burnin   = 1000
+  method = "score",
+  prior = prior_info,
+  niter = 5000,
+  burnin = 1000
 )
 
 # =====================================================
 # Fit: Multiple quantiles (Approximate method)
 # =====================================================
-fit_ap_multi <- bqr.svy(
+fit_approx_multi <- bqr.svy(
   y ~ x1 + x2,
-  data     = data_single,
-  weights  = weights,
+  data = data_df,
+  weights = weights,
   quantile = c(0.1, 0.25, 0.5, 0.75, 0.9),     # five quantiles
-  method   = "approximate",
-  prior    = prior_info,
-  niter    = 5000,
-  burnin   = 1000
+  method = "approximate",
+  prior = prior_info,
+  niter = 5000,
+  burnin = 1000
 )
-`
-
-  const summaryCode = `# Summary methods for single and multiple quantiles
 
 # =====================================================
-# Single quantile results
+# View results
 # =====================================================
-cat("\n--- Single Quantile (ALD) ---\n")
 print(fit_ald)
-summary(fit_ald)
-
-# =====================================================
-# Multiple quantiles results 
-# =====================================================
-cat("\n--- Multiple Quantiles (Score) ---\n")
 print(fit_score_multi)
-summary(fit_score_multi)  # Auto-adapted for multiple quantiles
+print(fit_approx_multi)
 
-cat("\n--- Five Quantiles (Approximate) ---\n")
-print(fit_ap_multi)
-summary(fit_ap_multi)     # Enhanced summary for multiple quantiles
-
-# =====================================================
-# Plotting
-# =====================================================
-# Single quantile plot
+# Plot results
 plot(fit_ald)
-
-# Multiple quantiles plot
-plot(fit_score_multi)     # Shows all quantiles simultaneously
-
-# Quantile-specific plots
-plot_quantile(fit_score_multi, quantile = 0.25)
-plot_quantile(fit_score_multi, quantile = 0.75)
+plot(fit_score_multi)
+plot(fit_approx_multi)
 `
 
   return (
@@ -145,12 +125,11 @@ plot_quantile(fit_score_multi, quantile = 0.75)
           </div>
 
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="usage">Usage</TabsTrigger>
               <TabsTrigger value="arguments">Arguments</TabsTrigger>
               <TabsTrigger value="examples">Examples</TabsTrigger>
-              <TabsTrigger value="summary">Summary Methods</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
@@ -280,39 +259,6 @@ plot_quantile(fit_score_multi, quantile = 0.75)
                       {copied ? "Copied!" : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="summary" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Summary and Print Methods</CardTitle>
-                  <CardDescription>
-                    Available methods for examining model results and diagnostics
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="relative">
-                    <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
-                      <code>{summaryCode}</code>
-                    </pre>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="absolute top-2 right-2"
-                      onClick={() => copyToClipboard(summaryCode)}
-                    >
-                      {copied ? "Copied!" : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  
-                  <Alert>
-                    <AlertDescription>
-                      The summary() method provides detailed convergence diagnostics including R-hat values, 
-                      effective sample sizes, and posterior intervals for all parameters using the Vehtari et al. (2021) criteria.
-                    </AlertDescription>
-                  </Alert>
                 </CardContent>
               </Card>
             </TabsContent>

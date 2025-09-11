@@ -1,590 +1,789 @@
 ---
-title: "tauBayesW: Bayesian Weighted Quantile Regression"
-author: "Tomas Rodriguez Taborda"
+title: "tauBayesW"
+author: "tauBayesW Package"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{tauBayesW}
+  %\VignetteIndexEntry{Comparison: bayesQR vs tauBayesW Methods}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.width = 7,
-  fig.height = 5,
   warning = FALSE,
-  message = FALSE
+  message = FALSE,
+  fig.width = 7,
+  fig.height = 5
 )
 ```
 
-<p align="center">
-  <img src="logo_tau.png" width="180" alt="tauBayesW logo"/>
-</p>
+## Introduction
 
-# tauBayesW: An R Framework for Bayesian Weighted Quantile Regression
+The tauBayesW package implements three MCMC approaches and a multiple-output EM algorithm:
 
-[![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/tauBayesW)](https://cran.r-project.org/package=tauBayesW)
-[![downloads](https://cranlogs.r-pkg.org/badges/tauBayesW)](https://cran.r-project.org/package=tauBayesW)
+-   **Asymmetric Laplace Distribution**: Traditional approach using ALD likelihood
+-   **Score**: Score-based likelihood approach for complex survey designs
+-   **Approximate**: Fast approximate method for large datasets
+-   **Expected Maximization Algorithm**: For the multivariate case
 
-## What is tauBayesW?
+Also the vignette compares the performance of **bayesQR** with the three MCMC methods implemented in **tauBayesW** using a simulated dataset and the classic Prostate cancer dataset included on the bayesQR package. We'll estimate the 25th 50th and 75th quantile and compare the coefficient estimates across all methods.
 
-**tauBayesW** is an R package that provides a comprehensive framework for Bayesian weighted quantile regression with survey designs. The package implements MCMC and EM algorithms to handle complex survey data while maintaining computational efficiency using a C++ backend. Some of its key features include:
+## tauBayesW usage examples
 
-- **Handles survey weights naturally** under a Bayesian framework
-- **Implements multiple MCMC methods** (ALD, Score, Approximate)  
-- **Estimates multiple quantiles efficiently** using EM algorithms
-- **Provides comprehensive visualization** tools
-- **Includes model diagnostics** and convergence checking
-
-## Installation
+Let's begin showing how to use tauBayesW methods:
 
 ```{r}
-if (!requireNamespace("MASS", quietly = TRUE)) install.packages("MASS")
-```
-
-
-```{r installation, eval=FALSE}
-# From CRAN (when available)
-#install.packages("tauBayesW")
-
-# From GitHub (development version)
-remotes::install_github("torodriguezt/tauBayesW")
-```
-
-```{r setup}
 library(tauBayesW)
-set.seed(123)
 ```
 
-## Citation
+## Creating Priors
 
-To cite tauBayesW in publications, please use:
-
-```{r citation, eval=FALSE}
-citation("tauBayesW")
-```
-
-## Getting Started
-
-tauBayesW provides two main functions to fit a bayesian quantile regression model with survey weights using MCMC and EM algorithms, also each of them has a plotting function to visualize the results and a summary method to extract key information:
-
-- **`bqr.svy()`**: 🎯 Bayesian quantile regression for multiple quantiles with survey weights using MCMC algorithms
-- **`mo.bqr.svy()`**: 📊 Bayesian multivariate and multidirectional quantile regression for multiple quantiles with survey weights using Expected Maximization algorithm
-- **`plot_quantile()`**: 🎨 Comprehensive visualization functions for quantile regression
-
-### Basic Usage
-
-Let's start with a simple example using survey data for the MCMC algorithms:
-
-```{r basic-example}
-# Simulate survey data with design weights
-n <- 500
-x1 <- rnorm(n)
-x2 <- rbinom(n, 1, 0.4)
-y <- 1 + 2*x1 + 1.5*x2 + rnorm(n)
-weights <- runif(n, 0.5, 2)  # Survey weights
-
-data <- data.frame(y, x1, x2)
-
-# Single quantile regression (median)
-model_median <- bqr.svy(y ~ x1 + x2, 
-                        data = data,
-                        weights = weights,
-                        quantile = 0.5,
-                        niter = 2000,
-                        burnin = 500,
-                        verbose = FALSE)
-
-```
-
-
-```{r}
-print(model_median)
-```
-
-```{r}
-summary(model_median)
-```
-
-And using the EM algorithm
-
-```{r}
-model_median <- mo.bqr.svy(y ~ x1 + x2, 
-                        data = data,
-                        weights = weights,
-                        quantile = 0.5,
-                        max_iter = 2000,
-                        epsilon = 1e-8,
-                        verbose = FALSE)
-```
-
-
-```{r}
-print(model_median)
-```
-```{r}
-summary(model_median)
-```
-
-
-### Multiple quantiles
-
-tauBayesW implements three different MCMC approaches, all of them allow to fit more than one quantile with only one call:
-
-```{r mcmc-methods}
-n <- 800
-x1 <- runif(n)
-x2 <- rnorm(n)
-y <- 3 + 2*x1 + 1.5*x2 + rnorm(n)
-weights <- rep(1, n)
-data <- data.frame(y, x1, x2)
-
-methods <- c("ald", "score", "approximate")
-results <- list()
-
-model_ald <- bqr.svy(y ~ x1 + x2,
-                               data = data,
-                               weights = weights,
-                               quantile = c(0.5, 0.95),
-                               method = "ald",
-                               n_mcmc = 60000,
-                               burnin = 25000,
-                               verbose = FALSE)
-
-summary(model_ald)
-
-model_score <- bqr.svy(y ~ x1 + x2,
-                               data = data,
-                               weights = weights,
-                               quantile = c(0.5, 0.95),
-                               method = "score",
-                               n_mcmc = 60000,
-                               burnin = 25000,
-                               verbose = FALSE)
-
-summary(model_score)
-
-
-model_approximate <- bqr.svy(y ~ x1 + x2,
-                               data = data,
-                               weights = weights,
-                               quantile = c(0.5, 0.95),
-                               method = "approximate",
-                               n_mcmc = 60000,
-                               burnin = 25000,
-                               verbose = FALSE)
-
-summary(model_approximate)
-
-```
-
-
-
-For the Expected-Maximization Algorithm
-
-```{r multiple-quantiles}
-# Multiple quantiles simultaneously
-quantiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
-
-model_em<- mo.bqr.svy(y ~ x1 + x2,
-                               data = data,
-                               weights = weights,
-                               quantile = c(0.5, 0.95),
-                               max_iter = 1500,
-                               epsilon = 1e-6,
-                               verbose = FALSE)
-
-summary(model_em)
-```
-
-### Visualization
-
-```{r}
-n_vis <- 300
-x_vis <- seq(-2, 2, length.out = n_vis)
-y_vis <- 1 + 2*x_vis + (0.5 + 0.3*abs(x_vis))*rnorm(n_vis) 
-weights_vis <- rgamma(n_vis, 2, 1)
-data_vis <- data.frame(y = y_vis, x = x_vis)
-```
-
-
-```{r visualization, fig.width=8, fig.height=6}
-
-# Fit single quantile for plotting
-model_vis <- bqr.svy(y ~ x, 
-                     data = data_vis,
-                     weights = weights_vis,
-                     quantile = 0.5,
-                     niter = 2000,
-                     burnin = 500,
-                     verbose = FALSE)
-
-# Plot quantile regression with data points
-plot_quantile_with_points.bqr.svy(model_vis, data = data_vis, predictor = "x",
-                          point_alpha = 0.6,
-                          main = "Bayesian Quantile Regression (τ = 0.5)")
-```
-
-
-```{r}
-fit1d <- mo.bqr.svy(y ~ x, 
-                     data = data_vis,
-                     weights = weights_vis,
-                     quantile = 0.5,
-                     max_iter  = 2000,
-                     epsilon   = 1e-8,
-                     verbose = FALSE)
-
-
-drawQuantile1D(
-  fit        = fit1d,
-  datafile   = data_vis,
-  response   = "Y",
-  x_var      = "x",
-  x_grid     = seq(-2, 2, length.out = 200),
-  xValue     = NULL,         
-  paintedArea = TRUE,
-  band_choice = "symmetric", 
-  show_data   = TRUE
+```{r prior-examples}
+# Create a prior for p=5 coefficients
+my_prior <- tauBayesW::prior(
+  p = 5,                                    # Number of parameters
+  type = "univariate",                      # Prior type
+  beta_mean = rep(0, 5),                   # Prior mean for coefficients
+  beta_cov = diag(1000, 5),               # Prior covariance matrix
+  sigma_shape = 0.001,                     # Shape parameter for sigma (ALD only)
+  sigma_rate = 0.001,                      # Rate parameter for sigma (ALD only)
+  names = c("Int", "x1", "x2", "x3", "x4") # Parameter names
 )
-
+print(my_prior)
 ```
 
+## Fitting models with different methods
 
-
-### Prior information
-
-We can also use informative prior distributions
-
-For the MCMC case
-
-```{r}
-# ---------------------
+```{r method-examples}
 # Example data
-# ---------------------
-set.seed(123)
-n  <- 400
-x1 <- rnorm(n)
-x2 <- rnorm(n)
-w  <- runif(n, 0.5, 2)   # weights
-tau <- 0.5               # target quantile
+data(mtcars)
 
-y <- 1 + 2 * x1 - 1.5 * x2 + rnorm(n)
-
-data_ex <- data.frame(y, x1, x2, w)
-
-# ---------------------
-# Informative prior
-# ---------------------
-prior_info <- prior_default(
-  p     = 3,
-  b0    = c(0, 1.5, -1.0),          # prior means
-  B0    = diag(c(0.5, 0.25, 0.25)), # small variances => more concentrated prior
-  c0    = 2,                        # hyperparameter for ALD (more informative than 0.001)
-  C0    = 1,
-  names = c("(Intercept)", "x1", "x2")
-)
-
-# ---------------------
-# Fit with the 3 methods
-# ---------------------
-
-# ALD method
+# Method 1: ALD (Asymmetric Laplace Distribution)
 fit_ald <- bqr.svy(
-  formula  = y ~ x1 + x2,
-  weights  = w,
-  data     = data_ex,
-  quantile = tau,
-  method   = "ald",
-  prior    = prior_info,
-  niter    = 2000,
-  burnin   = 500,
-  thin     = 5
+  mpg ~ wt + hp + cyl,
+  data = mtcars,
+  quantile = 0.5,
+  method = "ald",
+  niter = 10000,
+  burnin = 5000,
+  thin = 5,
+  print_progress = 5000  # Print every 5000 iterations
 )
 
-# Score method
+# Method 2: Score Likelihood
 fit_score <- bqr.svy(
-  formula  = y ~ x1 + x2,
-  weights  = w,
-  data     = data_ex,
-  quantile = tau,
+  mpg ~ wt + hp + cyl,
+  data = mtcars,
+  quantile = 0.5,
+  method = "score",
+  niter = 10000,
+  burnin = 5000,
+  thin = 5,
+  print_progress = 5000
+)
+
+# Method 3: Approximate Method
+fit_approximate <- bqr.svy(
+  mpg ~ wt + hp + cyl,
+  data = mtcars,
+  quantile = 0.5,
+  method = "approximate",
+  niter = 10000,
+  burnin = 5000,
+  thin = 5,
+  print_progress = 5000  # Print every 5000 iterations
+)
+```
+
+## Model Output: Summary and Print Methods
+
+```{r output-examples}
+# Print method - shows basic model information
+knitr::kable(
+  data.frame(
+    Information = c("Method", "Quantiles", "Draws", "Burn-in", "Thin"),
+    Value = c(fit_ald$method, 
+              paste(fit_ald$quantile, collapse = ", "),
+              length(fit_ald$draws),
+              fit_ald$warmup, 
+              fit_ald$thin)
+  ),
+  caption = "Model Information - ALD Method"
+)
+
+# Summary method - detailed convergence diagnostics will be shown in summary section
+
+# Access posterior draws - show structure
+if (!is.null(fit_ald$draws)) {
+  knitr::kable(
+    head(as.data.frame(fit_ald$draws), 6),
+    caption = "First 6 posterior draws (ALD Method)",
+    digits = 4
+  )
+}
+```
+
+## Summary Methods: Convergence Diagnostics
+
+```{r summary-methods, results='asis'}
+# Function to extract summary information in a structured way
+extract_summary_info <- function(fit, method_name) {
+  # Create a data frame with key information
+  info_df <- data.frame(
+    Metric = c("Method", "Quantiles", "Iterations", "Burn-in", "Acceptance Rate"),
+    Value = c(
+      method_name,
+      paste(fit$quantile, collapse = ", "),
+      length(fit$draws),
+      fit$warmup,
+      ifelse(!is.null(fit$accept_rate), sprintf("%.3f", fit$accept_rate), "N/A")
+    )
+  )
+  
+  return(info_df)
+}
+
+# Extract and display summaries for each method
+methods_info <- list(
+  "ALD" = extract_summary_info(fit_ald, "ALD"),
+  "Score" = extract_summary_info(fit_score, "Score"), 
+  "Approximate" = extract_summary_info(fit_approximate, "Approximate")
+)
+
+for (method_name in names(methods_info)) {
+  cat("\n### ", method_name, " Method Summary\n\n")
+  print(knitr::kable(methods_info[[method_name]], 
+                    caption = paste(method_name, "Method - Model Summary")))
+  cat("\n")
+}
+```
+
+## Convergence Diagnostics
+
+```{r convergence-diagnostics, results='asis'}
+# Check acceptance rates and other diagnostics
+methods <- c("ALD", "Score", "Approximate")
+fits <- list(fit_ald, fit_score, fit_approximate)
+
+# Create a comprehensive diagnostics table
+diagnostics_df <- data.frame(
+  Method = methods,
+  Acceptance_Rate = sapply(fits, function(fit) {
+    if (!is.null(fit$accept_rate)) sprintf("%.3f", fit$accept_rate) else "N/A"
+  }),
+  Posterior_Samples = sapply(fits, function(fit) {
+    if (!is.null(fit$draws)) nrow(as.matrix(fit$draws)) else "N/A"
+  })
+)
+
+knitr::kable(diagnostics_df, 
+            caption = "Model Diagnostics Summary for All Methods",
+            col.names = c("Method", "Acceptance Rate", "Posterior Samples"))
+```
+
+## Visualization functions
+
+The `tauBayesW` package provides comprehensive visualization capabilities through its `plot()` method. The plotting system supports both **base R graphics** (default) and **ggplot2** (when `use_ggplot = TRUE`).
+
+### 1-. Fitted regression plot
+
+Example plotting the fitted regresion line using ggplot and showing the credible interval on the plot.
+
+```{r basic-plot}
+plot(fit_ald, use_ggplot = TRUE, show_ci  =TRUE)
+```
+
+It is possible to hide the points from the plot using the argument add_points  = FALSE
+
+### 2. Trace Plots
+
+```{r quantile-plots}
+# Basic quantile plot (requires x_var)
+plot(fit_ald, type = "trace", x_var = "hp")
+```
+
+### 3. Density Plots
+
+Show both coefficients and quantile fits together:
+
+```{r combined-plots}
+# Combined view
+plot(fit_ald, type = "density", x_var = "wt")
+```
+
+### Multi-Panel Layouts
+
+For models with multiple quantiles:
+
+```{r multi-panel}
+# Fit model with multiple quantiles
+fit_multi <- bqr.svy(mpg ~ wt + hp, data = mtcars, 
+                     quantile = c(0.25, 0.5, 0.75), method = "ald",
+                     niter = 5000, burnin = 2500)
+
+# Multi-panel coefficient plot
+plot(fit_multi, type = "fit", use_ggplot = TRUE, ncol = 3, combine = FALSE)
+```
+
+# Comparison with bayesQR
+
+## Simulation Study
+
+We conduct a comprehensive simulation study to illustrate **tauBayesW** capabilities and compare with **bayesQR** using three different sampling designs: Poisson sampling, stratified sampling, and systematic sampling. Each design simulates complex survey data with known population parameters.
+
+### Simulation Functions
+
+```{r simulation-functions, include=FALSE}
+# Load required packages for simulation
+library(dplyr)
+library(sampling)
+
+# Function to generate Bernoulli random variables
+rbern <- function(n, prob) {
+  rbinom(n, 1, prob)
+}
+
+# Poisson sampling design - simulates unequal probability sampling
+artificial_data_poi <- function(N, n) {
+  resultado <- list()
+  
+  ## Population data
+  xx        <- cbind(rep(1, N), runif(N, 0, 2))
+  beta_sim  <- c(2, 1.5)  # True regression coefficients
+  loc_sim   <- xx %*% beta_sim
+  dados_pop <- NULL
+  for(i in 1:N) {
+    dados_pop[i] <- rnorm(1, loc_sim[i, 1], 1)
+  }
+  
+  ## Sample data with Poisson sampling (weights depend on auxiliary variable)
+  z_aux <- rnorm(N, mean = 1 + dados_pop, sd = 0.5)
+  var_aux <- 1 / (1 + exp(2.5 - 0.5 * z_aux))
+  probabilidades <- n * var_aux / sum(var_aux)
+  w_pop <- 1 / probabilidades
+  aux_aux <- NULL
+  for(i in 1:N) {
+    aux_aux[i] <- rbern(1, probabilidades[i])
+  }
+  dados <- dados_pop[which(aux_aux == 1)]
+  x     <- xx[which(aux_aux == 1), ]
+  w_aux <- w_pop[which(aux_aux == 1)]
+  w     <- length(dados) * (w_aux / sum(w_aux))
+  
+  ## Final object
+  resultado[['sample_data']] <- dados
+  resultado[['x_matrix']]    <- x
+  resultado[['weights']]     <- w
+  resultado[['pop_data']]    <- dados_pop
+  resultado[['x_pop']]       <- xx
+  resultado[['weights_un']]  <- w_aux
+  
+  return(resultado)
+}
+
+# Stratified sampling design - simulates stratified survey
+artificial_data_est <- function(N, n, n_est) {
+  resultado <- list()
+  
+  ## Population data
+  xx        <- cbind(rep(1, N), runif(N, 0, 2))
+  beta_sim  <- c(2, 1.5)
+  loc_sim   <- xx %*% beta_sim
+  dados_pop <- NULL
+  for(i in 1:N) {
+    dados_pop[i] <- rnorm(1, loc_sim[i, 1], 1)
+  }
+  
+  ## Sample data with stratified sampling
+  z_aux <- rnorm(N, mean = 1 + dados_pop, sd = 0.5)
+  var_aux <- 1 / (1 + exp(2.5 - 0.5 * z_aux))
+  
+  df     <- data.frame(cbind(dados_pop, xx, var_aux))
+  colnames(df) <- c('y', 'x0', 'x1', 'z')
+  
+  # Create strata based on auxiliary variable
+  df_ord <- df[order(df$z), ]
+  df_ord$prop <- df_ord$z / sum(df_ord$z)
+  df_ord$cprop <- cumsum(df_ord$prop)
+  df_ord$bins <- cut(df_ord$cprop, breaks = n_est)
+  df_ord$estrato <- factor(df_ord$bins, labels = c(1:n_est))
+  
+  n_k <- n / n_est
+  s_aux <- sampling::strata(df_ord, c("estrato"), size = rep(n_k, n_est), method = "srswor")
+  s <- sampling::getdata(df_ord, s_aux)
+  s$w <- 1 / s$Prob
+  
+  ## Final object
+  resultado[['sample_data']] <- s$y
+  resultado[['x_matrix']]    <- cbind(s$x0, s$x1)
+  resultado[['weights']]     <- length(s$y) * (s$w / sum(s$w))
+  resultado[['pop_data']]    <- df$y
+  resultado[['x_pop']]       <- cbind(df$x0, df$x1)
+  resultado[['weights_un']]  <- s$w
+  
+  return(resultado)
+}
+
+# Systematic sampling design - simulates systematic survey sampling
+artificial_data_sys <- function(N, n) {
+  resultado <- list()
+  
+  ## Population data
+  xx        <- cbind(rep(1, N), runif(N, 0, 2))
+  beta_sim  <- c(2, 1.5)
+  loc_sim   <- xx %*% beta_sim
+  dados_pop <- NULL
+  for(i in 1:N) {
+    dados_pop[i] <- rnorm(1, loc_sim[i, 1], 1)
+  }
+  
+  ## Sample data with systematic sampling
+  z_aux <- rnorm(N, mean = 1 + dados_pop, sd = 0.5)
+  var_aux <- 1 / (1 + exp(2.5 - 0.5 * z_aux))
+  
+  df           <- data.frame(cbind(dados_pop, xx, var_aux, rep(1, N)))
+  colnames(df) <- c('y', 'x0', 'x1', 'z', 'estrato')
+  s_aux <- sampling::strata(df, "estrato", size = n, method = "systematic", pik = df$z)
+  s     <- sampling::getdata(df, s_aux)
+  s$w   <- 1 / s$Prob
+ 
+  ## Final object
+  resultado[['sample_data']] <- s$y
+  resultado[['x_matrix']]    <- cbind(s$x0, s$x1)
+  resultado[['weights']]     <- length(s$y) * (s$w / sum(s$w))
+  resultado[['pop_data']]    <- df$y
+  resultado[['x_pop']]       <- cbind(df$x0, df$x1)
+  resultado[['weights_un']]  <- s$w
+  
+  return(resultado)
+}
+```
+
+### Simulation Execution
+
+```{r simulation-study, results='asis'}
+# Simulation parameters
+set.seed(42)
+N <- 10000  # Population size
+n <- 500    # Sample size
+n_est <- 5  # Number of strata for stratified sampling
+quantiles <- c(0.25, 0.5, 0.75)
+
+# True population parameters
+true_beta <- c(2, 1.5)  # Intercept and slope
+
+# Create simulation parameters table
+sim_params <- data.frame(
+  Parameter = c("Population size", "Sample size", "Number of strata", "Quantiles", "True β₀", "True β₁"),
+  Value = c(N, n, n_est, paste(quantiles, collapse = ", "), true_beta[1], true_beta[2])
+)
+
+knitr::kable(sim_params, caption = "Simulation Study Parameters")
+
+# Generate data for each sampling design
+data_poi <- artificial_data_poi(N, n)
+data_est <- artificial_data_est(N, n, n_est)
+data_sys <- artificial_data_sys(N, n)
+
+# Create data frames for analysis
+create_dataframe <- function(sim_data) {
+  data.frame(
+    y = sim_data$sample_data,
+    x = sim_data$x_matrix[, 2],  # Remove intercept column
+    weights = sim_data$weights
+  )
+}
+
+df_poi <- create_dataframe(data_poi)
+df_est <- create_dataframe(data_est)
+df_sys <- create_dataframe(data_sys)
+
+# Sample sizes summary
+sample_sizes <- data.frame(
+  Design = c("Poisson", "Stratified", "Systematic"),
+  Sample_Size = c(nrow(df_poi), nrow(df_est), nrow(df_sys))
+)
+
+knitr::kable(sample_sizes, caption = "Sample Sizes After Sampling", col.names = c("Design", "Sample Size"))
+```
+
+### Method Comparison
+
+```{r method-comparison, results='hide'}
+# Function to fit models and extract coefficients
+fit_and_compare <- function(data, design_name) {
+  # Common MCMC settings (reduced for vignette)
+  niter <- 5000
+  burnin <- 2500
+  
+  # bayesQR
+  fit_bqr <- bayesQR::bayesQR(
+    y ~ x, 
+    data = data,
+    quantile = quantiles, 
+    ndraw = niter - burnin,
+    keep = 1
+  )
+  
+  # tauBayesW - ALD method
+  fit_ald <- bqr.svy(
+    y ~ x,
+    data = data,
+    weights = data$weights,
+    quantile = quantiles,
+    method = "ald",
+    niter = niter,
+    burnin = burnin,
+    print_progress = 5000
+  )
+  
+  # tauBayesW - Score method
+  fit_score <- bqr.svy(
+    y ~ x,
+    data = data,
+    weights = data$weights,
+    quantile = quantiles,
+    method = "score", 
+    niter = niter,
+    burnin = burnin,
+    print_progress = 5000
+  )
+  
+  # tauBayesW - Approximate method
+  fit_approx <- bqr.svy(
+    y ~ x,
+    data = data,
+    weights = data$weights,
+    quantile = quantiles,
+    method = "approximate",
+    niter = niter,
+    burnin = burnin,
+    print_progress = 5000
+  )
+  
+  # Extract coefficient estimates
+  coef_bqr <- sapply(1:3, function(i) colMeans(fit_bqr[[i]]$betadraw))
+  coef_ald <- fit_ald$beta
+  coef_score <- fit_score$beta
+  coef_approx <- fit_approx$beta
+  
+  # Calculate bias and RMSE
+  calculate_metrics <- function(estimates, true_vals) {
+    bias <- estimates - matrix(rep(true_vals, 3), nrow = 2, ncol = 3)
+    rmse <- sqrt(colMeans(bias^2))
+    list(bias = bias, rmse = rmse, estimates = estimates)
+  }
+  
+  metrics_bqr <- calculate_metrics(coef_bqr, true_beta)
+  metrics_ald <- calculate_metrics(coef_ald, true_beta)
+  metrics_score <- calculate_metrics(coef_score, true_beta)
+  metrics_approx <- calculate_metrics(coef_approx, true_beta)
+  
+  return(list(
+    bayesQR = metrics_bqr,
+    ALD = metrics_ald,
+    Score = metrics_score,
+    Approximate = metrics_approx
+  ))
+}
+
+# Run comparison for each design
+results_poi <- fit_and_compare(df_poi, "Poisson")
+results_est <- fit_and_compare(df_est, "Stratified")
+results_sys <- fit_and_compare(df_sys, "Systematic")
+```
+
+### Simulation Results
+
+```{r , include=FALSE}
+# Helper: create results table for a given design/quantile
+create_results_table <- function(results, design_name, quantile_idx, tau_value) {
+  methods <- names(results)
+  
+  # Extraer estimaciones para el cuantil dado
+  estimates <- sapply(methods, function(m) results[[m]]$estimates[, quantile_idx])
+  
+  # Tabla comparativa
+  comparison <- data.frame(
+    Method     = methods,
+    Intercept  = estimates[1, ],
+    Slope      = estimates[2, ]
+  )
+  
+  # Fila con los valores verdaderos
+  true_row <- data.frame(
+    Method     = "True Values",
+    Intercept  = true_beta[1],
+    Slope      = true_beta[2]
+  )
+  
+  comparison <- rbind(true_row, comparison)
+  rownames(comparison) <- NULL
+  
+  return(comparison)
+}
+```
+
+
+```{r simulation-results-poisson, results='asis'}
+# Poisson Sampling
+for (q_idx in seq_along(quantiles)) {
+  tau_val <- quantiles[q_idx]
+  table_result <- create_results_table(
+    results_poi, "Poisson", q_idx, tau_val
+  )
+  print(knitr::kable(
+    table_result, digits = 4,
+    caption = paste("Poisson Sampling - τ =", tau_val)
+  ))
+}
+```
+
+```{r simulation-results-stratified, results='asis'}
+# Stratified Sampling
+for (q_idx in seq_along(quantiles)) {
+  tau_val <- quantiles[q_idx]
+  table_result <- create_results_table(
+    results_est, "Stratified", q_idx, tau_val
+  )
+  print(knitr::kable(
+    table_result, digits = 4,
+    caption = paste("Stratified Sampling - τ =", tau_val)
+  ))
+}
+```
+
+
+```{r simulation-results-systematic, results='asis'}
+# Systematic Sampling
+for (q_idx in seq_along(quantiles)) {
+  tau_val <- quantiles[q_idx]
+  table_result <- create_results_table(
+    results_sys, "Systematic", q_idx, tau_val
+  )
+  print(knitr::kable(
+    table_result, digits = 4,
+    caption = paste("Systematic Sampling - τ =", tau_val)
+  ))
+}
+```
+
+
+## Prostate Dataset
+
+```{r data-prep, results='asis'}
+library(tauBayesW)
+library(bayesQR)
+
+# Load Prostate dataset
+data(Prostate, package = "bayesQR")
+
+# Center covariates (subtract mean, don't scale)
+covars <- Prostate[, colnames(Prostate) != "lpsa"]
+covars_centered <- as.data.frame(scale(covars, center = TRUE, scale = FALSE))
+
+# Combined dataset with centered covariates
+Prostate_centered <- cbind(lpsa = Prostate$lpsa, covars_centered)
+
+# Design matrix (includes intercept automatically)
+X <- model.matrix(lpsa ~ ., data = Prostate_centered)
+y <- Prostate_centered$lpsa
+w <- rep(1, length(y))  # Equal weights
+
+# Display dataset summary
+dataset_info <- data.frame(
+  Information = c("Observations", "Coefficients", "Response Variable", "Equal Weights"),
+  Value = c(nrow(Prostate_centered), ncol(X), "lpsa (log prostate-specific antigen)", "Yes")
+)
+
+knitr::kable(dataset_info, caption = "Prostate Dataset Summary")
+
+predictors_info <- data.frame(
+  Predictor = colnames(X),
+  Description = c("Intercept", paste("Centered", colnames(X)[-1]))
+)
+
+knitr::kable(predictors_info, caption = "Predictor Variables")
+```
+
+## Prior Specification
+
+We use comparable priors for fair comparison:
+
+```{r priors, results='asis'}
+# Prior for tauBayesW (all methods)
+prior_tbw <- tauBayesW::prior(
+  p = ncol(X),
+  type = "univariate",
+  beta_mean = rep(0, ncol(X)),
+  beta_cov = diag(1e6, ncol(X)),  # Very vague prior
+  sigma_shape = 0.001,            # For ALD method
+  sigma_rate = 0.001,
+  names = colnames(X)
+)
+
+# Prior for bayesQR 
+prior_bqr <- bayesQR::prior(
+  lpsa ~ ., data = Prostate_centered,
+  beta0 = rep(0, ncol(X)), 
+  V0 = diag(1e6, ncol(X))  # Same vague prior
+)
+
+# Display prior information
+prior_info <- data.frame(
+  Component = c("Parameters", "Prior Type", "Beta Mean", "Beta Covariance", "Sigma Shape (ALD)", "Sigma Rate (ALD)"),
+  tauBayesW = c(
+    ncol(X), 
+    "univariate", 
+    "rep(0, p)", 
+    "diag(1e6, p)", 
+    "0.001", 
+    "0.001"
+  ),
+  bayesQR = c(
+    ncol(X), 
+    "standard", 
+    "rep(0, p)", 
+    "diag(1e6, p)", 
+    "N/A", 
+    "N/A"
+  )
+)
+
+knitr::kable(prior_info, caption = "Prior Specifications Comparison")
+```
+
+## Model Fitting
+
+### bayesQR (Reference Method)
+
+```{r bayesQR-fit, results='hide'}
+set.seed(12345)
+
+fit_bqr <- bayesQR(
+  lpsa ~ ., 
+  data = Prostate_centered,
+  quantile = c(0.25, 0.5, 0.75), 
+  ndraw = 5000, 
+  prior = prior_bqr, 
+  keep = 5
+)
+
+taus <- c(0.25, 0.5, 0.75)
+
+coef_mat <- do.call(rbind, lapply(seq_along(taus), function(i) {
+  draws_i <- fit_bqr[[i]][["betadraw"]]
+  colnames(draws_i) <- colnames(X)
+  as.numeric(colMeans(draws_i, na.rm = TRUE))  # vector numérico
+}))
+
+# Agregar nombres a filas y columnas
+rownames(coef_mat) <- paste0("tau = ", taus)
+colnames(coef_mat) <- colnames(X)
+```
+
+### tauBayesW Method 1: ALD (Asymmetric Laplace Distribution)
+
+```{r tauBayesW-ald, results='hide'}
+set.seed(12345)
+
+fit_ald <- bqr.svy(
+  lpsa ~ lcavol + lweight + age + lbph + svi + lcp + gleason + pgg45,
+  data     = Prostate_centered,
+  quantile = c(0.25, 0.5, 0.75),
+  method   = "ald",
+  prior    = prior_tbw,
+  niter    = 50000,
+  burnin   = 25000,
+  thin     = 5,
+  print_progress = 25000
+)
+
+coef_ald <- fit_ald$beta
+```
+
+### tauBayesW Method 2: Score Likelihood
+
+```{r tauBayesW-score, results='hide'}
+set.seed(12345)
+
+fit_score <- bqr.svy(
+  lpsa ~ lcavol + lweight + age + lbph + svi + lcp + gleason + pgg45,
+  data     = Prostate_centered,
+  quantile = c(0.25, 0.5, 0.75),
   method   = "score",
-  prior    = prior_info,
-  niter    = 2000,
-  burnin   = 500,
-  thin     = 5
+  prior    = prior_tbw,
+  niter    = 50000,
+  burnin   = 25000,
+  thin     = 5,
+  print_progress = 25000
 )
 
-# Approximate method
-fit_ap <- bqr.svy(
-  formula  = y ~ x1 + x2,
-  weights  = w,
-  data     = data_ex,
-  quantile = tau,
+coef_score <- fit_score$beta
+```
+
+### tauBayesW Method 3: Approximate Method
+
+```{r tauBayesW-approximate, results='hide'}
+set.seed(12345)
+
+fit_approximate <- bqr.svy(
+  lpsa ~ lcavol + lweight + age + lbph + svi + lcp + gleason + pgg45,
+  data     = Prostate_centered,
+  quantile = c(0.25, 0.5, 0.75),
   method   = "approximate",
-  prior    = prior_info,
-  niter    = 10000,
-  burnin   = 2500,
-  thin     = 5
+  prior    = prior_tbw,
+  niter    = 50000,
+  burnin   = 25000,
+  thin     = 5,
+  print_progress = 25000
 )
 
-# ---------------------
-# Results
-# ---------------------
-cat("\n--- ALD ---\n")
-print(fit_ald$beta)
-
-cat("\n--- Score ---\n")
-print(fit_score$beta)
-
-cat("\n--- Approximate ---\n")
-print(fit_ap$beta)
-
+coef_approximate <- fit_approximate$beta
 ```
 
-For the EM algorithm
-
+### Results comparison
 
 ```{r}
-# ---------------------
-# Example data
-# ---------------------
-set.seed(456)
-n <- 150
-p <- 2  # number of predictors (excluding intercept)
-
-# Simulated predictors
-x1 <- rnorm(n)
-x2 <- rnorm(n)
-w  <- runif(n, 0.5, 2)   # survey weights
-
-# True model: intercept + slopes
-y <- 1 + 1.8 * x1 - 1.2 * x2 + rnorm(n, 0, 1)
-
-data_ex <- data.frame(y, x1, x2, w)
-
-# ---------------------
-# Informative prior for mo.bqr.svy
-# ---------------------
-prior_info <- mo_prior_default(
-  p           = 3,                             # intercept + 2 slopes
-  beta_mean   = c(0.5, 1.5, -1.0),              # prior means
-  beta_cov    = diag(c(0.2, 0.15, 0.15)),       # small variances -> concentrated prior
-  sigma_shape = 2,                              # more informative than 0.001
-  sigma_rate  = 1,
-  names       = c("(Intercept)", "x1", "x2")
-)
-
-# ---------------------
-# Fit model with EM algorithm
-# ---------------------
-fit_mo <- mo.bqr.svy(
-  formula   = y ~ x1 + x2,
-  weights   = w,
-  data      = data_ex,
-  quantile  = c(0.25, 0.5, 0.75),  # multiple quantiles
-  algorithm = "em",
-  prior     = prior_info,
-  max_iter  = 1000,
-  epsilon   = 1e-6,
-  verbose   = FALSE
-)
-
-# ---------------------
-# Results
-# ---------------------
-summary(fit_mo)
-
+make_results_table <- function(q_index, q_label) {
+  coef_bqr   <- coef_mat[q_index, ]
+  coef_ald   <- fit_ald[["beta"]][, q_index]
+  coef_score <- fit_score[["beta"]][, q_index]
+  coef_approx<- fit_approximate[["beta"]][, q_index]
+  
+  vars <- names(coef_bqr)
+  
+  results <- data.frame(
+    Method = c("bayesQR", "tauBayesW - ALD", "tauBayesW - Score", "tauBayesW - Approximate"),
+    t(sapply(list(coef_bqr, coef_ald, coef_score, coef_approx), function(coefs) coefs[vars]))
+  )
+  
+  colnames(results) <- c("Method", vars)
+  
+  knitr::kable(results, digits = 3, caption = paste("Coefficient Estimates at quantile", q_label))
+}
 ```
 
-### Multivariate EM Algorithm
+#### For the 25th quantile
 
-We present examples for the bivariate and trivariate cases to illustrate the plotting functions, while emphasizing that the EM algorithm is applicable to response variables of arbitrary dimension.
+```{r Comparison}
+make_results_table(1, 0.25)
+```
 
-#### Bivariate Case
+#### For the 50th quantile
 
 ```{r}
-n <- 600
-x <- rnorm(n)
-w <- runif(n, 0.5, 1.5)
-
-eps1 <- rnorm(n, sd = 0.6)
-eps2 <- rnorm(n, sd = 0.5)
-mu1  <-  0.8*x
-mu2  <- -0.5*x
-Y1 <- mu1 + eps1 * (0.5 + 0.3*abs(x))
-Y2 <- mu2 + eps2 * (0.4 + 0.2*abs(x))
-
-df <- data.frame(Y1 = Y1, Y2 = Y2, x = x, w = w)
+make_results_table(2, 0.50)
 ```
 
+#### For the 75th quantile
 
 ```{r}
-fit <- mo.bqr.svy(
-  formula   = cbind(Y1, Y2) ~ x,
-  data      = df,
-  weights   = df$w,
-  quantile  = c(0.5, 0.8),
-  n_dir     = 14,
-  max_iter  = 2000,
-  epsilon   = 1e-8,
-  verbose   = FALSE
-)
+make_results_table(3, 0.75)
 ```
-
-
-```{r}
-summary(fit)
-```
-```{r}
-xgrid <- data.frame(x = c(-1, 1))
-drawQuantileRegion(
-  fit, datafile=df, response=c("Y1","Y2"),
-  xValue = xgrid,
-  paintedArea = FALSE,           
-  comparison  = TRUE,            
-  show_data   = TRUE
-)
-```
-
-#### Trivariate Case
-
-```{r}
-# --- 1) Datos simulados (3 respuestas)
-set.seed(123)
-n <- 400
-x <- rnorm(n)
-w <- runif(n, 0.5, 1.5)
-
-mu1 <-  0.7 * x
-mu2 <- -0.5 * x
-mu3 <-  0.3 * x
-
-Y1 <- mu1 + (0.5 + 0.3*abs(x)) * rnorm(n, sd = 0.6)
-Y2 <- mu2 + (0.4 + 0.2*abs(x)) * rnorm(n, sd = 0.5)
-Y3 <- mu3 + (0.3 + 0.2*abs(x)) * rnorm(n, sd = 0.7)
-
-df <- data.frame(Y1=Y1, Y2=Y2, Y3=Y3, x=x, w=w)
-```
-
-```{r}
-fit3 <- mo.bqr.svy(
-  formula   = cbind(Y1, Y2, Y3) ~ x,
-  data      = df,
-  weights   = df$w,
-  quantile  = c(0.5, 0.8),
-  n_dir     = 75,
-  max_iter  = 2000,
-  epsilon   = 1e-8,
-  verbose   = FALSE
-)
-```
-
-
-```{r}
-drawQuantileRegion_3D(
-  fit3,
-  xValue = data.frame(x = c(-1, 0, 1)),
-  opacity = 0.4,
-  datafile = df, response = c("Y1","Y2","Y3"),
-  show_points = TRUE, point_opacity = 0.2, point_size = 2,
-  nrows = 1, ncols = NULL, show_titles = TRUE
-)
-```
-
-
-## Methodology
-
-### Theoretical Background
-
-The package implements Bayesian quantile regression using the **Asymmetric Laplace Distribution (ALD)** representation:
-
-$$y_i \sim ALD(\mu_i, \sigma, \tau)$$
-
-where $\mu_i = \mathbf{x}_i^T \boldsymbol{\beta}$ and the likelihood is:
-
-$$f(y_i|\mu_i,\sigma,\tau) = \frac{\tau(1-\tau)}{\sigma} \exp\left(-\rho_\tau\left(\frac{y_i-\mu_i}{\sigma}\right)\right)$$
-
-The check function $\rho_\tau(u) = u(\tau - \mathbb{I}(u < 0))$ naturally incorporates quantile-specific loss.
-
-### Survey Weights Integration
-
-Survey weights $w_i$ are naturally incorporated in the Bayesian framework through the weighted likelihood:
-
-$$L(\boldsymbol{\beta}, \sigma) = \prod_{i=1}^n f(y_i|\mu_i, \sigma, \tau)^{w_i}$$
-
-This approach maintains design consistency while providing full posterior inference.
-
-### EM Algorithm for Multiple Quantiles
-
-The package implements an EM algorithm that:
-
-1. **E-step**: Computes posterior expectations of latent variables
-2. **M-step**: Updates parameters via weighted optimization
-
-Both MCMC and EM algorithms ensures:
-- Computational efficiency
-- Numerical stability  
-
-## Simulation and Validation
-
-```{r simulation}
-# Built-in simulation function
-sim_data <- simulate_mo_bqr_data(n = 700,
-                                 beta = c(1, 2, -0.5),
-                                 seed = 456)
-
-# Fit model to simulated data
-sim_model <- mo.bqr.svy(y ~ x1 + x2,
-                        data = sim_data$data,
-                        weights = sim_data$weights,
-                        quantile = c(0.25, 0.5, 0.75),
-                        verbose = FALSE)
-
-# Compare true vs estimated coefficients
-true_coefs <- c(1, 2, -0.5)
-estimated_coefs <- sim_model$fit$q0.5
-
-print("True coefficients:")
-print(true_coefs)
-print("Estimated coefficients quantile 0.5:")
-print(estimated_coefs) 
-```
-
-## Additional Documentation
-
-For comprehensive documentation, examples, and advanced tutorials, visit:
-
-**📖 [https://torodriguezt.github.io/tauBayesW/](https://torodriguezt.github.io/tauBayesW/)**
-
-## Dependencies
-
-tauBayesW is designed to be lightweight with minimal dependencies:
-
-- **Base R packages**: stats, grDevices, graphics
-- **C++ integration**: Rcpp, RcppEigen, RcppArmadillo
-- **Suggested**: survey (for complex survey examples)
-- **plotly**: for interactive 3d graphics
-
-This makes tauBayesW safe to use as a dependency in other packages without dependency conflicts.
-
-## Package Functions Overview
-
-| Function | Purpose | Type |
-|----------|---------|------|
-| `bqr.svy()` | Single quantile regression | Main |
-| `mo.bqr.svy()` | Multiple quantile regression | Main |
-| `plot_quantile()` | Quantile curve visualization | Plotting |
-| `plot_quantile_with_points()` | Scatter plot with quantile overlay | Plotting |
-| `convergence_check()` | MCMC convergence diagnostics | Diagnostic |
-| `simulate_mo_bqr_data()` | Data simulation for testing | Utility |
-
-
-## References
-- Nascimento, M. L., & Gonçalves, K. C. M. (2024). Bayesian Quantile Regression Models for Complex Survey Data Under Informative Sampling. Journal of Survey Statistics and Methodology, 12(4), 1105–1130. https://doi.org/10.1093/jssam/smae015
-
-- Yu, K. and Moyeed, R. A. (2001). Bayesian quantile regression. Statistics & Probability Letters, 54(4), 437-447.
----

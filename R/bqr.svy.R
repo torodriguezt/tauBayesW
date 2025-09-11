@@ -298,20 +298,3 @@ bqr.svy <- function(formula,
     return(out)
   }
 }
-
-
-#' @keywords internal
-plot.bqr.svy <- function(x, ..., datafile = NULL, response = "Y", x_var = NULL,
-                         paintedArea = TRUE, band_choice = c("minmax","symmetric"),
-                         show_data = !is.null(datafile)) {
-  drawQuantile1D(
-    fit         = x,
-    datafile    = datafile,
-    response    = response,
-    x_var       = x_var,
-    paintedArea = paintedArea,
-    band_choice = band_choice,
-    print_plot  = TRUE,
-    show_data   = show_data
-  )
-}

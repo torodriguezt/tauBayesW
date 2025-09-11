@@ -1,13 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, Copy, Play, Download, Wrench, Database, BarChart } from "lucide-react"
+import { ArrowLeft, Copy, Download, Wrench, Database, BarChart } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function UtilitiesPage() {
@@ -19,231 +18,65 @@ export default function UtilitiesPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const simulationCode = `# Data simulation for quantile regression
+  const priorCode = `# Creating priors with tauBayesW
 library(tauBayesW)
 
-# Single quantile data simulation
-sim_single <- simulate_bqr_data(
-  n = 200,
-  betas = c(1.5, 2.0, -0.5),  # intercept + 2 slopes
-  sigma = 0.8,
-  seed = 123
+# Load artificial data
+data_est <- artificial_data_est(n = 100)
+
+## 1) Basic prior creation
+# Default prior for bqr.svy (univariate model)
+my_prior <- prior(type = "univariate")
+
+# Default prior for mo.bqr.svy (multivariate model)  
+my_mo_prior <- prior(type = "multivariate")
+
+## 2) Informative priors
+# For single quantile regression
+info_prior <- prior(
+  type = "univariate",
+  p = 3,                        # Number of parameters (intercept + 2 covariates)
+  beta_mean = c(0, 1, -0.5),    # Prior means for coefficients
+  beta_cov = diag(c(1, 0.5, 0.5)), # Prior covariance matrix
+  sigma_shape = 2,              # Shape parameter for sigma
+  sigma_rate = 1,               # Rate parameter for sigma
+  names = c("(Intercept)", "X1", "X2")
 )
 
-# Examine simulated data
-str(sim_single)
-head(sim_single$data)
-
-# Multiple quantile data simulation
-sim_multi <- simulate_mo_bqr_data(
-  n = 150, 
-  p = 2,  # number of covariates (excluding intercept)
-  beta_true = c(1.0, 0.5, -0.3),  # true coefficients
-  seed = 456
-)
-
-# Check simulation results
-print(sim_multi$true_betas)
-summary(sim_multi$data)`
-
-  const priorCode = `# Prior specification functions
-# Prior specification functions / Complete example
-library(tauBayesW)
-
-## 1) Simulate data
-set.seed(123)
-n <- 200
-x1 <- rnorm(n)
-x2 <- runif(n)
-y  <- 1 + 2*x1 - 0.5*x2 + rnorm(n)
-weights <- runif(n, 0.5, 2)
-data <- data.frame(y, x1, x2)
-
-## 2) Informative prior for bqr.svy (single-output)
-prior_info <- prior_default(
-  p     = 3,                     # (Intercept), x1, x2
-  b0    = c(0.8, 1.9, -0.4),     # prior means (close to the DGP)
-  B0    = diag(0.5, 3),          # smaller variances => more informative
-  c0    = 2,                     # IG(shape) for ALD scale
-  C0    = 1,                     # IG(rate)  for ALD scale
-  names = c("(Intercept)", "x1", "x2")
-)
-
-## 3) Fit bqr.svy with three methods
-niter  <- 5000
-burnin <- 1000
-thin   <- 5
-tau    <- 0.5
-
-fit_ald <- bqr.svy(
-  y ~ x1 + x2,
-  data     = data,
-  weights  = weights,
-  quantile = tau,
-  method   = "ald",
-  prior    = prior_info,
-  niter    = niter, burnin = burnin, thin = thin
-)
-
-fit_score <- bqr.svy(
-  y ~ x1 + x2,
-  data     = data,
-  weights  = weights,
-  quantile = tau,
-  method   = "score",
-  prior    = prior_info,
-  niter    = niter, burnin = burnin, thin = thin
-)
-
-fit_aprx <- bqr.svy(
-  y ~ x1 + x2,
-  data     = data,
-  weights  = weights,
-  quantile = tau,
-  method   = "approximate",
-  prior    = prior_info,
-  niter    = niter, burnin = burnin, thin = thin
-)
-
-## 4) Priors for mo.bqr.svy (multi-output, EM)
-taus <- c(0.10, 0.25, 0.50, 0.75, 0.90)
-
-# (A) Single prior (recycled for all quantiles)
-prior_multi_single <- mo_prior_default(
-  p           = 3,
-  beta_mean   = rep(0, 3),
-  beta_cov    = diag(1000, 3),
+# For multiple quantile regression
+info_mo_prior <- prior(
+  type = "multivariate",
+  p = 3,
+  beta_mean = c(0, 1, -0.5),
+  beta_cov = diag(c(1, 0.5, 0.5)),
   sigma_shape = 2,
-  sigma_rate  = 1,
-  names       = c("(Intercept)", "x1", "x2")
+  sigma_rate = 1,
+  names = c("(Intercept)", "X1", "X2")
 )
 
-# (B1) Different priors per quantile using a generating FUNCTION
-prior_fun <- function(tau, p, names) {
-  # Example: more informative away from the median
-  sc <- 1 + 2 * abs(tau - 0.5)
-  mo_prior_default(
-    p            = p,
-    beta_mean    = rep(0, p),
-    beta_cov     = diag(sc, p),            # smaller variances when |tau-0.5| is large
-    sigma_shape  = 2 + 2 * abs(tau - 0.5), # more concentrated IG away from tau=0.5
-    sigma_rate   = 1 + abs(tau - 0.5),
-    names        = names
-  )
-}
+## 3) Using priors in models
+# Single quantile model
+fit <- bqr.svy(formula = Y ~ X1 + X2, 
+               data = data_est, 
+               prior = info_prior,
+               tau = 0.5)
 
-# (B2) Different priors per quantile using a NAMED LIST (alternative)
-# prior_list <- list(
-#   "q0.1" = mo_prior_default(3, beta_mean = c(0,0,0),   beta_cov = diag(5,3),   sigma_shape=2.2, sigma_rate=1.1,
-#                             names = c("(Intercept)","x1","x2")),
-#   "q0.25"= mo_prior_default(3, beta_mean = c(0,0.5,0), beta_cov = diag(2,3),   sigma_shape=2.5, sigma_rate=1.2,
-#                             names = c("(Intercept)","x1","x2")),
-#   "q0.5" = mo_prior_default(3, beta_mean = c(0,0,0),   beta_cov = diag(1e3,3), sigma_shape=2.0, sigma_rate=1.0,
-#                             names = c("(Intercept)","x1","x2")),
-#   "q0.75"= mo_prior_default(3, beta_mean = c(0,0,0),   beta_cov = diag(2,3),   sigma_shape=2.5, sigma_rate=1.2,
-#                             names = c("(Intercept)","x1","x2")),
-#   "q0.9" = mo_prior_default(3, beta_mean = c(0,0,0),   beta_cov = diag(5,3),   sigma_shape=2.8, sigma_rate=1.3,
-#                             names = c("(Intercept)","x1","x2"))
-# )
+# Multiple quantile model
+fit_mo <- mo.bqr.svy(formula = Y ~ X1 + X2, 
+                     data = data_est, 
+                     prior = info_mo_prior,
+                     tau = c(0.25, 0.5, 0.75))
 
-## 5) Fit mo.bqr.svy (EM by default)
-# (A) Single prior for all quantiles
-fit_multi_single <- mo.bqr.svy(
-  y ~ x1 + x2,
-  data      = data,
-  weights   = weights,
-  quantile  = taus,         # Note: the argument is 'quantile'
-  algorithm = "em",
-  prior     = prior_multi_single,
-  epsilon   = 1e-6,
-  max_iter  = 500,
-  verbose   = FALSE
-)
+## 4) Print and summary functions
+# Print the prior
+print(info_prior)
 
-# (B) Different priors per quantile (using prior_fun)
-fit_multi_perq <- mo.bqr.svy(
-  y ~ x1 + x2,
-  data      = data,
-  weights   = weights,
-  quantile  = taus,
-  algorithm = "em",
-  prior     = prior_fun,    # <- you can also pass 'prior_list' instead
-  epsilon   = 1e-6,
-  max_iter  = 500,
-  verbose   = FALSE
-)
+# Print model results
+print(fit)
 
-## 6) Quick coefficient comparison for quantile 0.5 (single-output vs multi-output)
-res <- rbind(
-  "True (sim)"                  = c(1, 2, -0.5),
-  "ALD"                         = round(fit_ald$beta,   3),
-  "Score"                       = round(fit_score$beta, 3),
-  "Approx"                      = round(fit_aprx$beta,  3),
-  "MO-EM (q=0.5, single prior)" = round(fit_multi_single$fit[[which(taus==0.5)]]$beta, 3),
-  "MO-EM (q=0.5, per-q prior)"  = round(fit_multi_perq$fit[[which(taus==0.5)]]$beta, 3)
-)
-print(res)
-
-## 7) Base plots (S3)
-plot(fit_ald)
-plot(fit_multi_single)
-plot(fit_multi_perq)
-
-## 8) Overlay points + fitted curves
-plot_quantile_with_points.bqr.svy(
-  object    = fit_ald,
-  data      = data,
-  predictor = "x1",
-  alpha     = 0.6
-)
-
-plot_quantile_with_points.mo.bqr.svy(
-  object    = fit_multi_single,
-  data      = data,
-  predictor = "x1",
-  alpha     = 0.6
-)
-
-plot_quantile_with_points.mo.bqr.svy(
-  object    = fit_multi_perq,
-  data      = data,
-  predictor = "x1",
-  alpha     = 0.6
-)
-
-## 9) (Optional) Inspect the prior used per quantile in mo.bqr.svy
-# Example: for tau = 0.75 in the per-quantile priors fit:
-# fit_multi_perq$fit[["q0.75"]]$prior
-`
-
-  const convergenceCode = `# Convergence diagnostics
-library(tauBayesW)
-
-# Simulate and fit a model
-sim <- simulate_bqr_data(n = 100, betas = c(1, 0.5, -0.3))
-model <- bqr.svy(y ~ ., data = sim$data, weights = sim$weights, 
-                 quantile = 0.5, method = "ald")
-
-# Check convergence
-conv_diagnostics <- convergence_check(model, 
-                                     rhat_threshold = 1.1,
-                                     ess_ratio_threshold = 0.1,
-                                     verbose = TRUE)
-
-# Access specific diagnostics
-print("R-hat values:")
-print(conv_diagnostics$rhat)
-
-print("Effective sample sizes:")
-print(conv_diagnostics$neff)
-
-print("Convergence status:")
-print(conv_diagnostics$converged)
-
-# For multiple quantile models
-multi_model <- mo.bqr.svy(y ~ ., data = sim$data, weights = sim$weights,
-                          quantiles = c(0.25, 0.5, 0.75))
-convergence_check(multi_model)`
+# Get model summary
+summary(fit)
+summary(fit_mo)`
 
   return (
     <div className="min-h-screen bg-background">
@@ -257,21 +90,20 @@ convergence_check(multi_model)`
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-4">Utility Functions</h1>
             <p className="text-xl text-muted-foreground mb-4">
-              Essential utilities for data simulation, prior specification, and model diagnostics
+              Essential utilities for prior specification, printing, and summary methods
             </p>
             <div className="flex gap-2 mb-4">
-              <Badge variant="secondary">Data Simulation</Badge>
-              <Badge variant="secondary">Prior Specification</Badge>
-              <Badge variant="secondary">Convergence Diagnostics</Badge>
+              <Badge variant="secondary">Prior Creation</Badge>
+              <Badge variant="secondary">Print Methods</Badge>
+              <Badge variant="secondary">Summary Methods</Badge>
             </div>
           </div>
 
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="simulation">Data Simulation</TabsTrigger>
-              <TabsTrigger value="priors">Prior Specification</TabsTrigger>
-              <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
+              <TabsTrigger value="priors">Prior Creation</TabsTrigger>
+              <TabsTrigger value="methods">Print & Summary</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
@@ -281,47 +113,47 @@ convergence_check(multi_model)`
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p>
-                    The tauBayesW package provides comprehensive utility functions to support 
-                    the quantile regression workflow, from data preparation to model validation.
+                    The tauBayesW package provides essential utility functions for 
+                    creating priors and examining model results.
                   </p>
                 </CardContent>
               </Card>
 
               <div className="grid gap-6 md:grid-cols-3">
-                <Card className="border-2 hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-300">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                        <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <CardTitle className="text-lg">Data Simulation</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="text-sm space-y-2">
-                      <li>• <code>simulate_bqr_data()</code></li>
-                      <li>• <code>simulate_mo_bqr_data()</code></li>
-                      <li>• Realistic synthetic datasets</li>
-                      <li>• Controlled parameter testing</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-
                 <Card className="border-2 hover:border-green-200 dark:hover:border-green-800 transition-all duration-300">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
                         <Wrench className="h-4 w-4 text-green-600 dark:text-green-400" />
                       </div>
-                      <CardTitle className="text-lg">Prior Specification</CardTitle>
+                      <CardTitle className="text-lg">Prior Creation</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <ul className="text-sm space-y-2">
-                      <li>• <code>prior_default()</code></li>
-                      <li>• <code>mo_prior_default()</code></li>
-                      <li>• <code>as_bqr_prior()</code></li>
-                      <li>• <code>as_mo_bqr_prior()</code></li>
+                      <li>• <code>prior()</code> - Unified prior interface</li>
+                      <li>• Default and informative priors</li>
+                      <li>• Univariate and multivariate types</li>
+                      <li>• Easy parameter specification</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-300">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                        <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <CardTitle className="text-lg">Print Methods</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="text-sm space-y-2">
+                      <li>• <code>print()</code> - Display model objects</li>
+                      <li>• Prior information display</li>
+                      <li>• Model fit results</li>
+                      <li>• Clean formatted output</li>
                     </ul>
                   </CardContent>
                 </Card>
@@ -332,80 +164,27 @@ convergence_check(multi_model)`
                       <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
                         <BarChart className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <CardTitle className="text-lg">Diagnostics</CardTitle>
+                      <CardTitle className="text-lg">Summary Methods</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <ul className="text-sm space-y-2">
-                      <li>• <code>convergence_check()</code></li>
-                      <li>• R-hat statistics</li>
-                      <li>• Effective sample sizes</li>
-                      <li>• EM convergence monitoring</li>
+                      <li>• <code>summary()</code> - Detailed model summaries</li>
+                      <li>• Parameter estimates</li>
+                      <li>• Convergence diagnostics</li>
+                      <li>• Statistical inference</li>
                     </ul>
                   </CardContent>
                 </Card>
               </div>
             </TabsContent>
 
-            <TabsContent value="simulation" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Data Simulation Functions</CardTitle>
-                  <CardDescription>
-                    Generate synthetic datasets for testing and validation
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="relative">
-                    <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
-                      <code>{simulationCode}</code>
-                    </pre>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="absolute top-2 right-2"
-                      onClick={() => copyToClipboard(simulationCode)}
-                    >
-                      {copied ? "Copied!" : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Function Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">simulate_bqr_data()</h4>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Generates data for single quantile regression analysis
-                    </p>
-                    <ul className="text-sm list-disc list-inside space-y-1">
-                      <li>Creates design matrix with specified number of covariates</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">simulate_mo_bqr_data()</h4>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Generates data optimized for multiple quantile analysis
-                    </p>
-                    <ul className="text-sm list-disc list-inside space-y-1">
-                      <li>Designed for testing multiple quantile algorithms</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
             <TabsContent value="priors" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Prior Specification</CardTitle>
+                  <CardTitle>Prior Creation</CardTitle>
                   <CardDescription>
-                    Flexible prior construction and conversion utilities
+                    How to create and use priors in tauBayesW models
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -427,45 +206,54 @@ convergence_check(multi_model)`
 
               <Alert>
                 <AlertDescription>
-                  Prior specification is crucial for Bayesian inference. Use prior_default() 
-                  and mo_prior_default() to create well-structured priors, and conversion 
-                  functions to adapt between different model types.
+                  The <code>prior()</code> function automatically creates the appropriate prior 
+                  object based on the model type. Use <code>type = "univariate"</code> for bqr.svy 
+                  models and <code>type = "multivariate"</code> for mo.bqr.svy models.
                 </AlertDescription>
               </Alert>
             </TabsContent>
 
-            <TabsContent value="diagnostics" className="space-y-6">
+            <TabsContent value="methods" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Convergence Diagnostics</CardTitle>
+                  <CardTitle>Print and Summary Methods</CardTitle>
                   <CardDescription>
-                    Comprehensive convergence assessment for MCMC and EM algorithms
+                    Display and examine model results
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="relative">
-                    <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
-                      <code>{convergenceCode}</code>
-                    </pre>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="absolute top-2 right-2"
-                      onClick={() => copyToClipboard(convergenceCode)}
-                    >
-                      {copied ? "Copied!" : <Copy className="h-4 w-4" />}
-                    </Button>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="border-l-4 border-blue-500 pl-4">
+                      <h4 className="font-semibold">print() Method</h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Displays basic information about priors and fitted models in a clean format.
+                      </p>
+                      <code className="text-sm bg-muted px-2 py-1 rounded mt-2 block">
+                        print(fit)
+                      </code>
+                    </div>
+
+                    <div className="border-l-4 border-green-500 pl-4">
+                      <h4 className="font-semibold">summary() Method</h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Provides detailed statistical summaries including parameter estimates, 
+                        credible intervals, and convergence diagnostics.
+                      </p>
+                      <code className="text-sm bg-muted px-2 py-1 rounded mt-2 block">
+                        summary(fit)
+                      </code>
+                    </div>
                   </div>
+
+                  <Alert>
+                    <AlertDescription>
+                      Both <code>print()</code> and <code>summary()</code> methods work with 
+                      prior objects, bqr.svy models, and mo.bqr.svy models to provide 
+                      appropriate output for each object type.
+                    </AlertDescription>
+                  </Alert>
                 </CardContent>
               </Card>
-
-              <Alert>
-                <AlertDescription>
-                  Regular convergence checking is essential for reliable Bayesian inference. 
-                  The convergence_check() function provides automated assessment with 
-                  customizable thresholds for different analysis requirements.
-                </AlertDescription>
-              </Alert>
             </TabsContent>
           </Tabs>
         </div>

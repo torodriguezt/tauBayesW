@@ -7,18 +7,18 @@
 \method{summary}{bqr.svy}(object, probs = c(0.025, 0.975), digits = 3, ...)
 }
 \arguments{
-\item{object}{Objeto \code{bqr.svy}.}
+\item{object}{Objeto \code{bqr.svy} (puede contener uno o varios cuantiles).}
 
-\item{probs}{Probabilidades para IC creíbles. Default \code{c(0.025, 0.975)}.}
+\item{probs}{Probabilidades para IC cre??bles. Default \code{c(0.025, 0.975)}.}
 
-\item{digits}{Decimales al imprimir (almacenamos sin redondear; se redondea en print).}
+\item{digits}{Decimales al imprimir (se redondea solo en print).}
 
 \item{...}{Ignorado.}
 }
 \value{
-Objeto de clase \code{summary.bqr.svy}.
+Objeto de clase \code{summary.bqr.svy} con un bloque por cada \eqn{\tau}.
 }
 \description{
 Genera un resumen con media a posterior, intervalos de credibilidad,
-\eqn{\hat{R}} y tamaño muestral efectivo por parámetro.
+\eqn{\hat{R}} y tama??o muestral efectivo por par??metro.
 }

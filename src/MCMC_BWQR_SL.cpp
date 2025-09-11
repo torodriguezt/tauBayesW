@@ -172,8 +172,6 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
   return List::create(
     _["beta"]        = beta_out,
     _["accept_rate"] = double(accept) / n_mcmc,
-    _["ridge_X"]     = ridge_X,
-    _["ridge_P"]     = ridge_P,
     _["call"]        = "MCMC_BWQR_SL_STABLE"
   );
 }

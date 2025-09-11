@@ -2,7 +2,7 @@
 % Please edit documentation in R/summary_bqr_svy.R
 \name{summary.bwqr_fit}
 \alias{summary.bwqr_fit}
-\title{Resumen para objetos bwqr_fit (con Rhat y ESS)}
+\title{Resumen para objetos bwqr_fit (un cuantil)}
 \usage{
 \method{summary}{bwqr_fit}(object, probs = c(0.025, 0.975), digits = 3, max_lag = 200, ...)
 }
@@ -11,9 +11,9 @@
 
 \item{probs}{Probabilidades para IC.}
 
-\item{digits}{Decimales para impresión.}
+\item{digits}{Decimales para impresi??n.}
 
-\item{max_lag}{Máximo rezago autocorrelación.}
+\item{max_lag}{M??ximo rezago para autocorrelaci??n (si lo usa summarise_draws_custom).}
 
 \item{...}{Ignorado.}
 }
@@ -21,5 +21,5 @@
 Objeto de clase \code{summary.bwqr_fit}.
 }
 \description{
-Resumen para objetos bwqr_fit (con Rhat y ESS)
+Resumen para objetos bwqr_fit (un cuantil)
 }

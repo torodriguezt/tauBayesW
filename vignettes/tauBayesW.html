@@ -1,0 +1,1995 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="tauBayesW Package" />
+
+<meta name="date" content="2025-09-10" />
+
+<title>tauBayesW</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">tauBayesW</h1>
+<h4 class="author">tauBayesW Package</h4>
+<h4 class="date">2025-09-10</h4>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#introduction" id="toc-introduction">Introduction</a></li>
+<li><a href="#taubayesw-usage-examples" id="toc-taubayesw-usage-examples">tauBayesW usage examples</a></li>
+<li><a href="#creating-priors" id="toc-creating-priors">Creating
+Priors</a></li>
+<li><a href="#fitting-models-with-different-methods" id="toc-fitting-models-with-different-methods">Fitting models with
+different methods</a></li>
+<li><a href="#model-output-summary-and-print-methods" id="toc-model-output-summary-and-print-methods">Model Output: Summary
+and Print Methods</a></li>
+<li><a href="#summary-methods-convergence-diagnostics" id="toc-summary-methods-convergence-diagnostics">Summary Methods:
+Convergence Diagnostics</a>
+<ul>
+<li><a href="#ald-method-summary" id="toc-ald-method-summary">ALD Method
+Summary</a></li>
+<li><a href="#score-method-summary" id="toc-score-method-summary">Score
+Method Summary</a></li>
+<li><a href="#approximate-method-summary" id="toc-approximate-method-summary">Approximate Method Summary</a></li>
+</ul></li>
+<li><a href="#convergence-diagnostics" id="toc-convergence-diagnostics">Convergence Diagnostics</a></li>
+<li><a href="#visualization-functions" id="toc-visualization-functions">Visualization functions</a>
+<ul>
+<li><a href="#fitted-regression-plot" id="toc-fitted-regression-plot">1-. Fitted regression plot</a></li>
+<li><a href="#trace-plots" id="toc-trace-plots">2. Trace Plots</a></li>
+<li><a href="#density-plots" id="toc-density-plots">3. Density
+Plots</a></li>
+<li><a href="#multi-panel-layouts" id="toc-multi-panel-layouts">Multi-Panel Layouts</a></li>
+</ul></li>
+<li><a href="#comparison-with-bayesqr" id="toc-comparison-with-bayesqr">Comparison with bayesQR</a>
+<ul>
+<li><a href="#simulation-study" id="toc-simulation-study">Simulation
+Study</a>
+<ul>
+<li><a href="#simulation-functions" id="toc-simulation-functions">Simulation Functions</a></li>
+<li><a href="#simulation-execution" id="toc-simulation-execution">Simulation Execution</a></li>
+<li><a href="#method-comparison" id="toc-method-comparison">Method
+Comparison</a></li>
+<li><a href="#simulation-results" id="toc-simulation-results">Simulation
+Results</a></li>
+</ul></li>
+<li><a href="#prostate-dataset" id="toc-prostate-dataset">Prostate
+Dataset</a></li>
+<li><a href="#prior-specification" id="toc-prior-specification">Prior
+Specification</a></li>
+<li><a href="#model-fitting" id="toc-model-fitting">Model Fitting</a>
+<ul>
+<li><a href="#bayesqr-reference-method" id="toc-bayesqr-reference-method">bayesQR (Reference Method)</a></li>
+<li><a href="#taubayesw-method-1-ald-asymmetric-laplace-distribution" id="toc-taubayesw-method-1-ald-asymmetric-laplace-distribution">tauBayesW
+Method 1: ALD (Asymmetric Laplace Distribution)</a></li>
+<li><a href="#taubayesw-method-2-score-likelihood" id="toc-taubayesw-method-2-score-likelihood">tauBayesW Method 2: Score
+Likelihood</a></li>
+<li><a href="#taubayesw-method-3-approximate-method" id="toc-taubayesw-method-3-approximate-method">tauBayesW Method 3:
+Approximate Method</a></li>
+<li><a href="#results-comparison" id="toc-results-comparison">Results
+comparison</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</div>
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>The tauBayesW package implements three MCMC approaches and a
+multiple-output EM algorithm:</p>
+<ul>
+<li><strong>Asymmetric Laplace Distribution</strong>: Traditional
+approach using ALD likelihood</li>
+<li><strong>Score</strong>: Score-based likelihood approach for complex
+survey designs</li>
+<li><strong>Approximate</strong>: Fast approximate method for large
+datasets</li>
+<li><strong>Expected Maximization Algorithm</strong>: For the
+multivariate case</li>
+</ul>
+<p>Also the vignette compares the performance of
+<strong>bayesQR</strong> with the three MCMC methods implemented in
+<strong>tauBayesW</strong> using a simulated dataset and the classic
+Prostate cancer dataset included on the bayesQR package. We’ll estimate
+the 25th 50th and 75th quantile and compare the coefficient estimates
+across all methods.</p>
+</div>
+<div id="taubayesw-usage-examples" class="section level2">
+<h2>tauBayesW usage examples</h2>
+<p>Let’s begin showing how to use tauBayesW methods:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(tauBayesW)</span></code></pre></div>
+</div>
+<div id="creating-priors" class="section level2">
+<h2>Creating Priors</h2>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># Create a prior for p=5 coefficients</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>my_prior <span class="ot">&lt;-</span> tauBayesW<span class="sc">::</span><span class="fu">prior</span>(</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>  <span class="at">p =</span> <span class="dv">5</span>,                                    <span class="co"># Number of parameters</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>  <span class="at">type =</span> <span class="st">&quot;univariate&quot;</span>,                      <span class="co"># Prior type</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>  <span class="at">beta_mean =</span> <span class="fu">rep</span>(<span class="dv">0</span>, <span class="dv">5</span>),                   <span class="co"># Prior mean for coefficients</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>  <span class="at">beta_cov =</span> <span class="fu">diag</span>(<span class="dv">1000</span>, <span class="dv">5</span>),               <span class="co"># Prior covariance matrix</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  <span class="at">sigma_shape =</span> <span class="fl">0.001</span>,                     <span class="co"># Shape parameter for sigma (ALD only)</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>  <span class="at">sigma_rate =</span> <span class="fl">0.001</span>,                      <span class="co"># Rate parameter for sigma (ALD only)</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>  <span class="at">names =</span> <span class="fu">c</span>(<span class="st">&quot;Int&quot;</span>, <span class="st">&quot;x1&quot;</span>, <span class="st">&quot;x2&quot;</span>, <span class="st">&quot;x3&quot;</span>, <span class="st">&quot;x4&quot;</span>) <span class="co"># Parameter names</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>)</span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="fu">print</span>(my_prior)</span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="co">#&gt; $b0</span></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="co">#&gt; Int  x1  x2  x3  x4 </span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co">#&gt;   0   0   0   0   0 </span></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="co">#&gt; $B0</span></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="co">#&gt;      Int   x1   x2   x3   x4</span></span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a><span class="co">#&gt; Int 1000    0    0    0    0</span></span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a><span class="co">#&gt; x1     0 1000    0    0    0</span></span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a><span class="co">#&gt; x2     0    0 1000    0    0</span></span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a><span class="co">#&gt; x3     0    0    0 1000    0</span></span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a><span class="co">#&gt; x4     0    0    0    0 1000</span></span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a><span class="co">#&gt; $c0</span></span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="co">#&gt; [1] 0.001</span></span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="co">#&gt; $C0</span></span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a><span class="co">#&gt; [1] 0.001</span></span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a><span class="co">#&gt; attr(,&quot;class&quot;)</span></span>
+<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a><span class="co">#&gt; [1] &quot;bqr_prior&quot;</span></span></code></pre></div>
+</div>
+<div id="fitting-models-with-different-methods" class="section level2">
+<h2>Fitting models with different methods</h2>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># Example data</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">data</span>(mtcars)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># Method 1: ALD (Asymmetric Laplace Distribution)</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>fit_ald <span class="ot">&lt;-</span> <span class="fu">bqr.svy</span>(</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  mpg <span class="sc">~</span> wt <span class="sc">+</span> hp <span class="sc">+</span> cyl,</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="at">data =</span> mtcars,</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  <span class="at">quantile =</span> <span class="fl">0.5</span>,</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="at">method =</span> <span class="st">&quot;ald&quot;</span>,</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="at">niter =</span> <span class="dv">10000</span>,</span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>  <span class="at">burnin =</span> <span class="dv">5000</span>,</span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>  <span class="at">thin =</span> <span class="dv">5</span>,</span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>  <span class="at">print_progress =</span> <span class="dv">5000</span>  <span class="co"># Print every 5000 iterations</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>)</span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co">#&gt; Iteration 5000 of 10000</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="co"># Method 2: Score Likelihood</span></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>fit_score <span class="ot">&lt;-</span> <span class="fu">bqr.svy</span>(</span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a>  mpg <span class="sc">~</span> wt <span class="sc">+</span> hp <span class="sc">+</span> cyl,</span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>  <span class="at">data =</span> mtcars,</span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>  <span class="at">quantile =</span> <span class="fl">0.5</span>,</span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>  <span class="at">method =</span> <span class="st">&quot;score&quot;</span>,</span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>  <span class="at">niter =</span> <span class="dv">10000</span>,</span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a>  <span class="at">burnin =</span> <span class="dv">5000</span>,</span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a>  <span class="at">thin =</span> <span class="dv">5</span>,</span>
+<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a>  <span class="at">print_progress =</span> <span class="dv">5000</span></span>
+<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a>)</span>
+<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a><span class="co">#&gt; Iteration 5000 of 10000</span></span>
+<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a><span class="co">#&gt; Iteration 10000 of 10000</span></span>
+<span id="cb3-30"><a href="#cb3-30" tabindex="-1"></a></span>
+<span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a><span class="co"># Method 3: Approximate Method</span></span>
+<span id="cb3-32"><a href="#cb3-32" tabindex="-1"></a>fit_approximate <span class="ot">&lt;-</span> <span class="fu">bqr.svy</span>(</span>
+<span id="cb3-33"><a href="#cb3-33" tabindex="-1"></a>  mpg <span class="sc">~</span> wt <span class="sc">+</span> hp <span class="sc">+</span> cyl,</span>
+<span id="cb3-34"><a href="#cb3-34" tabindex="-1"></a>  <span class="at">data =</span> mtcars,</span>
+<span id="cb3-35"><a href="#cb3-35" tabindex="-1"></a>  <span class="at">quantile =</span> <span class="fl">0.5</span>,</span>
+<span id="cb3-36"><a href="#cb3-36" tabindex="-1"></a>  <span class="at">method =</span> <span class="st">&quot;approximate&quot;</span>,</span>
+<span id="cb3-37"><a href="#cb3-37" tabindex="-1"></a>  <span class="at">niter =</span> <span class="dv">10000</span>,</span>
+<span id="cb3-38"><a href="#cb3-38" tabindex="-1"></a>  <span class="at">burnin =</span> <span class="dv">5000</span>,</span>
+<span id="cb3-39"><a href="#cb3-39" tabindex="-1"></a>  <span class="at">thin =</span> <span class="dv">5</span>,</span>
+<span id="cb3-40"><a href="#cb3-40" tabindex="-1"></a>  <span class="at">print_progress =</span> <span class="dv">5000</span>  <span class="co"># Print every 5000 iterations</span></span>
+<span id="cb3-41"><a href="#cb3-41" tabindex="-1"></a>)</span>
+<span id="cb3-42"><a href="#cb3-42" tabindex="-1"></a><span class="co">#&gt; Iteration 0 of 10000</span></span>
+<span id="cb3-43"><a href="#cb3-43" tabindex="-1"></a><span class="co">#&gt; Iteration 5000 of 10000</span></span></code></pre></div>
+</div>
+<div id="model-output-summary-and-print-methods" class="section level2">
+<h2>Model Output: Summary and Print Methods</h2>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># Print method - shows basic model information</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="fu">data.frame</span>(</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>    <span class="at">Information =</span> <span class="fu">c</span>(<span class="st">&quot;Method&quot;</span>, <span class="st">&quot;Quantiles&quot;</span>, <span class="st">&quot;Draws&quot;</span>, <span class="st">&quot;Burn-in&quot;</span>, <span class="st">&quot;Thin&quot;</span>),</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>    <span class="at">Value =</span> <span class="fu">c</span>(fit_ald<span class="sc">$</span>method, </span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>              <span class="fu">paste</span>(fit_ald<span class="sc">$</span>quantile, <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>),</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>              <span class="fu">length</span>(fit_ald<span class="sc">$</span>draws),</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>              fit_ald<span class="sc">$</span>warmup, </span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>              fit_ald<span class="sc">$</span>thin)</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  ),</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>  <span class="at">caption =</span> <span class="st">&quot;Model Information - ALD Method&quot;</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>)</span></code></pre></div>
+<table>
+<caption>Model Information - ALD Method</caption>
+<thead>
+<tr class="header">
+<th align="left">Information</th>
+<th align="left">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Method</td>
+<td align="left">ald</td>
+</tr>
+<tr class="even">
+<td align="left">Quantiles</td>
+<td align="left">0.5</td>
+</tr>
+<tr class="odd">
+<td align="left">Draws</td>
+<td align="left">5000</td>
+</tr>
+<tr class="even">
+<td align="left">Burn-in</td>
+<td align="left">5000</td>
+</tr>
+<tr class="odd">
+<td align="left">Thin</td>
+<td align="left">5</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># Summary method - detailed convergence diagnostics will be shown in summary section</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># Access posterior draws - show structure</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(fit_ald<span class="sc">$</span>draws)) {</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>    <span class="fu">head</span>(<span class="fu">as.data.frame</span>(fit_ald<span class="sc">$</span>draws), <span class="dv">6</span>),</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>    <span class="at">caption =</span> <span class="st">&quot;First 6 posterior draws (ALD Method)&quot;</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>    <span class="at">digits =</span> <span class="dv">4</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  )</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>}</span></code></pre></div>
+<table>
+<caption>First 6 posterior draws (ALD Method)</caption>
+<thead>
+<tr class="header">
+<th align="right">(Intercept)</th>
+<th align="right">wt</th>
+<th align="right">hp</th>
+<th align="right">cyl</th>
+<th align="right">sigma</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">38.9820</td>
+<td align="right">-2.6261</td>
+<td align="right">-0.0029</td>
+<td align="right">-1.7386</td>
+<td align="right">0.6151</td>
+</tr>
+<tr class="even">
+<td align="right">39.6304</td>
+<td align="right">-2.6519</td>
+<td align="right">-0.0056</td>
+<td align="right">-1.7061</td>
+<td align="right">0.6601</td>
+</tr>
+<tr class="odd">
+<td align="right">39.7099</td>
+<td align="right">-2.4089</td>
+<td align="right">-0.0053</td>
+<td align="right">-1.8695</td>
+<td align="right">0.7842</td>
+</tr>
+<tr class="even">
+<td align="right">38.9766</td>
+<td align="right">-3.1060</td>
+<td align="right">-0.0140</td>
+<td align="right">-1.2067</td>
+<td align="right">0.6641</td>
+</tr>
+<tr class="odd">
+<td align="right">38.5246</td>
+<td align="right">-3.1516</td>
+<td align="right">0.0001</td>
+<td align="right">-1.3478</td>
+<td align="right">0.8177</td>
+</tr>
+<tr class="even">
+<td align="right">38.4525</td>
+<td align="right">-2.9550</td>
+<td align="right">-0.0081</td>
+<td align="right">-1.3283</td>
+<td align="right">0.6053</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="summary-methods-convergence-diagnostics" class="section level2">
+<h2>Summary Methods: Convergence Diagnostics</h2>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># Function to extract summary information in a structured way</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>extract_summary_info <span class="ot">&lt;-</span> <span class="cf">function</span>(fit, method_name) {</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="co"># Create a data frame with key information</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  info_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>    <span class="at">Metric =</span> <span class="fu">c</span>(<span class="st">&quot;Method&quot;</span>, <span class="st">&quot;Quantiles&quot;</span>, <span class="st">&quot;Iterations&quot;</span>, <span class="st">&quot;Burn-in&quot;</span>, <span class="st">&quot;Acceptance Rate&quot;</span>),</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>    <span class="at">Value =</span> <span class="fu">c</span>(</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>      method_name,</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>      <span class="fu">paste</span>(fit<span class="sc">$</span>quantile, <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>),</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>      <span class="fu">length</span>(fit<span class="sc">$</span>draws),</span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>      fit<span class="sc">$</span>warmup,</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>      <span class="fu">ifelse</span>(<span class="sc">!</span><span class="fu">is.null</span>(fit<span class="sc">$</span>accept_rate), <span class="fu">sprintf</span>(<span class="st">&quot;%.3f&quot;</span>, fit<span class="sc">$</span>accept_rate), <span class="st">&quot;N/A&quot;</span>)</span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>    )</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>  )</span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a>  </span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>  <span class="fu">return</span>(info_df)</span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a>}</span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a></span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a><span class="co"># Extract and display summaries for each method</span></span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a>methods_info <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a>  <span class="st">&quot;ALD&quot;</span> <span class="ot">=</span> <span class="fu">extract_summary_info</span>(fit_ald, <span class="st">&quot;ALD&quot;</span>),</span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a>  <span class="st">&quot;Score&quot;</span> <span class="ot">=</span> <span class="fu">extract_summary_info</span>(fit_score, <span class="st">&quot;Score&quot;</span>), </span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a>  <span class="st">&quot;Approximate&quot;</span> <span class="ot">=</span> <span class="fu">extract_summary_info</span>(fit_approximate, <span class="st">&quot;Approximate&quot;</span>)</span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a>)</span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a></span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a><span class="cf">for</span> (method_name <span class="cf">in</span> <span class="fu">names</span>(methods_info)) {</span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">### &quot;</span>, method_name, <span class="st">&quot; Method Summary</span><span class="sc">\n\n</span><span class="st">&quot;</span>)</span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a>  <span class="fu">print</span>(knitr<span class="sc">::</span><span class="fu">kable</span>(methods_info[[method_name]], </span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a>                    <span class="at">caption =</span> <span class="fu">paste</span>(method_name, <span class="st">&quot;Method - Model Summary&quot;</span>)))</span>
+<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a>}</span></code></pre></div>
+<div id="ald-method-summary" class="section level3">
+<h3>ALD Method Summary</h3>
+<table>
+<caption>ALD Method - Model Summary</caption>
+<thead>
+<tr class="header">
+<th align="left">Metric</th>
+<th align="left">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Method</td>
+<td align="left">ALD</td>
+</tr>
+<tr class="even">
+<td align="left">Quantiles</td>
+<td align="left">0.5</td>
+</tr>
+<tr class="odd">
+<td align="left">Iterations</td>
+<td align="left">5000</td>
+</tr>
+<tr class="even">
+<td align="left">Burn-in</td>
+<td align="left">5000</td>
+</tr>
+<tr class="odd">
+<td align="left">Acceptance Rate</td>
+<td align="left">NA</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="score-method-summary" class="section level3">
+<h3>Score Method Summary</h3>
+<table>
+<caption>Score Method - Model Summary</caption>
+<thead>
+<tr class="header">
+<th align="left">Metric</th>
+<th align="left">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Method</td>
+<td align="left">Score</td>
+</tr>
+<tr class="even">
+<td align="left">Quantiles</td>
+<td align="left">0.5</td>
+</tr>
+<tr class="odd">
+<td align="left">Iterations</td>
+<td align="left">6000</td>
+</tr>
+<tr class="even">
+<td align="left">Burn-in</td>
+<td align="left">5000</td>
+</tr>
+<tr class="odd">
+<td align="left">Acceptance Rate</td>
+<td align="left">0.256</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="approximate-method-summary" class="section level3">
+<h3>Approximate Method Summary</h3>
+<table>
+<caption>Approximate Method - Model Summary</caption>
+<thead>
+<tr class="header">
+<th align="left">Metric</th>
+<th align="left">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Method</td>
+<td align="left">Approximate</td>
+</tr>
+<tr class="even">
+<td align="left">Quantiles</td>
+<td align="left">0.5</td>
+</tr>
+<tr class="odd">
+<td align="left">Iterations</td>
+<td align="left">4000</td>
+</tr>
+<tr class="even">
+<td align="left">Burn-in</td>
+<td align="left">5000</td>
+</tr>
+<tr class="odd">
+<td align="left">Acceptance Rate</td>
+<td align="left">0.177</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="convergence-diagnostics" class="section level2">
+<h2>Convergence Diagnostics</h2>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co"># Check acceptance rates and other diagnostics</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>methods <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;ALD&quot;</span>, <span class="st">&quot;Score&quot;</span>, <span class="st">&quot;Approximate&quot;</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>fits <span class="ot">&lt;-</span> <span class="fu">list</span>(fit_ald, fit_score, fit_approximate)</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co"># Create a comprehensive diagnostics table</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>diagnostics_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>  <span class="at">Method =</span> methods,</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>  <span class="at">Acceptance_Rate =</span> <span class="fu">sapply</span>(fits, <span class="cf">function</span>(fit) {</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>    <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(fit<span class="sc">$</span>accept_rate)) <span class="fu">sprintf</span>(<span class="st">&quot;%.3f&quot;</span>, fit<span class="sc">$</span>accept_rate) <span class="cf">else</span> <span class="st">&quot;N/A&quot;</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>  }),</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>  <span class="at">Posterior_Samples =</span> <span class="fu">sapply</span>(fits, <span class="cf">function</span>(fit) {</span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>    <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(fit<span class="sc">$</span>draws)) <span class="fu">nrow</span>(<span class="fu">as.matrix</span>(fit<span class="sc">$</span>draws)) <span class="cf">else</span> <span class="st">&quot;N/A&quot;</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>  })</span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>)</span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a></span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(diagnostics_df, </span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a>            <span class="at">caption =</span> <span class="st">&quot;Model Diagnostics Summary for All Methods&quot;</span>,</span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a>            <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">&quot;Method&quot;</span>, <span class="st">&quot;Acceptance Rate&quot;</span>, <span class="st">&quot;Posterior Samples&quot;</span>))</span></code></pre></div>
+<table>
+<caption>Model Diagnostics Summary for All Methods</caption>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="left">Acceptance Rate</th>
+<th align="right">Posterior Samples</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">ALD</td>
+<td align="left">NA</td>
+<td align="right">1000</td>
+</tr>
+<tr class="even">
+<td align="left">Score</td>
+<td align="left">0.256</td>
+<td align="right">1000</td>
+</tr>
+<tr class="odd">
+<td align="left">Approximate</td>
+<td align="left">0.177</td>
+<td align="right">1000</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="visualization-functions" class="section level2">
+<h2>Visualization functions</h2>
+<p>The <code>tauBayesW</code> package provides comprehensive
+visualization capabilities through its <code>plot()</code> method. The
+plotting system supports both <strong>base R graphics</strong> (default)
+and <strong>ggplot2</strong> (when <code>use_ggplot = TRUE</code>).</p>
+<div id="fitted-regression-plot" class="section level3">
+<h3>1-. Fitted regression plot</h3>
+<p>Example plotting the fitted regresion line using ggplot and showing
+the credible interval on the plot.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">plot</span>(fit_ald, <span class="at">use_ggplot =</span> <span class="cn">TRUE</span>, <span class="at">show_ci  =</span><span class="cn">TRUE</span>)</span></code></pre></div>
+<p><img role="img" src="data:image/png;base64,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" /><!-- --></p>
+<p>It is possible to hide the points from the plot using the argument
+add_points = FALSE</p>
+</div>
+<div id="trace-plots" class="section level3">
+<h3>2. Trace Plots</h3>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># Basic quantile plot (requires x_var)</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="fu">plot</span>(fit_ald, <span class="at">type =</span> <span class="st">&quot;trace&quot;</span>, <span class="at">x_var =</span> <span class="st">&quot;hp&quot;</span>)</span></code></pre></div>
+<p><img role="img" src="data:image/png;base64,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" /><!-- --></p>
+</div>
+<div id="density-plots" class="section level3">
+<h3>3. Density Plots</h3>
+<p>Show both coefficients and quantile fits together:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># Combined view</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="fu">plot</span>(fit_ald, <span class="at">type =</span> <span class="st">&quot;density&quot;</span>, <span class="at">x_var =</span> <span class="st">&quot;wt&quot;</span>)</span></code></pre></div>
+<p><img role="img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAqAAAAHgCAMAAABNUi8GAAABEVBMVEUAAAAAADoAAGYAAIsAOjoAOmYAOpAAZrY6AAA6ADo6OgA6Ojo6OmY6ZpA6ZrY6kLY6kNtNTU1NTW5NTY5Nbm5NbqtNjshmAABmADpmOgBmOjpmkJBmkLZmkNtmtrZmtttmtv9uTU1uTW5uTY5ubqtuq+SOTU2OTW6ObquOyP+QOgCQZgCQZjqQkDqQkGaQtpCQttuQtv+Q29uQ2/+rbk2rbo6r5P+2ZgC2Zjq2ZpC227a229u22/+2/9u2///A3ujG5O7Ijk3Iq27I5KvI///bkDrbkGbbtmbbtpDb27bb29vb/9vb///kq27k///r6+v/AAD/tmb/yI7/25D/27b/5Kv//7b//8j//9v//+T///9bl4O5AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAcP0lEQVR4nO3dC3vcxnWH8aU3Fhk3F9KKTNu9WLYrKVLdxK0crVu71jIR46TVhaREUdrv/0GKwXUADIDBYGbOObP/90nrFZe7Mxr+NFhgKWq1Q4hxK+oJIDQWgCLWAShiHYAi1gEoYh2AItYBKGIdgCLWCQR6vir61Y8jn/Tuv34yfvjR6tbzyac++PXYU/eebWCsorenB48No44+ZmLU7KGvjz5oHq+GmHjI99lv6p+aKZS/z8P2XfXN1rMTJxjoauTL8uYz8xLbAc2e+q7NTIpnGxqrespbz/ujjj9mtPyh2TMet4aYmmflsWhTA9Xuam62np04yUBHvi6blROA5qmn9iTbsfKvdR+o4/yah2oopzmdrw6+3f11tar+1L09rR+h3dW6OUE+XiKB5l/cN6eFor99vlr9ojhG/fWj8vCc7xBqo1EHrd88zx908MfPVh/8UFJpHlTe8aP+1H//TDv8VQ//z+wXHz5uDZPDy8c6+KjYny7V11f3eKkmWXxAe47B+WVP+nP27L/4YtcaPkP539mMP2x+a6+Pam5qiIxcs0lm97X+lGXDH1b/f1d+Qvlg7S79s7Rnp04uUPU1fVxvekpEeTO7t/wqll+2D3+q7rv1f4/0z2xulqCqp84emH2k9/CVPmJxoC2BfvDvxSM39Yf1yVZA6+cYnN/z6uh7vNOH35geeqwNMQq0/NxNPavsj9E/FK/htbv0z9KenTq5QP9+qv6bfTGKr/2xWtXD57uf8y9ucRzcqC0p+4zjHMCtH3f/W1DRHlTd0Xrq8kb74dn21R2meLZNOY+7+df7sPVCt96WivGq5xicn7Lz2+dvTjvDZyqz2z/nADfVH4VyjGpnPK9flnSBFs+hvazY1Hdrd7U+a8PmGC8SqPYadNPsXNkKf/hD+Tn5h8t9IMd2XrwC00iVn3S+0o5mGtD8sNl5eDbC4U4bRnu2gsnlqnNo1MVqzzE4v+oV5q9/aN27Ke7dlG7ryTdD6EC7dYG+++Yo+8PwN/WndBgol/N4yUDrV3fFV6c4Cy1eWVa7Wv2J5Zcv/3z9Qe2vawto/+G5BW0YnXsJqbPxFF/1+jVo9Rzj86sfqh3X83mdd283Q8wBWv9m89+jEejwk8VOLtD8NKXaPvKt681nxR3/US7z5coMoPWgYaD9hxcPbIbRgapjfP+l2yhQ8/yqMxn93tJWPuFpoJOH+GoAAA3SubbQrc0ws/OHj7Qjv34uOm8HzT6jdaLcwtUMowNVtPpf1qkd1Di/+qH1vfN20MmTpKLL5mVM9yQJQJekA+29Itu9+7f6hVrlqXiQBqD9GrQP9M0jdTrSf7j2kXyY1rOdq2tN3VOLUaCG+ZVPdvmrb1v3Gl6DzgBaDN9szq8/P6r2Su2u1mcB6IJaQLUT8vwEWB2Aawyb1cEX6npp/YGd6Sy+BVQ7rvYfnpvRhtHhFSxyKto22D5JaoAOzU89+2/U8+bH8vpe/Sy+/MwZJ0nqri+KS/DVEeTg293PR+WzfdFcqK9u4iRpSS2g+iXN7xtblyvtOmNx8VI/hLaug5qA5m919h5eWGiGKZ6tGCs/eapfIJgvMzXPMTQ//V1I7d7qOmi+u65WrfOx/mWmXq03MYs/oNVv3/hWJy4zLaoNtHhT6J/zm+pNmOJ7SNSbMB/+uHvzTfalyL/zo/Mar3mQCWj1zSLdh5ebVT1MeVQsxlJyimNo+0J9cdzsAB2aX/nsxdSae7MN7X++KW8XD9Xe3zxvvQw39u77o+LbQMqpvfm8eo+quUu/yejNeIFAuda7CFp80MeLuf4R9/VR/bx+hhh6duoA1FfZq1LD67ZsL/LwrnYf6GXrm0V8v3F+yeYID6Ceyl8wmg6L59p3uTnXB7ppfbudhyEGn504APVTBvTgt+Y7PJwP94B2vmHZ8yk3vmEZIcsAFLEOQBHrABSxDkAR6wAUsS4c0FfBnjlCkicvee79yQOoMcmTlzx3ALVM8uQlzx1ALZM8eclzB1DLJE9e8twB1DLJk5c8dwC1TPLkJc8dQC2bmvzFRZRpOJXWwgOoMQAlCkDtAlCiZgF9/93J7Wf1zZN7C4eSFIASNQvo2Sfqf8XNOy+vv3qybChJAShRc4DePHiyu/76WXVz8VCSAlCi5gBVOEuZpdPqSdDFBfUMUm8e0Ks7fz45ebjwz4KksIMS5biDXmVnSFcf4zWoiCTP3RnonZfZify8LTStdRKU5Lm7niSp/wBo1XodaxpOpbXwtpeZskP87Wcjn2sxlKRGJr/OizeV2aW18GNAb+7nF+oznPmFepwkqdZr7kLTWni81WlscPIZzW0WgAYKQO0amnzpk7XQtBYeQI0NTL72yVloWgsPoMYGgZY8Ly74vgxNa+EB1Jh58s3+eXGxZSs0rYUHUGMDQLcaULYH+bQWHkCNGSe/bgPlKjSthQdQY6bJaz4LoFsA9R6A2mUJlKXQtBYeQI3ZAeUpNK2FB1BjhsmvATRCAGqXEei2F4D6DkDtAlCiANSu/uTXJqAshaa18ABqzATU4JOl0LQWHkCNAShRAGpXb/LmIzyA+g5A7TIANfrk+C0jaS08gBqzBspwC01r4QHUWHfy3SN8eaEeQH0HoHb1gW4HgXITmtTCA6g5e6D8ttCkFh5AzQEoUQBqV2fyvYtMLaDMhKa08AA6UA/odhAouy00pYUH0IEAlCgAtas9+f7bSG2gvIQmtPA7AB2oC3Q7FoD6C0DtAlCiANSumUBZCU1o4XcAOlBr8kPfycR0C01n4VUAaqwDdNwngPoLQO0CUKIA1C4AJQpA7ZoHlJfQdBZeBaDG9MmbfOoX6rkJTWbh8wDUWAuoYcvsAuUkNJmFzwNQY9rkjQd4AA0UgNrVTN78AhRAAwWgdjkAZSM0kYUvA1Bjs4Ey2kITWfgyADUGoEQBqF0AShSA2lVPfvoifQ2Ui9A0Fr4KQI3NB8pnC01j4asA1BiAEgWgdjkBZSI0jYWvAlBj1eQnv1eZ4RaaxMLXAaixBqi1TwD1EYDa5QaUh9AkFr4OQI25AOWyhSax8HUAamwKaP9CPYB6CUDtKic/uIECaKAA1C5HoCyEprDwTQBqzAkoky00hYVvAlBjAEoUgNpVTH74Mv0QUA5CE1h4LQA1VgEd8DkAlMcWmsDCawGoMQAlCkDtmgI6EItjfAILrwWgxhyBsthCE1h4LQA1lk9+vk8AXRqA2uUOlF6o/IXXA1BjrkA5bKHyF14PQI0BKFEAapea/JzvpgdQTwGoXQXQ+T45vAgVv/CtANTYFNCBC/UstlDxC98KQI0BKFEAaheAEgWgdr2aeAk6DJReqPSFbwegxhYAJRcqfeHbAaixJUCphUpf+HYAagxAiQJQu15NXKYH0EABqF2v3C7TV0BJhQpf+E4AamwRUOItVPjCdwJQYwBKFIDatRQopVDhC98JQI29WuKTeAuVvfDdDwCoMQAlCkDtAlCiANSuxUAJhcpe+O4HANTYFNDRC/XEW6jshe9+AECNTW2gABooALVr6gA/DZROqOiFB1CrJl+BTgGl3EIlLzyAWrVePwVQmgDUJi9AyYQKXngAtcsDUMItVPDCA6hdAEoWgNo0DXQ6umO84IUHUKuyc/jlQOm2ULkLvwNQqwCULgC1yBdQIqFyF34HoFb5AUq2hcpd+B2A2rQGULoAdDr1PqcfoDRCxS68CkCn8wWUagsVu/AqAJ3OBuj0hXoAdQpAJ1sDKGEAOln+rXaegJIIlbrweQA6mT+gRFuo1IXPA9DJAJQyAJ1qDaCUAehUxd/28AOURqjQhS8C0Km8AiURKnThiwB0orUdUOsIhMpc+DIAnaj8+5wAShSATgSgtAHoRP6BRhcqc+HLAHS8tW+gBFuoyIWvmgX0/Xcnt59Vv7j++tnIp9oMJaHqR4oAKFGzgJ59ov5X/eI2gAJo8OYAvXnwpNk3r363DzvoOgTQ2EIlLnzdHKAKp0Kqev+nv+wH0K0dUNsL9VuCLVTiwte5An1xT3sN+irZ1uundl1cWH7i06frNfXvSmTzgN78/uU+nCStw+ygkbdQgQvf5LiDnj3ci7P45seCegQa/RgvcOGb3E6Sbu6fqB4uG4p/AEqe+2WmPdhB16GAxhUqb+G1ZgHNNk518fPsnvrFXgCtUfkEGnsLlbfwWnircyQApQ9AR5oBdFaRj/HyFl4LQIfT/2kPr0Ajb6HiFl4PQAdr/dMzAEoUgA7V/qeRAJQoAB0qLNCYQoUtfDsAHSok0LhbqLCFbwegQwEoiwB0oM6/zukdaEShsha+E4Ca6/7rsV4v1G/jbqGiFr4bgJoDUCYBqLnwQOMJFbXw3QDUXGigMbdQUQvfDUCNdX0CKFUAaqzrMwTQaEIlLXwvADXV20D9A424hQpa+H4AaqrnE0CpAlBD/Q3U94V6ALUNQPsZfAYAGk+omIU3BaD9IgHdAqhFANovGtBIQsUsvCkA7RcLaCyhYhbeFID2MvkEUKoAtJfJJ4BSBaDdjBtoKKBRhApZeHMA2s3oM8CF+kJojN+RkIU3B6CdzBsogFIFoO0GfAYDGkOoiIUfCkBbreMCjbOFSlj4wQC01ZBPAKUKQPUGfYYDGkGogIUfDkD1Bn2GAhplCxWw8MONAn17ujoOOBS7hjdQAKVqYgc9X628GeW/TsM+w1yo38Y5xvNf+JGmD/HejLJfp5ENNBjQGFso+4Ufy+Y1qCL6wU/+h2LWmE8ApWoS6GWm8+7u3aNbz70PxSwqoMGFcl/40caBZmdJq0Lm5fItlPs60QCNsIVyX/jRJs7iDx4HHIpZAMqxcaCfFj49bJ+moXg16hNAqbICer4HQMd9BgQaXijvhZ9oBOhmVbcHl5kWAnW9UB9DKO+Fn8hqBw00FKsAlGd4L74MQHkGoEUTPgMDDSuU9cJPNQz07emxugyal/xJ0pTPoEBDb6GcF34y7KB5AMo1AM2jBhpUKOeFn2zqrc5j9a0iy9+HNw7Fp8G/ihQHaOAtlPHCTzcOdHPr+eujw93mMMhQfJr0GfJCPYCONfFe/N3d5epu+m910gMNKZTxwk83CXST4Uz9rc7pI3xgoGGF8l14iyYO8YdvT289f3ua+CF+2mdooEGF8l14iya/H/Tg8btHXnwyXicGQEO+DOW78BbhMtMOQDkHoFY+YwANJpTtwts0DvTdoz14q9PGZ3igAbdQrgtv1cRJkheZQ0PxyMpn4Av1ADrYxGUmjz9YhOs6ASjrJq+DBhyKR1yAhhPKdOHtGgXq6wLTwFAssrhIHwloMKE8F96y8deg6n3OcEOxyM4ngFI19dPtkj+LB1De7ft1UMsjfCSgYYSyXHjbANQOTwygobZQlgtv2wTQ7CB/6/nGz8UmluvkC6iXALTfxEnSweNz9d1Myf7gBtsjPIBSNXGZ6XiXAU34+0FtfcYBGkgox4W3bvJCvQKa7nfUMwMaRijHhbfOagfdePlbcwzXyfoID6BU2bwGPfdzuZ7hOln7BFCqps/iVytPP8WW4ToBKPv2+zooO6BBhDJcePv2Gqj9S9A4F+pVAYTyW/gZWbwX7+fninBcJ3ufAErVGNBNcXJ07unfmuO3TgDKvxGgl9XJ0eujNM/iZxzhAZSqYaDadysn+rOZZviMBzSAUHYLP6fRH2Bb3Uz0rU6eQLcAqjcGtD6wp/lW55wjfFSgvoVyW/hZ7TXQGWoiAvUulNvCzwpA7Yp1oT4PQJv2F+isI3xkoH6FMlv4eY0Bbf6luTSBzjETFahnocwWfl77+1YngIoIQO0CUKL2Fui8l6AAStUeA51FJi5Qv0J5LfzMANSuyEC9XmnitfAzA1C7Yl6oV/ncQnkt/Mz2FehMn9GB+hTKauHntqdA5/oEUKr2E+hsnwBKFYDaBaBEAahd0YF6FMpo4ee3l0BnXqRXxQfq70oTn4V3aE+BztZCAdSXUD4L7xCA2hX7Qr0KQHf7CdThCE8D1JNQNgvv0n4CnY+FAqivLZTNwrsEoHbRAPUjlM3CuwSgdpEA9bSFsll4l/YQqItPKqBehHJZeKf2D6iTTyKgfoQyWXi3ANQuMqAehDJZeLcA1C6CC/V5ANr9QOpAXS6CbumA+hDKY+Ed20OgTk7IgHo4k+ex8I4BqF2EQBcL5bHwjgGoXXRAl2+hPBbesX0D6uiTFOhSoSwW3rW9A+qohBDo4i2UxcK7tmdAXTdQWqALhXJYeOdmAX3/3cntZ8XN6y9PTh4uHCp+zj6pLtQXLRTKYOHdmwX07BP1P9XN/Ye7q4+fLBsqfgAqrjlAbx482V1/nW+hV3deZvvpvC2UwToJBbpQKIOFd28OUIVTIS1Tu2j5JFJar5/KbL2mXjry5gN9ke2ii/4sRM99AyXeQZdtofQLvyD3HfRFdb7kPFTsFvikBrpIKPnCL8kZ6IuZp0j06+T4bSJF1ECXCKVe+EU5niTN3z/p12mJTwClyvEy0/VXc/dP8nVa5JP0Qn2Ru9D9AXpzP79Qf3Zvd3aiEnWZaZFPBkDdv7t+f4B6HipqyzZQJkDdhAKo41BRW+aTA1DnozyAOg4Vs4UbKA+gjkIB1HGomC30yQSom1AAdRwqYks3UD5AHYQCqONQEVvqkwtQpy0UQB2HitfiDZT+Qn2Vg1AAdRwqWst98gHqIBRAHYeKFoDKbR+AevDJCOh8oQDqOFSsPPjkBHS2UAB1HCpSPjZQZkDnCQVQx6Ei5cMnK6Bzt1AAdRwqTl42UF5AZwoFUMeh4uTFJ5sL9WWzjvIA6jhUlPxsoABKVeJAF/09JD1mQGcd5QHUcagIpQt0hlAAdRwqfL54AihZiQP1xoEfUHuhAOo4VPD8baAcgVoLBVDHoYLnzyeAUpUyUI8bKLML9WWWQgHUcajQefTJE6jlDwcHUMehAudzA+UK1EoogDoOFTavPpkCtRMKoI5DhQ1AqwDUcaig+fXJFaiVUAB1HCpofn2yBWojFEAdhwqZ5w0UQKlKFqhnBxwv1BdNCwVQx6EC5nsDZQx0+ntDAdRxqID59gmgVKUJ1PsGyhno5FEeQB2HCpd3n7yBTggFUMehguV/AwVQqlIEGsAnc6DjQgHUcahAeft7SHrMgY5+XxOAOg4VpiA++V6oLxvbQgHUcagwBfHJHuiYUAB1HCpIYXwCKFXpAQ3z9WcPdEQogDoOFaJAG6gAoMNCAdRxqBAF8gmgVCUGNNQGKgHooFAAdRzKf8F8igA6JBRAHYfyHx1Q6gv1eQPf1wSgjkN5L5xPGUAHhAKo41DeC+dTCFCzUAB1HMp3ATdQKUCNQgHUcSjPhfQpBqjpRAlAHYfyHIDm9YUCqONQfgvqUxDQvlAAdRzKa2F9AihVqQAN812gTSIu1Jd1hQKo41AeC+1TFNCuUAB1HMpfwX1KA9oSCqCOQ3krvE9ZQLcA6mUoX0XwKQxoWyiAOg7lqwg+pQFtCQVQx6E8FcOnQKCNUAB1HMpPUXyKA7oF0OVDeSnGC9CtqAv1ZY1QAHUcykeRfAoE2hzlAdRxKA/F8ikU6DrYwkdLNtBoPiUCrY/yAOo41OLi+ZQJtBQKoI5DLWwd0adQoIVQAHUcallRfcoFugZQ56EWFZWnWKC5UAB1HGpBcbfPrcAL9VXZQgGo41DuRfcpF+gWQJ2Hci46T8lALf9Rea5JBErgUzJQ2UIFAqXwKRyoYKHygJL4FA30qWSh4oDS+JQNtHlbXl7CgMY/fa+/yHJ7uhUsVBZQMp9iL9Sr8rlLFSoKKBnPBIBKFSoJKKHPBIAKFSoIKKXPFIDKFCoHKKnPJICKPFUSA5TWZxpAJQqVApTYZyJABR7mhQCl9pkM0HwTlWRUBlByn9Iv1GsJEyoCKL3PhIBuZb0UFQCU7u0jraSAStpF+QNl4TMxoIKIsgfKgmd6QMUQ5Q6Uic8EgZZEuStlDpSLzySBNkQZO+UNlI3PRIHmrU35//I7xhkoj9OjomQu1A/GlCljoJx87gHQVnyQsgXKiufeAS3iQJQn0GJhfH6RlraXQFXUSDkC5cdzj4FSE2UHlKPO7V4DVdER5QV0zZTn3gOt9tFgOAZjA7Q+a/Sxmv7be6BUh3oWQNfMdW6TvlA/IwKi5ED528wD0LLYREmBCsGpAtC6uETpgMrBqQJQrZhEiYCKwqkC0FbxiBIAlbV1lgFop1jnS7GBitS5BVBDcYhGBSoUpwpATUUwGg2o1K2zDBfqzQUnGgOogOvwkwHoYGHfYZoF9P13J7ef9W6O1+CUfJQE0LHqr7ETwfFmAT37RP2ve3O8ZuMEUKKiLPx6mdLBh84BevPgye7662edmxNFXqdQAahF606jGE0tBKpEKpntmwCqAtCqYX6j5Y8NBfQVurigngG/BjE6PVuoHXTkz4KkpiZ/cRFlGk6ltfAAakzy5CXPPfxJ0shQkpI8eclzD3+ZaWQoSUmevOS5zwN6cz+/On92r765aChJSZ685LnT/5UPIUmevOS5A6hlkicvee4AapnkyUueO4BaJnnykucOoJbhQj1RAGoXgBIFoHYBKFEAaheAEgWgdgEoUQBqF4ASBaB2AShRAGoXgBIVEShCHgJQxDoARawDUMQ6AEWsA1DEOgBFrANQxDoARawLAfTq5OTjJ/mPbDy5F+Dpw1ZO/vrL/D/Syn94gfXPymRWPvls4U8eah8MAPT6qye7q2yFzu68VDdlVU7+5v7D3QuBX+Wz/O+Jz/8hBixSk1cLf6VvDYEO8TcPnsz9UTl8ymbu8rN+GHT1u3Lec38MDIfyyV/deZkdAbQtNBDQF9nuKXCNirLJqzVSayWr93/6S7boQv9wFZNXqV20LgjQ6y+zTfrqzp/bryaElE9evY4T53P34t61XKDF5PNb+soH2kGzl3FX2RnSlcQTjeI16D15r0Fvfv9SLtBy8lntdQ/3GrT3akJMUl+Dnj3cyQVaTj7z2d7UwgFVwwFoxG7un6geijxJqibfO24FAKouMV3/60v1U/GupB0lq8m//07gIX5XXkqUepkp3/67FyZD7KAvTvILxepCvbwNtJy85Av1Dj8rk0Vq8mflRlqHtzoR6wAUsQ5AEesAFLEOQBHrABSxDkAR6wDUR+8e3b08eFz/8vKu/UOzz3376ePpz9vXANRH54c7DejbU3ug+ede3noeZFopBKAeUsqWAM024CDzSiEA9dDlBz8poG9P/+V0tbr7+mi1yrbE89VqdZwJ/PQPq+xu9avD7FPLj77+5R+P1I3qc7GFDgWgHtpk9HKg2S56rv6bbYjZfzN+x9kWqfCpX709Pa4/msHMNt3s/4rdVn8Bi1oB6PKUvAKo2huP7ip0+W21teY3il/tmo8qpDu1cRZAswcRzp91ALq84kSn3Dmz/9e8JC211gDrjxYfqB5TA0a9AHR5ubYu0FVRCfSXxSG8/mjxAQCdDkCXN7yDVne2d9BdJRZApwPQ5TWvQRug9aWm8oPHzS9UxWvQDV6DTgagHqrP4iugx8V5+25TbZHqV+8eHdYffX2U3SjO4vPTJpzFDwWgHqqvgxZAd5vqOmj28XLT1K+DZh99ffSPR9lL0ewDG1wHHQ1APTTnraOi9jF9/uP3JwD10fnhzAe0geK9+OEA1Eez30xvAcV3M40EoIh1AIpYB6CIdQCKWAegiHUAilgHoIh1/w/Dqq1jhlT/rwAAAABJRU5ErkJggg==" /><!-- --></p>
+</div>
+<div id="multi-panel-layouts" class="section level3">
+<h3>Multi-Panel Layouts</h3>
+<p>For models with multiple quantiles:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co"># Fit model with multiple quantiles</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>fit_multi <span class="ot">&lt;-</span> <span class="fu">bqr.svy</span>(mpg <span class="sc">~</span> wt <span class="sc">+</span> hp, <span class="at">data =</span> mtcars, </span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>                     <span class="at">quantile =</span> <span class="fu">c</span>(<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>), <span class="at">method =</span> <span class="st">&quot;ald&quot;</span>,</span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>                     <span class="at">niter =</span> <span class="dv">5000</span>, <span class="at">burnin =</span> <span class="dv">2500</span>)</span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co">#&gt; Iteration 1000 of 5000</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co">#&gt; Iteration 2000 of 5000</span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co">#&gt; Iteration 3000 of 5000</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co">#&gt; Iteration 4000 of 5000</span></span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co">#&gt; Iteration 1000 of 5000</span></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co">#&gt; Iteration 2000 of 5000</span></span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a><span class="co">#&gt; Iteration 3000 of 5000</span></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="co">#&gt; Iteration 4000 of 5000</span></span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a><span class="co">#&gt; Iteration 1000 of 5000</span></span>
+<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a><span class="co">#&gt; Iteration 2000 of 5000</span></span>
+<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a><span class="co">#&gt; Iteration 3000 of 5000</span></span>
+<span id="cb11-16"><a href="#cb11-16" tabindex="-1"></a><span class="co">#&gt; Iteration 4000 of 5000</span></span>
+<span id="cb11-17"><a href="#cb11-17" tabindex="-1"></a></span>
+<span id="cb11-18"><a href="#cb11-18" tabindex="-1"></a><span class="co"># Multi-panel coefficient plot</span></span>
+<span id="cb11-19"><a href="#cb11-19" tabindex="-1"></a><span class="fu">plot</span>(fit_multi, <span class="at">type =</span> <span class="st">&quot;fit&quot;</span>, <span class="at">use_ggplot =</span> <span class="cn">TRUE</span>, <span class="at">ncol =</span> <span class="dv">3</span>, <span class="at">combine =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p><img role="img" src="data:image/png;base64,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" /><!-- --></p>
+</div>
+</div>
+<div id="comparison-with-bayesqr" class="section level1">
+<h1>Comparison with bayesQR</h1>
+<div id="simulation-study" class="section level2">
+<h2>Simulation Study</h2>
+<p>We conduct a comprehensive simulation study to illustrate
+<strong>tauBayesW</strong> capabilities and compare with
+<strong>bayesQR</strong> using three different sampling designs: Poisson
+sampling, stratified sampling, and systematic sampling. Each design
+simulates complex survey data with known population parameters.</p>
+<div id="simulation-functions" class="section level3">
+<h3>Simulation Functions</h3>
+</div>
+<div id="simulation-execution" class="section level3">
+<h3>Simulation Execution</h3>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># Simulation parameters</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>N <span class="ot">&lt;-</span> <span class="dv">10000</span>  <span class="co"># Population size</span></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">500</span>    <span class="co"># Sample size</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>n_est <span class="ot">&lt;-</span> <span class="dv">5</span>  <span class="co"># Number of strata for stratified sampling</span></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>quantiles <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>)</span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a><span class="co"># True population parameters</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>true_beta <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="fl">1.5</span>)  <span class="co"># Intercept and slope</span></span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a></span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a><span class="co"># Create simulation parameters table</span></span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a>sim_params <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a>  <span class="at">Parameter =</span> <span class="fu">c</span>(<span class="st">&quot;Population size&quot;</span>, <span class="st">&quot;Sample size&quot;</span>, <span class="st">&quot;Number of strata&quot;</span>, <span class="st">&quot;Quantiles&quot;</span>, <span class="st">&quot;True β₀&quot;</span>, <span class="st">&quot;True β₁&quot;</span>),</span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a>  <span class="at">Value =</span> <span class="fu">c</span>(N, n, n_est, <span class="fu">paste</span>(quantiles, <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>), true_beta[<span class="dv">1</span>], true_beta[<span class="dv">2</span>])</span>
+<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a>)</span>
+<span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a></span>
+<span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(sim_params, <span class="at">caption =</span> <span class="st">&quot;Simulation Study Parameters&quot;</span>)</span></code></pre></div>
+<table>
+<caption>Simulation Study Parameters</caption>
+<thead>
+<tr class="header">
+<th align="left">Parameter</th>
+<th align="left">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Population size</td>
+<td align="left">10000</td>
+</tr>
+<tr class="even">
+<td align="left">Sample size</td>
+<td align="left">500</td>
+</tr>
+<tr class="odd">
+<td align="left">Number of strata</td>
+<td align="left">5</td>
+</tr>
+<tr class="even">
+<td align="left">Quantiles</td>
+<td align="left">0.25, 0.5, 0.75</td>
+</tr>
+<tr class="odd">
+<td align="left">True β₀</td>
+<td align="left">2</td>
+</tr>
+<tr class="even">
+<td align="left">True β₁</td>
+<td align="left">1.5</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co"># Generate data for each sampling design</span></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>data_poi <span class="ot">&lt;-</span> <span class="fu">artificial_data_poi</span>(N, n)</span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>data_est <span class="ot">&lt;-</span> <span class="fu">artificial_data_est</span>(N, n, n_est)</span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>data_sys <span class="ot">&lt;-</span> <span class="fu">artificial_data_sys</span>(N, n)</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co"># Create data frames for analysis</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>create_dataframe <span class="ot">&lt;-</span> <span class="cf">function</span>(sim_data) {</span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>  <span class="fu">data.frame</span>(</span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>    <span class="at">y =</span> sim_data<span class="sc">$</span>sample_data,</span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>    <span class="at">x =</span> sim_data<span class="sc">$</span>x_matrix[, <span class="dv">2</span>],  <span class="co"># Remove intercept column</span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>    <span class="at">weights =</span> sim_data<span class="sc">$</span>weights</span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a>  )</span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a>}</span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a></span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a>df_poi <span class="ot">&lt;-</span> <span class="fu">create_dataframe</span>(data_poi)</span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a>df_est <span class="ot">&lt;-</span> <span class="fu">create_dataframe</span>(data_est)</span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a>df_sys <span class="ot">&lt;-</span> <span class="fu">create_dataframe</span>(data_sys)</span>
+<span id="cb13-19"><a href="#cb13-19" tabindex="-1"></a></span>
+<span id="cb13-20"><a href="#cb13-20" tabindex="-1"></a><span class="co"># Sample sizes summary</span></span>
+<span id="cb13-21"><a href="#cb13-21" tabindex="-1"></a>sample_sizes <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb13-22"><a href="#cb13-22" tabindex="-1"></a>  <span class="at">Design =</span> <span class="fu">c</span>(<span class="st">&quot;Poisson&quot;</span>, <span class="st">&quot;Stratified&quot;</span>, <span class="st">&quot;Systematic&quot;</span>),</span>
+<span id="cb13-23"><a href="#cb13-23" tabindex="-1"></a>  <span class="at">Sample_Size =</span> <span class="fu">c</span>(<span class="fu">nrow</span>(df_poi), <span class="fu">nrow</span>(df_est), <span class="fu">nrow</span>(df_sys))</span>
+<span id="cb13-24"><a href="#cb13-24" tabindex="-1"></a>)</span>
+<span id="cb13-25"><a href="#cb13-25" tabindex="-1"></a></span>
+<span id="cb13-26"><a href="#cb13-26" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(sample_sizes, <span class="at">caption =</span> <span class="st">&quot;Sample Sizes After Sampling&quot;</span>, <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">&quot;Design&quot;</span>, <span class="st">&quot;Sample Size&quot;</span>))</span></code></pre></div>
+<table>
+<caption>Sample Sizes After Sampling</caption>
+<thead>
+<tr class="header">
+<th align="left">Design</th>
+<th align="right">Sample Size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Poisson</td>
+<td align="right">534</td>
+</tr>
+<tr class="even">
+<td align="left">Stratified</td>
+<td align="right">500</td>
+</tr>
+<tr class="odd">
+<td align="left">Systematic</td>
+<td align="right">500</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="method-comparison" class="section level3">
+<h3>Method Comparison</h3>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="co"># Function to fit models and extract coefficients</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>fit_and_compare <span class="ot">&lt;-</span> <span class="cf">function</span>(data, design_name) {</span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>  <span class="co"># Common MCMC settings (reduced for vignette)</span></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>  niter <span class="ot">&lt;-</span> <span class="dv">5000</span></span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>  burnin <span class="ot">&lt;-</span> <span class="dv">2500</span></span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>  </span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>  <span class="co"># bayesQR</span></span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>  fit_bqr <span class="ot">&lt;-</span> bayesQR<span class="sc">::</span><span class="fu">bayesQR</span>(</span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a>    y <span class="sc">~</span> x, </span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a>    <span class="at">data =</span> data,</span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a>    <span class="at">quantile =</span> quantiles, </span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a>    <span class="at">ndraw =</span> niter <span class="sc">-</span> burnin,</span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a>    <span class="at">keep =</span> <span class="dv">1</span></span>
+<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a>  )</span>
+<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a>  </span>
+<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a>  <span class="co"># tauBayesW - ALD method</span></span>
+<span id="cb14-17"><a href="#cb14-17" tabindex="-1"></a>  fit_ald <span class="ot">&lt;-</span> <span class="fu">bqr.svy</span>(</span>
+<span id="cb14-18"><a href="#cb14-18" tabindex="-1"></a>    y <span class="sc">~</span> x,</span>
+<span id="cb14-19"><a href="#cb14-19" tabindex="-1"></a>    <span class="at">data =</span> data,</span>
+<span id="cb14-20"><a href="#cb14-20" tabindex="-1"></a>    <span class="at">weights =</span> data<span class="sc">$</span>weights,</span>
+<span id="cb14-21"><a href="#cb14-21" tabindex="-1"></a>    <span class="at">quantile =</span> quantiles,</span>
+<span id="cb14-22"><a href="#cb14-22" tabindex="-1"></a>    <span class="at">method =</span> <span class="st">&quot;ald&quot;</span>,</span>
+<span id="cb14-23"><a href="#cb14-23" tabindex="-1"></a>    <span class="at">niter =</span> niter,</span>
+<span id="cb14-24"><a href="#cb14-24" tabindex="-1"></a>    <span class="at">burnin =</span> burnin,</span>
+<span id="cb14-25"><a href="#cb14-25" tabindex="-1"></a>    <span class="at">print_progress =</span> <span class="dv">5000</span></span>
+<span id="cb14-26"><a href="#cb14-26" tabindex="-1"></a>  )</span>
+<span id="cb14-27"><a href="#cb14-27" tabindex="-1"></a>  </span>
+<span id="cb14-28"><a href="#cb14-28" tabindex="-1"></a>  <span class="co"># tauBayesW - Score method</span></span>
+<span id="cb14-29"><a href="#cb14-29" tabindex="-1"></a>  fit_score <span class="ot">&lt;-</span> <span class="fu">bqr.svy</span>(</span>
+<span id="cb14-30"><a href="#cb14-30" tabindex="-1"></a>    y <span class="sc">~</span> x,</span>
+<span id="cb14-31"><a href="#cb14-31" tabindex="-1"></a>    <span class="at">data =</span> data,</span>
+<span id="cb14-32"><a href="#cb14-32" tabindex="-1"></a>    <span class="at">weights =</span> data<span class="sc">$</span>weights,</span>
+<span id="cb14-33"><a href="#cb14-33" tabindex="-1"></a>    <span class="at">quantile =</span> quantiles,</span>
+<span id="cb14-34"><a href="#cb14-34" tabindex="-1"></a>    <span class="at">method =</span> <span class="st">&quot;score&quot;</span>, </span>
+<span id="cb14-35"><a href="#cb14-35" tabindex="-1"></a>    <span class="at">niter =</span> niter,</span>
+<span id="cb14-36"><a href="#cb14-36" tabindex="-1"></a>    <span class="at">burnin =</span> burnin,</span>
+<span id="cb14-37"><a href="#cb14-37" tabindex="-1"></a>    <span class="at">print_progress =</span> <span class="dv">5000</span></span>
+<span id="cb14-38"><a href="#cb14-38" tabindex="-1"></a>  )</span>
+<span id="cb14-39"><a href="#cb14-39" tabindex="-1"></a>  </span>
+<span id="cb14-40"><a href="#cb14-40" tabindex="-1"></a>  <span class="co"># tauBayesW - Approximate method</span></span>
+<span id="cb14-41"><a href="#cb14-41" tabindex="-1"></a>  fit_approx <span class="ot">&lt;-</span> <span class="fu">bqr.svy</span>(</span>
+<span id="cb14-42"><a href="#cb14-42" tabindex="-1"></a>    y <span class="sc">~</span> x,</span>
+<span id="cb14-43"><a href="#cb14-43" tabindex="-1"></a>    <span class="at">data =</span> data,</span>
+<span id="cb14-44"><a href="#cb14-44" tabindex="-1"></a>    <span class="at">weights =</span> data<span class="sc">$</span>weights,</span>
+<span id="cb14-45"><a href="#cb14-45" tabindex="-1"></a>    <span class="at">quantile =</span> quantiles,</span>
+<span id="cb14-46"><a href="#cb14-46" tabindex="-1"></a>    <span class="at">method =</span> <span class="st">&quot;approximate&quot;</span>,</span>
+<span id="cb14-47"><a href="#cb14-47" tabindex="-1"></a>    <span class="at">niter =</span> niter,</span>
+<span id="cb14-48"><a href="#cb14-48" tabindex="-1"></a>    <span class="at">burnin =</span> burnin,</span>
+<span id="cb14-49"><a href="#cb14-49" tabindex="-1"></a>    <span class="at">print_progress =</span> <span class="dv">5000</span></span>
+<span id="cb14-50"><a href="#cb14-50" tabindex="-1"></a>  )</span>
+<span id="cb14-51"><a href="#cb14-51" tabindex="-1"></a>  </span>
+<span id="cb14-52"><a href="#cb14-52" tabindex="-1"></a>  <span class="co"># Extract coefficient estimates</span></span>
+<span id="cb14-53"><a href="#cb14-53" tabindex="-1"></a>  coef_bqr <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="cf">function</span>(i) <span class="fu">colMeans</span>(fit_bqr[[i]]<span class="sc">$</span>betadraw))</span>
+<span id="cb14-54"><a href="#cb14-54" tabindex="-1"></a>  coef_ald <span class="ot">&lt;-</span> fit_ald<span class="sc">$</span>beta</span>
+<span id="cb14-55"><a href="#cb14-55" tabindex="-1"></a>  coef_score <span class="ot">&lt;-</span> fit_score<span class="sc">$</span>beta</span>
+<span id="cb14-56"><a href="#cb14-56" tabindex="-1"></a>  coef_approx <span class="ot">&lt;-</span> fit_approx<span class="sc">$</span>beta</span>
+<span id="cb14-57"><a href="#cb14-57" tabindex="-1"></a>  </span>
+<span id="cb14-58"><a href="#cb14-58" tabindex="-1"></a>  <span class="co"># Calculate bias and RMSE</span></span>
+<span id="cb14-59"><a href="#cb14-59" tabindex="-1"></a>  calculate_metrics <span class="ot">&lt;-</span> <span class="cf">function</span>(estimates, true_vals) {</span>
+<span id="cb14-60"><a href="#cb14-60" tabindex="-1"></a>    bias <span class="ot">&lt;-</span> estimates <span class="sc">-</span> <span class="fu">matrix</span>(<span class="fu">rep</span>(true_vals, <span class="dv">3</span>), <span class="at">nrow =</span> <span class="dv">2</span>, <span class="at">ncol =</span> <span class="dv">3</span>)</span>
+<span id="cb14-61"><a href="#cb14-61" tabindex="-1"></a>    rmse <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(<span class="fu">colMeans</span>(bias<span class="sc">^</span><span class="dv">2</span>))</span>
+<span id="cb14-62"><a href="#cb14-62" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">bias =</span> bias, <span class="at">rmse =</span> rmse, <span class="at">estimates =</span> estimates)</span>
+<span id="cb14-63"><a href="#cb14-63" tabindex="-1"></a>  }</span>
+<span id="cb14-64"><a href="#cb14-64" tabindex="-1"></a>  </span>
+<span id="cb14-65"><a href="#cb14-65" tabindex="-1"></a>  metrics_bqr <span class="ot">&lt;-</span> <span class="fu">calculate_metrics</span>(coef_bqr, true_beta)</span>
+<span id="cb14-66"><a href="#cb14-66" tabindex="-1"></a>  metrics_ald <span class="ot">&lt;-</span> <span class="fu">calculate_metrics</span>(coef_ald, true_beta)</span>
+<span id="cb14-67"><a href="#cb14-67" tabindex="-1"></a>  metrics_score <span class="ot">&lt;-</span> <span class="fu">calculate_metrics</span>(coef_score, true_beta)</span>
+<span id="cb14-68"><a href="#cb14-68" tabindex="-1"></a>  metrics_approx <span class="ot">&lt;-</span> <span class="fu">calculate_metrics</span>(coef_approx, true_beta)</span>
+<span id="cb14-69"><a href="#cb14-69" tabindex="-1"></a>  </span>
+<span id="cb14-70"><a href="#cb14-70" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">list</span>(</span>
+<span id="cb14-71"><a href="#cb14-71" tabindex="-1"></a>    <span class="at">bayesQR =</span> metrics_bqr,</span>
+<span id="cb14-72"><a href="#cb14-72" tabindex="-1"></a>    <span class="at">ALD =</span> metrics_ald,</span>
+<span id="cb14-73"><a href="#cb14-73" tabindex="-1"></a>    <span class="at">Score =</span> metrics_score,</span>
+<span id="cb14-74"><a href="#cb14-74" tabindex="-1"></a>    <span class="at">Approximate =</span> metrics_approx</span>
+<span id="cb14-75"><a href="#cb14-75" tabindex="-1"></a>  ))</span>
+<span id="cb14-76"><a href="#cb14-76" tabindex="-1"></a>}</span>
+<span id="cb14-77"><a href="#cb14-77" tabindex="-1"></a></span>
+<span id="cb14-78"><a href="#cb14-78" tabindex="-1"></a><span class="co"># Run comparison for each design</span></span>
+<span id="cb14-79"><a href="#cb14-79" tabindex="-1"></a>results_poi <span class="ot">&lt;-</span> <span class="fu">fit_and_compare</span>(df_poi, <span class="st">&quot;Poisson&quot;</span>)</span>
+<span id="cb14-80"><a href="#cb14-80" tabindex="-1"></a>results_est <span class="ot">&lt;-</span> <span class="fu">fit_and_compare</span>(df_est, <span class="st">&quot;Stratified&quot;</span>)</span>
+<span id="cb14-81"><a href="#cb14-81" tabindex="-1"></a>results_sys <span class="ot">&lt;-</span> <span class="fu">fit_and_compare</span>(df_sys, <span class="st">&quot;Systematic&quot;</span>)</span></code></pre></div>
+</div>
+<div id="simulation-results" class="section level3">
+<h3>Simulation Results</h3>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="co"># Poisson Sampling</span></span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="cf">for</span> (q_idx <span class="cf">in</span> <span class="fu">seq_along</span>(quantiles)) {</span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>  tau_val <span class="ot">&lt;-</span> quantiles[q_idx]</span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>  table_result <span class="ot">&lt;-</span> <span class="fu">create_results_table</span>(</span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>    results_poi, <span class="st">&quot;Poisson&quot;</span>, q_idx, tau_val</span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>  )</span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>  <span class="fu">print</span>(knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>    table_result, <span class="at">digits =</span> <span class="dv">4</span>,</span>
+<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>    <span class="at">caption =</span> <span class="fu">paste</span>(<span class="st">&quot;Poisson Sampling - τ =&quot;</span>, tau_val)</span>
+<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>  ))</span>
+<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a>}</span></code></pre></div>
+<table>
+<caption>Poisson Sampling - τ = 0.25</caption>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">Intercept</th>
+<th align="right">Slope</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">True Values</td>
+<td align="right">2.0000</td>
+<td align="right">1.5000</td>
+</tr>
+<tr class="even">
+<td align="left">bayesQR</td>
+<td align="right">1.9092</td>
+<td align="right">1.3008</td>
+</tr>
+<tr class="odd">
+<td align="left">ALD</td>
+<td align="right">1.6628</td>
+<td align="right">1.3651</td>
+</tr>
+<tr class="even">
+<td align="left">Score</td>
+<td align="right">1.6760</td>
+<td align="right">1.2313</td>
+</tr>
+<tr class="odd">
+<td align="left">Approximate</td>
+<td align="right">1.6748</td>
+<td align="right">1.2321</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Poisson Sampling - τ = 0.5</caption>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">Intercept</th>
+<th align="right">Slope</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">True Values</td>
+<td align="right">2.0000</td>
+<td align="right">1.5000</td>
+</tr>
+<tr class="even">
+<td align="left">bayesQR</td>
+<td align="right">2.3707</td>
+<td align="right">1.4352</td>
+</tr>
+<tr class="odd">
+<td align="left">ALD</td>
+<td align="right">2.1408</td>
+<td align="right">1.4983</td>
+</tr>
+<tr class="even">
+<td align="left">Score</td>
+<td align="right">2.1237</td>
+<td align="right">1.4820</td>
+</tr>
+<tr class="odd">
+<td align="left">Approximate</td>
+<td align="right">2.1234</td>
+<td align="right">1.4825</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Poisson Sampling - τ = 0.75</caption>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">Intercept</th>
+<th align="right">Slope</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">True Values</td>
+<td align="right">2.0000</td>
+<td align="right">1.5000</td>
+</tr>
+<tr class="even">
+<td align="left">bayesQR</td>
+<td align="right">3.0358</td>
+<td align="right">1.3903</td>
+</tr>
+<tr class="odd">
+<td align="left">ALD</td>
+<td align="right">2.6539</td>
+<td align="right">1.4852</td>
+</tr>
+<tr class="even">
+<td align="left">Score</td>
+<td align="right">2.6986</td>
+<td align="right">1.4824</td>
+</tr>
+<tr class="odd">
+<td align="left">Approximate</td>
+<td align="right">2.6968</td>
+<td align="right">1.4838</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="co"># Stratified Sampling</span></span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a><span class="cf">for</span> (q_idx <span class="cf">in</span> <span class="fu">seq_along</span>(quantiles)) {</span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>  tau_val <span class="ot">&lt;-</span> quantiles[q_idx]</span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>  table_result <span class="ot">&lt;-</span> <span class="fu">create_results_table</span>(</span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>    results_est, <span class="st">&quot;Stratified&quot;</span>, q_idx, tau_val</span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>  )</span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>  <span class="fu">print</span>(knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a>    table_result, <span class="at">digits =</span> <span class="dv">4</span>,</span>
+<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a>    <span class="at">caption =</span> <span class="fu">paste</span>(<span class="st">&quot;Stratified Sampling - τ =&quot;</span>, tau_val)</span>
+<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a>  ))</span>
+<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a>}</span></code></pre></div>
+<table>
+<caption>Stratified Sampling - τ = 0.25</caption>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">Intercept</th>
+<th align="right">Slope</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">True Values</td>
+<td align="right">2.0000</td>
+<td align="right">1.5000</td>
+</tr>
+<tr class="even">
+<td align="left">bayesQR</td>
+<td align="right">1.4433</td>
+<td align="right">1.5779</td>
+</tr>
+<tr class="odd">
+<td align="left">ALD</td>
+<td align="right">1.3217</td>
+<td align="right">1.5691</td>
+</tr>
+<tr class="even">
+<td align="left">Score</td>
+<td align="right">1.2925</td>
+<td align="right">1.5599</td>
+</tr>
+<tr class="odd">
+<td align="left">Approximate</td>
+<td align="right">1.2793</td>
+<td align="right">1.5668</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Stratified Sampling - τ = 0.5</caption>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">Intercept</th>
+<th align="right">Slope</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">True Values</td>
+<td align="right">2.0000</td>
+<td align="right">1.5000</td>
+</tr>
+<tr class="even">
+<td align="left">bayesQR</td>
+<td align="right">2.2061</td>
+<td align="right">1.4838</td>
+</tr>
+<tr class="odd">
+<td align="left">ALD</td>
+<td align="right">1.8633</td>
+<td align="right">1.6120</td>
+</tr>
+<tr class="even">
+<td align="left">Score</td>
+<td align="right">1.8448</td>
+<td align="right">1.6100</td>
+</tr>
+<tr class="odd">
+<td align="left">Approximate</td>
+<td align="right">1.8426</td>
+<td align="right">1.6111</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Stratified Sampling - τ = 0.75</caption>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">Intercept</th>
+<th align="right">Slope</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">True Values</td>
+<td align="right">2.0000</td>
+<td align="right">1.5000</td>
+</tr>
+<tr class="even">
+<td align="left">bayesQR</td>
+<td align="right">2.8812</td>
+<td align="right">1.4801</td>
+</tr>
+<tr class="odd">
+<td align="left">ALD</td>
+<td align="right">2.5164</td>
+<td align="right">1.5360</td>
+</tr>
+<tr class="even">
+<td align="left">Score</td>
+<td align="right">2.5585</td>
+<td align="right">1.5515</td>
+</tr>
+<tr class="odd">
+<td align="left">Approximate</td>
+<td align="right">2.5563</td>
+<td align="right">1.5502</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="co"># Systematic Sampling</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a><span class="cf">for</span> (q_idx <span class="cf">in</span> <span class="fu">seq_along</span>(quantiles)) {</span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>  tau_val <span class="ot">&lt;-</span> quantiles[q_idx]</span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>  table_result <span class="ot">&lt;-</span> <span class="fu">create_results_table</span>(</span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>    results_sys, <span class="st">&quot;Systematic&quot;</span>, q_idx, tau_val</span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>  )</span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a>  <span class="fu">print</span>(knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
+<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a>    table_result, <span class="at">digits =</span> <span class="dv">4</span>,</span>
+<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a>    <span class="at">caption =</span> <span class="fu">paste</span>(<span class="st">&quot;Systematic Sampling - τ =&quot;</span>, tau_val)</span>
+<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a>  ))</span>
+<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a>}</span></code></pre></div>
+<table>
+<caption>Systematic Sampling - τ = 0.25</caption>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">Intercept</th>
+<th align="right">Slope</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">True Values</td>
+<td align="right">2.0000</td>
+<td align="right">1.5000</td>
+</tr>
+<tr class="even">
+<td align="left">bayesQR</td>
+<td align="right">1.7098</td>
+<td align="right">1.4487</td>
+</tr>
+<tr class="odd">
+<td align="left">ALD</td>
+<td align="right">1.4035</td>
+<td align="right">1.5937</td>
+</tr>
+<tr class="even">
+<td align="left">Score</td>
+<td align="right">1.3301</td>
+<td align="right">1.6013</td>
+</tr>
+<tr class="odd">
+<td align="left">Approximate</td>
+<td align="right">1.3515</td>
+<td align="right">1.5869</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Systematic Sampling - τ = 0.5</caption>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">Intercept</th>
+<th align="right">Slope</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">True Values</td>
+<td align="right">2.0000</td>
+<td align="right">1.5000</td>
+</tr>
+<tr class="even">
+<td align="left">bayesQR</td>
+<td align="right">2.3127</td>
+<td align="right">1.4671</td>
+</tr>
+<tr class="odd">
+<td align="left">ALD</td>
+<td align="right">2.1208</td>
+<td align="right">1.5018</td>
+</tr>
+<tr class="even">
+<td align="left">Score</td>
+<td align="right">2.0686</td>
+<td align="right">1.5094</td>
+</tr>
+<tr class="odd">
+<td align="left">Approximate</td>
+<td align="right">2.0847</td>
+<td align="right">1.4998</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Systematic Sampling - τ = 0.75</caption>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">Intercept</th>
+<th align="right">Slope</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">True Values</td>
+<td align="right">2.0000</td>
+<td align="right">1.5000</td>
+</tr>
+<tr class="even">
+<td align="left">bayesQR</td>
+<td align="right">2.9191</td>
+<td align="right">1.4580</td>
+</tr>
+<tr class="odd">
+<td align="left">ALD</td>
+<td align="right">2.5350</td>
+<td align="right">1.5787</td>
+</tr>
+<tr class="even">
+<td align="left">Score</td>
+<td align="right">2.5622</td>
+<td align="right">1.5866</td>
+</tr>
+<tr class="odd">
+<td align="left">Approximate</td>
+<td align="right">2.5398</td>
+<td align="right">1.6011</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="prostate-dataset" class="section level2">
+<h2>Prostate Dataset</h2>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="fu">library</span>(tauBayesW)</span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a><span class="fu">library</span>(bayesQR)</span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a><span class="co"># Load Prostate dataset</span></span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a><span class="fu">data</span>(Prostate, <span class="at">package =</span> <span class="st">&quot;bayesQR&quot;</span>)</span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a></span>
+<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a><span class="co"># Center covariates (subtract mean, don&#39;t scale)</span></span>
+<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a>covars <span class="ot">&lt;-</span> Prostate[, <span class="fu">colnames</span>(Prostate) <span class="sc">!=</span> <span class="st">&quot;lpsa&quot;</span>]</span>
+<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a>covars_centered <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">scale</span>(covars, <span class="at">center =</span> <span class="cn">TRUE</span>, <span class="at">scale =</span> <span class="cn">FALSE</span>))</span>
+<span id="cb18-10"><a href="#cb18-10" tabindex="-1"></a></span>
+<span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a><span class="co"># Combined dataset with centered covariates</span></span>
+<span id="cb18-12"><a href="#cb18-12" tabindex="-1"></a>Prostate_centered <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="at">lpsa =</span> Prostate<span class="sc">$</span>lpsa, covars_centered)</span>
+<span id="cb18-13"><a href="#cb18-13" tabindex="-1"></a></span>
+<span id="cb18-14"><a href="#cb18-14" tabindex="-1"></a><span class="co"># Design matrix (includes intercept automatically)</span></span>
+<span id="cb18-15"><a href="#cb18-15" tabindex="-1"></a>X <span class="ot">&lt;-</span> <span class="fu">model.matrix</span>(lpsa <span class="sc">~</span> ., <span class="at">data =</span> Prostate_centered)</span>
+<span id="cb18-16"><a href="#cb18-16" tabindex="-1"></a>y <span class="ot">&lt;-</span> Prostate_centered<span class="sc">$</span>lpsa</span>
+<span id="cb18-17"><a href="#cb18-17" tabindex="-1"></a>w <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="dv">1</span>, <span class="fu">length</span>(y))  <span class="co"># Equal weights</span></span>
+<span id="cb18-18"><a href="#cb18-18" tabindex="-1"></a></span>
+<span id="cb18-19"><a href="#cb18-19" tabindex="-1"></a><span class="co"># Display dataset summary</span></span>
+<span id="cb18-20"><a href="#cb18-20" tabindex="-1"></a>dataset_info <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb18-21"><a href="#cb18-21" tabindex="-1"></a>  <span class="at">Information =</span> <span class="fu">c</span>(<span class="st">&quot;Observations&quot;</span>, <span class="st">&quot;Coefficients&quot;</span>, <span class="st">&quot;Response Variable&quot;</span>, <span class="st">&quot;Equal Weights&quot;</span>),</span>
+<span id="cb18-22"><a href="#cb18-22" tabindex="-1"></a>  <span class="at">Value =</span> <span class="fu">c</span>(<span class="fu">nrow</span>(Prostate_centered), <span class="fu">ncol</span>(X), <span class="st">&quot;lpsa (log prostate-specific antigen)&quot;</span>, <span class="st">&quot;Yes&quot;</span>)</span>
+<span id="cb18-23"><a href="#cb18-23" tabindex="-1"></a>)</span>
+<span id="cb18-24"><a href="#cb18-24" tabindex="-1"></a></span>
+<span id="cb18-25"><a href="#cb18-25" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(dataset_info, <span class="at">caption =</span> <span class="st">&quot;Prostate Dataset Summary&quot;</span>)</span></code></pre></div>
+<table>
+<caption>Prostate Dataset Summary</caption>
+<thead>
+<tr class="header">
+<th align="left">Information</th>
+<th align="left">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Observations</td>
+<td align="left">97</td>
+</tr>
+<tr class="even">
+<td align="left">Coefficients</td>
+<td align="left">9</td>
+</tr>
+<tr class="odd">
+<td align="left">Response Variable</td>
+<td align="left">lpsa (log prostate-specific antigen)</td>
+</tr>
+<tr class="even">
+<td align="left">Equal Weights</td>
+<td align="left">Yes</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a></span>
+<span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a>predictors_info <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb19-3"><a href="#cb19-3" tabindex="-1"></a>  <span class="at">Predictor =</span> <span class="fu">colnames</span>(X),</span>
+<span id="cb19-4"><a href="#cb19-4" tabindex="-1"></a>  <span class="at">Description =</span> <span class="fu">c</span>(<span class="st">&quot;Intercept&quot;</span>, <span class="fu">paste</span>(<span class="st">&quot;Centered&quot;</span>, <span class="fu">colnames</span>(X)[<span class="sc">-</span><span class="dv">1</span>]))</span>
+<span id="cb19-5"><a href="#cb19-5" tabindex="-1"></a>)</span>
+<span id="cb19-6"><a href="#cb19-6" tabindex="-1"></a></span>
+<span id="cb19-7"><a href="#cb19-7" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(predictors_info, <span class="at">caption =</span> <span class="st">&quot;Predictor Variables&quot;</span>)</span></code></pre></div>
+<table>
+<caption>Predictor Variables</caption>
+<thead>
+<tr class="header">
+<th align="left">Predictor</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="left">Intercept</td>
+</tr>
+<tr class="even">
+<td align="left">lcavol</td>
+<td align="left">Centered lcavol</td>
+</tr>
+<tr class="odd">
+<td align="left">lweight</td>
+<td align="left">Centered lweight</td>
+</tr>
+<tr class="even">
+<td align="left">age</td>
+<td align="left">Centered age</td>
+</tr>
+<tr class="odd">
+<td align="left">lbph</td>
+<td align="left">Centered lbph</td>
+</tr>
+<tr class="even">
+<td align="left">svi</td>
+<td align="left">Centered svi</td>
+</tr>
+<tr class="odd">
+<td align="left">lcp</td>
+<td align="left">Centered lcp</td>
+</tr>
+<tr class="even">
+<td align="left">gleason</td>
+<td align="left">Centered gleason</td>
+</tr>
+<tr class="odd">
+<td align="left">pgg45</td>
+<td align="left">Centered pgg45</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="prior-specification" class="section level2">
+<h2>Prior Specification</h2>
+<p>We use comparable priors for fair comparison:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="co"># Prior for tauBayesW (all methods)</span></span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>prior_tbw <span class="ot">&lt;-</span> tauBayesW<span class="sc">::</span><span class="fu">prior</span>(</span>
+<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a>  <span class="at">p =</span> <span class="fu">ncol</span>(X),</span>
+<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a>  <span class="at">type =</span> <span class="st">&quot;univariate&quot;</span>,</span>
+<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a>  <span class="at">beta_mean =</span> <span class="fu">rep</span>(<span class="dv">0</span>, <span class="fu">ncol</span>(X)),</span>
+<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a>  <span class="at">beta_cov =</span> <span class="fu">diag</span>(<span class="fl">1e6</span>, <span class="fu">ncol</span>(X)),  <span class="co"># Very vague prior</span></span>
+<span id="cb20-7"><a href="#cb20-7" tabindex="-1"></a>  <span class="at">sigma_shape =</span> <span class="fl">0.001</span>,            <span class="co"># For ALD method</span></span>
+<span id="cb20-8"><a href="#cb20-8" tabindex="-1"></a>  <span class="at">sigma_rate =</span> <span class="fl">0.001</span>,</span>
+<span id="cb20-9"><a href="#cb20-9" tabindex="-1"></a>  <span class="at">names =</span> <span class="fu">colnames</span>(X)</span>
+<span id="cb20-10"><a href="#cb20-10" tabindex="-1"></a>)</span>
+<span id="cb20-11"><a href="#cb20-11" tabindex="-1"></a></span>
+<span id="cb20-12"><a href="#cb20-12" tabindex="-1"></a><span class="co"># Prior for bayesQR </span></span>
+<span id="cb20-13"><a href="#cb20-13" tabindex="-1"></a>prior_bqr <span class="ot">&lt;-</span> bayesQR<span class="sc">::</span><span class="fu">prior</span>(</span>
+<span id="cb20-14"><a href="#cb20-14" tabindex="-1"></a>  lpsa <span class="sc">~</span> ., <span class="at">data =</span> Prostate_centered,</span>
+<span id="cb20-15"><a href="#cb20-15" tabindex="-1"></a>  <span class="at">beta0 =</span> <span class="fu">rep</span>(<span class="dv">0</span>, <span class="fu">ncol</span>(X)), </span>
+<span id="cb20-16"><a href="#cb20-16" tabindex="-1"></a>  <span class="at">V0 =</span> <span class="fu">diag</span>(<span class="fl">1e6</span>, <span class="fu">ncol</span>(X))  <span class="co"># Same vague prior</span></span>
+<span id="cb20-17"><a href="#cb20-17" tabindex="-1"></a>)</span>
+<span id="cb20-18"><a href="#cb20-18" tabindex="-1"></a></span>
+<span id="cb20-19"><a href="#cb20-19" tabindex="-1"></a><span class="co"># Display prior information</span></span>
+<span id="cb20-20"><a href="#cb20-20" tabindex="-1"></a>prior_info <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb20-21"><a href="#cb20-21" tabindex="-1"></a>  <span class="at">Component =</span> <span class="fu">c</span>(<span class="st">&quot;Parameters&quot;</span>, <span class="st">&quot;Prior Type&quot;</span>, <span class="st">&quot;Beta Mean&quot;</span>, <span class="st">&quot;Beta Covariance&quot;</span>, <span class="st">&quot;Sigma Shape (ALD)&quot;</span>, <span class="st">&quot;Sigma Rate (ALD)&quot;</span>),</span>
+<span id="cb20-22"><a href="#cb20-22" tabindex="-1"></a>  <span class="at">tauBayesW =</span> <span class="fu">c</span>(</span>
+<span id="cb20-23"><a href="#cb20-23" tabindex="-1"></a>    <span class="fu">ncol</span>(X), </span>
+<span id="cb20-24"><a href="#cb20-24" tabindex="-1"></a>    <span class="st">&quot;univariate&quot;</span>, </span>
+<span id="cb20-25"><a href="#cb20-25" tabindex="-1"></a>    <span class="st">&quot;rep(0, p)&quot;</span>, </span>
+<span id="cb20-26"><a href="#cb20-26" tabindex="-1"></a>    <span class="st">&quot;diag(1e6, p)&quot;</span>, </span>
+<span id="cb20-27"><a href="#cb20-27" tabindex="-1"></a>    <span class="st">&quot;0.001&quot;</span>, </span>
+<span id="cb20-28"><a href="#cb20-28" tabindex="-1"></a>    <span class="st">&quot;0.001&quot;</span></span>
+<span id="cb20-29"><a href="#cb20-29" tabindex="-1"></a>  ),</span>
+<span id="cb20-30"><a href="#cb20-30" tabindex="-1"></a>  <span class="at">bayesQR =</span> <span class="fu">c</span>(</span>
+<span id="cb20-31"><a href="#cb20-31" tabindex="-1"></a>    <span class="fu">ncol</span>(X), </span>
+<span id="cb20-32"><a href="#cb20-32" tabindex="-1"></a>    <span class="st">&quot;standard&quot;</span>, </span>
+<span id="cb20-33"><a href="#cb20-33" tabindex="-1"></a>    <span class="st">&quot;rep(0, p)&quot;</span>, </span>
+<span id="cb20-34"><a href="#cb20-34" tabindex="-1"></a>    <span class="st">&quot;diag(1e6, p)&quot;</span>, </span>
+<span id="cb20-35"><a href="#cb20-35" tabindex="-1"></a>    <span class="st">&quot;N/A&quot;</span>, </span>
+<span id="cb20-36"><a href="#cb20-36" tabindex="-1"></a>    <span class="st">&quot;N/A&quot;</span></span>
+<span id="cb20-37"><a href="#cb20-37" tabindex="-1"></a>  )</span>
+<span id="cb20-38"><a href="#cb20-38" tabindex="-1"></a>)</span>
+<span id="cb20-39"><a href="#cb20-39" tabindex="-1"></a></span>
+<span id="cb20-40"><a href="#cb20-40" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(prior_info, <span class="at">caption =</span> <span class="st">&quot;Prior Specifications Comparison&quot;</span>)</span></code></pre></div>
+<table>
+<caption>Prior Specifications Comparison</caption>
+<thead>
+<tr class="header">
+<th align="left">Component</th>
+<th align="left">tauBayesW</th>
+<th align="left">bayesQR</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Parameters</td>
+<td align="left">9</td>
+<td align="left">9</td>
+</tr>
+<tr class="even">
+<td align="left">Prior Type</td>
+<td align="left">univariate</td>
+<td align="left">standard</td>
+</tr>
+<tr class="odd">
+<td align="left">Beta Mean</td>
+<td align="left">rep(0, p)</td>
+<td align="left">rep(0, p)</td>
+</tr>
+<tr class="even">
+<td align="left">Beta Covariance</td>
+<td align="left">diag(1e6, p)</td>
+<td align="left">diag(1e6, p)</td>
+</tr>
+<tr class="odd">
+<td align="left">Sigma Shape (ALD)</td>
+<td align="left">0.001</td>
+<td align="left">N/A</td>
+</tr>
+<tr class="even">
+<td align="left">Sigma Rate (ALD)</td>
+<td align="left">0.001</td>
+<td align="left">N/A</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="model-fitting" class="section level2">
+<h2>Model Fitting</h2>
+<div id="bayesqr-reference-method" class="section level3">
+<h3>bayesQR (Reference Method)</h3>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">12345</span>)</span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>fit_bqr <span class="ot">&lt;-</span> <span class="fu">bayesQR</span>(</span>
+<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a>  lpsa <span class="sc">~</span> ., </span>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a>  <span class="at">data =</span> Prostate_centered,</span>
+<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a>  <span class="at">quantile =</span> <span class="fu">c</span>(<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>), </span>
+<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a>  <span class="at">ndraw =</span> <span class="dv">5000</span>, </span>
+<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a>  <span class="at">prior =</span> prior_bqr, </span>
+<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a>  <span class="at">keep =</span> <span class="dv">5</span></span>
+<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a>)</span>
+<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a></span>
+<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a>taus <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>)</span>
+<span id="cb21-13"><a href="#cb21-13" tabindex="-1"></a></span>
+<span id="cb21-14"><a href="#cb21-14" tabindex="-1"></a>coef_mat <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, <span class="fu">lapply</span>(<span class="fu">seq_along</span>(taus), <span class="cf">function</span>(i) {</span>
+<span id="cb21-15"><a href="#cb21-15" tabindex="-1"></a>  draws_i <span class="ot">&lt;-</span> fit_bqr[[i]][[<span class="st">&quot;betadraw&quot;</span>]]</span>
+<span id="cb21-16"><a href="#cb21-16" tabindex="-1"></a>  <span class="fu">colnames</span>(draws_i) <span class="ot">&lt;-</span> <span class="fu">colnames</span>(X)</span>
+<span id="cb21-17"><a href="#cb21-17" tabindex="-1"></a>  <span class="fu">as.numeric</span>(<span class="fu">colMeans</span>(draws_i, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))  <span class="co"># vector numérico</span></span>
+<span id="cb21-18"><a href="#cb21-18" tabindex="-1"></a>}))</span>
+<span id="cb21-19"><a href="#cb21-19" tabindex="-1"></a></span>
+<span id="cb21-20"><a href="#cb21-20" tabindex="-1"></a><span class="co"># Agregar nombres a filas y columnas</span></span>
+<span id="cb21-21"><a href="#cb21-21" tabindex="-1"></a><span class="fu">rownames</span>(coef_mat) <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="st">&quot;tau = &quot;</span>, taus)</span>
+<span id="cb21-22"><a href="#cb21-22" tabindex="-1"></a><span class="fu">colnames</span>(coef_mat) <span class="ot">&lt;-</span> <span class="fu">colnames</span>(X)</span></code></pre></div>
+</div>
+<div id="taubayesw-method-1-ald-asymmetric-laplace-distribution" class="section level3">
+<h3>tauBayesW Method 1: ALD (Asymmetric Laplace Distribution)</h3>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">12345</span>)</span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a></span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a>fit_ald <span class="ot">&lt;-</span> <span class="fu">bqr.svy</span>(</span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a>  lpsa <span class="sc">~</span> lcavol <span class="sc">+</span> lweight <span class="sc">+</span> age <span class="sc">+</span> lbph <span class="sc">+</span> svi <span class="sc">+</span> lcp <span class="sc">+</span> gleason <span class="sc">+</span> pgg45,</span>
+<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a>  <span class="at">data     =</span> Prostate_centered,</span>
+<span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a>  <span class="at">quantile =</span> <span class="fu">c</span>(<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>),</span>
+<span id="cb22-7"><a href="#cb22-7" tabindex="-1"></a>  <span class="at">method   =</span> <span class="st">&quot;ald&quot;</span>,</span>
+<span id="cb22-8"><a href="#cb22-8" tabindex="-1"></a>  <span class="at">prior    =</span> prior_tbw,</span>
+<span id="cb22-9"><a href="#cb22-9" tabindex="-1"></a>  <span class="at">niter    =</span> <span class="dv">50000</span>,</span>
+<span id="cb22-10"><a href="#cb22-10" tabindex="-1"></a>  <span class="at">burnin   =</span> <span class="dv">25000</span>,</span>
+<span id="cb22-11"><a href="#cb22-11" tabindex="-1"></a>  <span class="at">thin     =</span> <span class="dv">5</span>,</span>
+<span id="cb22-12"><a href="#cb22-12" tabindex="-1"></a>  <span class="at">print_progress =</span> <span class="dv">25000</span></span>
+<span id="cb22-13"><a href="#cb22-13" tabindex="-1"></a>)</span>
+<span id="cb22-14"><a href="#cb22-14" tabindex="-1"></a></span>
+<span id="cb22-15"><a href="#cb22-15" tabindex="-1"></a>coef_ald <span class="ot">&lt;-</span> fit_ald<span class="sc">$</span>beta</span></code></pre></div>
+</div>
+<div id="taubayesw-method-2-score-likelihood" class="section level3">
+<h3>tauBayesW Method 2: Score Likelihood</h3>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">12345</span>)</span>
+<span id="cb23-2"><a href="#cb23-2" tabindex="-1"></a></span>
+<span id="cb23-3"><a href="#cb23-3" tabindex="-1"></a>fit_score <span class="ot">&lt;-</span> <span class="fu">bqr.svy</span>(</span>
+<span id="cb23-4"><a href="#cb23-4" tabindex="-1"></a>  lpsa <span class="sc">~</span> lcavol <span class="sc">+</span> lweight <span class="sc">+</span> age <span class="sc">+</span> lbph <span class="sc">+</span> svi <span class="sc">+</span> lcp <span class="sc">+</span> gleason <span class="sc">+</span> pgg45,</span>
+<span id="cb23-5"><a href="#cb23-5" tabindex="-1"></a>  <span class="at">data     =</span> Prostate_centered,</span>
+<span id="cb23-6"><a href="#cb23-6" tabindex="-1"></a>  <span class="at">quantile =</span> <span class="fu">c</span>(<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>),</span>
+<span id="cb23-7"><a href="#cb23-7" tabindex="-1"></a>  <span class="at">method   =</span> <span class="st">&quot;score&quot;</span>,</span>
+<span id="cb23-8"><a href="#cb23-8" tabindex="-1"></a>  <span class="at">prior    =</span> prior_tbw,</span>
+<span id="cb23-9"><a href="#cb23-9" tabindex="-1"></a>  <span class="at">niter    =</span> <span class="dv">50000</span>,</span>
+<span id="cb23-10"><a href="#cb23-10" tabindex="-1"></a>  <span class="at">burnin   =</span> <span class="dv">25000</span>,</span>
+<span id="cb23-11"><a href="#cb23-11" tabindex="-1"></a>  <span class="at">thin     =</span> <span class="dv">5</span>,</span>
+<span id="cb23-12"><a href="#cb23-12" tabindex="-1"></a>  <span class="at">print_progress =</span> <span class="dv">25000</span></span>
+<span id="cb23-13"><a href="#cb23-13" tabindex="-1"></a>)</span>
+<span id="cb23-14"><a href="#cb23-14" tabindex="-1"></a></span>
+<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a>coef_score <span class="ot">&lt;-</span> fit_score<span class="sc">$</span>beta</span></code></pre></div>
+</div>
+<div id="taubayesw-method-3-approximate-method" class="section level3">
+<h3>tauBayesW Method 3: Approximate Method</h3>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">12345</span>)</span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a></span>
+<span id="cb24-3"><a href="#cb24-3" tabindex="-1"></a>fit_approximate <span class="ot">&lt;-</span> <span class="fu">bqr.svy</span>(</span>
+<span id="cb24-4"><a href="#cb24-4" tabindex="-1"></a>  lpsa <span class="sc">~</span> lcavol <span class="sc">+</span> lweight <span class="sc">+</span> age <span class="sc">+</span> lbph <span class="sc">+</span> svi <span class="sc">+</span> lcp <span class="sc">+</span> gleason <span class="sc">+</span> pgg45,</span>
+<span id="cb24-5"><a href="#cb24-5" tabindex="-1"></a>  <span class="at">data     =</span> Prostate_centered,</span>
+<span id="cb24-6"><a href="#cb24-6" tabindex="-1"></a>  <span class="at">quantile =</span> <span class="fu">c</span>(<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>),</span>
+<span id="cb24-7"><a href="#cb24-7" tabindex="-1"></a>  <span class="at">method   =</span> <span class="st">&quot;approximate&quot;</span>,</span>
+<span id="cb24-8"><a href="#cb24-8" tabindex="-1"></a>  <span class="at">prior    =</span> prior_tbw,</span>
+<span id="cb24-9"><a href="#cb24-9" tabindex="-1"></a>  <span class="at">niter    =</span> <span class="dv">50000</span>,</span>
+<span id="cb24-10"><a href="#cb24-10" tabindex="-1"></a>  <span class="at">burnin   =</span> <span class="dv">25000</span>,</span>
+<span id="cb24-11"><a href="#cb24-11" tabindex="-1"></a>  <span class="at">thin     =</span> <span class="dv">5</span>,</span>
+<span id="cb24-12"><a href="#cb24-12" tabindex="-1"></a>  <span class="at">print_progress =</span> <span class="dv">25000</span></span>
+<span id="cb24-13"><a href="#cb24-13" tabindex="-1"></a>)</span>
+<span id="cb24-14"><a href="#cb24-14" tabindex="-1"></a></span>
+<span id="cb24-15"><a href="#cb24-15" tabindex="-1"></a>coef_approximate <span class="ot">&lt;-</span> fit_approximate<span class="sc">$</span>beta</span></code></pre></div>
+</div>
+<div id="results-comparison" class="section level3">
+<h3>Results comparison</h3>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a>make_results_table <span class="ot">&lt;-</span> <span class="cf">function</span>(q_index, q_label) {</span>
+<span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a>  coef_bqr   <span class="ot">&lt;-</span> coef_mat[q_index, ]</span>
+<span id="cb25-3"><a href="#cb25-3" tabindex="-1"></a>  coef_ald   <span class="ot">&lt;-</span> fit_ald[[<span class="st">&quot;beta&quot;</span>]][, q_index]</span>
+<span id="cb25-4"><a href="#cb25-4" tabindex="-1"></a>  coef_score <span class="ot">&lt;-</span> fit_score[[<span class="st">&quot;beta&quot;</span>]][, q_index]</span>
+<span id="cb25-5"><a href="#cb25-5" tabindex="-1"></a>  coef_approx<span class="ot">&lt;-</span> fit_approximate[[<span class="st">&quot;beta&quot;</span>]][, q_index]</span>
+<span id="cb25-6"><a href="#cb25-6" tabindex="-1"></a>  </span>
+<span id="cb25-7"><a href="#cb25-7" tabindex="-1"></a>  vars <span class="ot">&lt;-</span> <span class="fu">names</span>(coef_bqr)</span>
+<span id="cb25-8"><a href="#cb25-8" tabindex="-1"></a>  </span>
+<span id="cb25-9"><a href="#cb25-9" tabindex="-1"></a>  results <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb25-10"><a href="#cb25-10" tabindex="-1"></a>    <span class="at">Method =</span> <span class="fu">c</span>(<span class="st">&quot;bayesQR&quot;</span>, <span class="st">&quot;tauBayesW - ALD&quot;</span>, <span class="st">&quot;tauBayesW - Score&quot;</span>, <span class="st">&quot;tauBayesW - Approximate&quot;</span>),</span>
+<span id="cb25-11"><a href="#cb25-11" tabindex="-1"></a>    <span class="fu">t</span>(<span class="fu">sapply</span>(<span class="fu">list</span>(coef_bqr, coef_ald, coef_score, coef_approx), <span class="cf">function</span>(coefs) coefs[vars]))</span>
+<span id="cb25-12"><a href="#cb25-12" tabindex="-1"></a>  )</span>
+<span id="cb25-13"><a href="#cb25-13" tabindex="-1"></a>  </span>
+<span id="cb25-14"><a href="#cb25-14" tabindex="-1"></a>  <span class="fu">colnames</span>(results) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Method&quot;</span>, vars)</span>
+<span id="cb25-15"><a href="#cb25-15" tabindex="-1"></a>  </span>
+<span id="cb25-16"><a href="#cb25-16" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(results, <span class="at">digits =</span> <span class="dv">3</span>, <span class="at">caption =</span> <span class="fu">paste</span>(<span class="st">&quot;Coefficient Estimates at quantile&quot;</span>, q_label))</span>
+<span id="cb25-17"><a href="#cb25-17" tabindex="-1"></a>}</span></code></pre></div>
+<div id="for-the-25th-quantile" class="section level4">
+<h4>For the 25th quantile</h4>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" tabindex="-1"></a><span class="fu">make_results_table</span>(<span class="dv">1</span>, <span class="fl">0.25</span>)</span></code></pre></div>
+<table style="width:100%;">
+<caption>Coefficient Estimates at quantile 0.25</caption>
+<colgroup>
+<col width="26%" />
+<col width="13%" />
+<col width="7%" />
+<col width="8%" />
+<col width="7%" />
+<col width="6%" />
+<col width="6%" />
+<col width="7%" />
+<col width="8%" />
+<col width="6%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">(Intercept)</th>
+<th align="right">lcavol</th>
+<th align="right">lweight</th>
+<th align="right">age</th>
+<th align="right">lbph</th>
+<th align="right">svi</th>
+<th align="right">lcp</th>
+<th align="right">gleason</th>
+<th align="right">pgg45</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">bayesQR</td>
+<td align="right">1.927</td>
+<td align="right">0.629</td>
+<td align="right">0.604</td>
+<td align="right">-0.016</td>
+<td align="right">0.115</td>
+<td align="right">0.688</td>
+<td align="right">-0.212</td>
+<td align="right">-0.021</td>
+<td align="right">0.009</td>
+</tr>
+<tr class="even">
+<td align="left">tauBayesW - ALD</td>
+<td align="right">2.111</td>
+<td align="right">0.695</td>
+<td align="right">0.683</td>
+<td align="right">-0.014</td>
+<td align="right">0.114</td>
+<td align="right">0.780</td>
+<td align="right">-0.237</td>
+<td align="right">-0.060</td>
+<td align="right">0.011</td>
+</tr>
+<tr class="odd">
+<td align="left">tauBayesW - Score</td>
+<td align="right">2.072</td>
+<td align="right">0.703</td>
+<td align="right">0.690</td>
+<td align="right">-0.015</td>
+<td align="right">0.117</td>
+<td align="right">0.695</td>
+<td align="right">-0.234</td>
+<td align="right">-0.018</td>
+<td align="right">0.011</td>
+</tr>
+<tr class="even">
+<td align="left">tauBayesW - Approximate</td>
+<td align="right">2.077</td>
+<td align="right">0.692</td>
+<td align="right">0.708</td>
+<td align="right">-0.012</td>
+<td align="right">0.106</td>
+<td align="right">0.793</td>
+<td align="right">-0.231</td>
+<td align="right">-0.038</td>
+<td align="right">0.011</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="for-the-50th-quantile" class="section level4">
+<h4>For the 50th quantile</h4>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a><span class="fu">make_results_table</span>(<span class="dv">2</span>, <span class="fl">0.50</span>)</span></code></pre></div>
+<table style="width:100%;">
+<caption>Coefficient Estimates at quantile 0.5</caption>
+<colgroup>
+<col width="26%" />
+<col width="13%" />
+<col width="7%" />
+<col width="8%" />
+<col width="7%" />
+<col width="6%" />
+<col width="6%" />
+<col width="7%" />
+<col width="8%" />
+<col width="6%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">(Intercept)</th>
+<th align="right">lcavol</th>
+<th align="right">lweight</th>
+<th align="right">age</th>
+<th align="right">lbph</th>
+<th align="right">svi</th>
+<th align="right">lcp</th>
+<th align="right">gleason</th>
+<th align="right">pgg45</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">bayesQR</td>
+<td align="right">2.473</td>
+<td align="right">0.567</td>
+<td align="right">0.516</td>
+<td align="right">-0.022</td>
+<td align="right">0.134</td>
+<td align="right">0.806</td>
+<td align="right">-0.141</td>
+<td align="right">0.042</td>
+<td align="right">0.007</td>
+</tr>
+<tr class="even">
+<td align="left">tauBayesW - ALD</td>
+<td align="right">2.432</td>
+<td align="right">0.525</td>
+<td align="right">0.554</td>
+<td align="right">-0.026</td>
+<td align="right">0.156</td>
+<td align="right">0.832</td>
+<td align="right">-0.116</td>
+<td align="right">0.208</td>
+<td align="right">0.003</td>
+</tr>
+<tr class="odd">
+<td align="left">tauBayesW - Score</td>
+<td align="right">2.438</td>
+<td align="right">0.528</td>
+<td align="right">0.541</td>
+<td align="right">-0.024</td>
+<td align="right">0.149</td>
+<td align="right">0.862</td>
+<td align="right">-0.113</td>
+<td align="right">0.231</td>
+<td align="right">0.002</td>
+</tr>
+<tr class="even">
+<td align="left">tauBayesW - Approximate</td>
+<td align="right">2.441</td>
+<td align="right">0.524</td>
+<td align="right">0.534</td>
+<td align="right">-0.024</td>
+<td align="right">0.150</td>
+<td align="right">0.869</td>
+<td align="right">-0.109</td>
+<td align="right">0.231</td>
+<td align="right">0.002</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="for-the-75th-quantile" class="section level4">
+<h4>For the 75th quantile</h4>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="fu">make_results_table</span>(<span class="dv">3</span>, <span class="fl">0.75</span>)</span></code></pre></div>
+<table style="width:100%;">
+<caption>Coefficient Estimates at quantile 0.75</caption>
+<colgroup>
+<col width="26%" />
+<col width="13%" />
+<col width="7%" />
+<col width="8%" />
+<col width="7%" />
+<col width="6%" />
+<col width="6%" />
+<col width="7%" />
+<col width="8%" />
+<col width="6%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="right">(Intercept)</th>
+<th align="right">lcavol</th>
+<th align="right">lweight</th>
+<th align="right">age</th>
+<th align="right">lbph</th>
+<th align="right">svi</th>
+<th align="right">lcp</th>
+<th align="right">gleason</th>
+<th align="right">pgg45</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">bayesQR</td>
+<td align="right">3.033</td>
+<td align="right">0.549</td>
+<td align="right">0.398</td>
+<td align="right">-0.020</td>
+<td align="right">0.112</td>
+<td align="right">0.893</td>
+<td align="right">-0.041</td>
+<td align="right">0.065</td>
+<td align="right">0.003</td>
+</tr>
+<tr class="even">
+<td align="left">tauBayesW - ALD</td>
+<td align="right">2.894</td>
+<td align="right">0.565</td>
+<td align="right">0.146</td>
+<td align="right">-0.013</td>
+<td align="right">0.111</td>
+<td align="right">0.864</td>
+<td align="right">-0.065</td>
+<td align="right">-0.109</td>
+<td align="right">0.007</td>
+</tr>
+<tr class="odd">
+<td align="left">tauBayesW - Score</td>
+<td align="right">2.943</td>
+<td align="right">0.479</td>
+<td align="right">0.478</td>
+<td align="right">-0.021</td>
+<td align="right">0.075</td>
+<td align="right">0.947</td>
+<td align="right">0.000</td>
+<td align="right">-0.059</td>
+<td align="right">0.004</td>
+</tr>
+<tr class="even">
+<td align="left">tauBayesW - Approximate</td>
+<td align="right">2.931</td>
+<td align="right">0.563</td>
+<td align="right">0.115</td>
+<td align="right">-0.015</td>
+<td align="right">0.115</td>
+<td align="right">0.941</td>
+<td align="right">-0.057</td>
+<td align="right">-0.100</td>
+<td align="right">0.006</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

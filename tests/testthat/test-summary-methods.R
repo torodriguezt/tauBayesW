@@ -33,6 +33,46 @@ test_that("summary.bqr.svy works correctly", {
 
 })
 
+test_that("summary.bqr.svy works with multiple quantiles", {
+  set.seed(333435)
+  
+  # Generate test data
+  n <- 20
+  x <- rnorm(n)
+  y <- 1 + 2*x + rnorm(n, 0, 0.5)
+  data <- data.frame(x = x, y = y)
+  
+  # Fit model with multiple quantiles (this should create a list of draws)
+  fit <- bqr.svy(y ~ x, data = data, quantile = c(0.25, 0.5, 0.75), n_iter = 100, n_chains = 2)
+  
+  # Test that the fit has the expected structure
+  expect_s3_class(fit, "bqr.svy")
+  expect_equal(length(fit$quantile), 3)
+  expect_true(is.list(fit$draws))  # Should be a list for multiple quantiles
+  
+  # Test summary - this is where the bug was occurring
+  summary_result <- summary(fit)
+  
+  expect_s3_class(summary_result, "summary.bqr.svy")
+  expect_true(is.list(summary_result))
+  expect_true("per_tau" %in% names(summary_result))
+  expect_equal(length(summary_result$per_tau), 3)  # One for each quantile
+  
+  # Each per_tau element should have the expected structure
+  for (i in 1:3) {
+    tau_summary <- summary_result$per_tau[[i]]
+    expect_true("tau" %in% names(tau_summary))
+    expect_true("coef_summary" %in% names(tau_summary))
+    expect_true("full_summary" %in% names(tau_summary))
+    expect_true(is.data.frame(tau_summary$coef_summary))
+    expect_true("lower_ci" %in% names(tau_summary$coef_summary))
+    expect_true("upper_ci" %in% names(tau_summary$coef_summary))
+  }
+  
+  # Test print method
+  expect_output(print(summary_result), "Bayesian Quantile Regression")
+})
+
 test_that("summary.mo.bqr.svy works correctly", {
   set.seed(252627)
 
