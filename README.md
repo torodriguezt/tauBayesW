@@ -52,7 +52,7 @@ library(tauBayesW)
 
 ## 🎯 Main Functions
 
-### Single Quantile Estimation: `bqr.svy()`
+### MCMC Posterior Distribution: `bqr.svy()`
 
 Fits Bayesian quantile regression for a single quantile using MCMC methods:
 
@@ -74,7 +74,7 @@ data <- data.frame(y, x1, x2)
 
 # Fit single quantile regression
 fit <- bqr.svy(y ~ x1 + x2, weights = weights, data = data, 
-               quantile = 0.5, method = "ald", niter = 1000)
+               quantile = 0.5, method = "ald", niter = 5000, burnin = 2500)
 summary(fit)
 ```
 
