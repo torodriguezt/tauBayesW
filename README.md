@@ -2,7 +2,7 @@
 
 [![CRAN status](https://www.r-pkg.org/badges/version/tauBayesW)](https://CRAN.R-project.org/package=tauBayesW)
 
-**tauBayesW** is an R package for **Bayesian weighted quantile regression** for complex survey designs. The package provides both single and multiple quantile estimation using efficient MCMC and EM algorithms with fast C++ implementations.
+**tauBayesW** is an R package for **Bayesian weighted quantile regression** for complex survey designs. The package provides both single and multiple-output quantile regression estimation using efficient MCMC and EM algorithms with fast C++ implementations.
 
 <p align="center">
   <img src="web/public/logo_tau.png" width="180" alt="tauBayesW logo"/>
@@ -52,7 +52,7 @@ library(tauBayesW)
 
 ## 🎯 Main Functions
 
-### MCMC Posterior Distribution: `bqr.svy()`
+### Quantile Regression: `bqr.svy()`
 
 Fits Bayesian quantile regression for a single quantile using MCMC methods:
 
@@ -78,7 +78,7 @@ fit <- bqr.svy(y ~ x1 + x2, weights = weights, data = data,
 summary(fit)
 ```
 
-### Multiple Quantile Estimation: `mo.bqr.svy()`
+### Multiple-output Quantile Regression: `mo.bqr.svy()`
 
 Fits Bayesian quantile regression for multiple quantiles using EM algorithm:
 
@@ -112,17 +112,17 @@ The package implements methods based on:
 
 ## 👥 Authors
 
-- **Marcus L. Nascimento**  
-  Postdoctoral Researcher, School of Applied Mathematics, Fundação Getulio Vargas (FGV EMAp)
-
-- **Kelly Christina Mota Gonçalves**  
-  Professor, Department of Statistics, Federal University of Rio de Janeiro (UFRJ)
-
-- **Johntan Cardona Jiménez**  
-  Professor, Department of Statistics, Universidad Nacional de Colombia (UNAL)
-
 - **Tomás Rodríguez Taborda**  
   Student, Department of Statistics and Department of Computer and Decision Sciences, Universidad Nacional de Colombia (UNAL)
+
+- **Johnatan Cardona Jiménez**  
+  Assistant Professor, Department of Statistics, Universidad Nacional de Colombia (UNAL)
+  
+- **Marcus L. Nascimento**  
+  Postdoctoral Researcher, School of Applied Mathematics, Getulio Vargas Foundation (FGV EMAp)
+
+- **Kelly Christina Mota Gonçalves**  
+  Associate Professor, Department of Statistical Methods, Federal University of Rio de Janeiro (UFRJ)
 
 ---
 
