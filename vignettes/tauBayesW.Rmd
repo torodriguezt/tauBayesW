@@ -208,6 +208,7 @@ if (!is.null(fit_ald$draws)) {
   )
 }
 ```
+For the `mo.bqr.svy` it is recommended to use the `summary()` method in order to obtain a cleaner and more structured view of the output. This provides posterior mode estimates, EM convergence information, and scale parameters for each quantile and direction.
 
 
 ### Convergence Diagnostics
