@@ -49,25 +49,25 @@ as arguments, or use a single prior that will be recycled across all quantiles.
 }
 \note{
 For a simpler unified interface, consider using \code{\link{prior}}
-with \code{type = "multivariate"} which automatically handles both
+with \code{type = "EM"} which automatically handles both
 univariate and multivariate models.
 }
 \examples{
 # Create a single prior (will be recycled for all quantiles)
-prior1 <- prior(p = 3, type = "multivariate", beta_mean = c(0, 1, -0.5))
+prior1 <- prior(p = 3, type = "EM", beta_mean = c(0, 1, -0.5))
 
 # Create quantile-specific priors using a list
 priors_list <- list(
-  q0.1 = prior(p = 3, type = "multivariate", beta_mean = c(0, 0.8, -0.3)),
-  q0.5 = prior(p = 3, type = "multivariate", beta_mean = c(0, 1.0, -0.5)),
-  q0.9 = prior(p = 3, type = "multivariate", beta_mean = c(0, 1.2, -0.7))
+  q0.1 = prior(p = 3, type = "EM", beta_mean = c(0, 0.8, -0.3)),
+  q0.5 = prior(p = 3, type = "EM", beta_mean = c(0, 1.0, -0.5)),
+  q0.9 = prior(p = 3, type = "EM", beta_mean = c(0, 1.2, -0.7))
 )
 
 # Create quantile-specific priors using a function
 prior_fn <- function(tau, p, names) {
   # More informative priors for extreme quantiles
   variance <- ifelse(tau < 0.2 | tau > 0.8, 0.5, 1.0)
-  prior(p = p, type = "multivariate", beta_cov = diag(variance, p), names = names)
+  prior(p = p, type = "EM", beta_cov = diag(variance, p), names = names)
 }
 
 }

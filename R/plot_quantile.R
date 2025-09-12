@@ -1,42 +1,65 @@
-#' Plot method for Bayesian Weighted Quantile Regression (survey)
+#' Plot Method for Bayesian Weighted Quantile Regression (Survey)
 #'
 #' @description
-#' Método \code{plot()} para objetos \code{bqr.svy} resultantes de \code{bqr.svy()}.
-#' Soporta 4 tipos:
+#' Plot method for objects of class \code{bqr.svy} produced by \code{bqr.svy()}.
+#'
+#' @details
+#' Supported plot types:
 #' \itemize{
-#'   \item \strong{type="fit"}: curvas de cuantiles vs. un predictor (opcionalmente con puntos y bandas creíbles).
-#'   \item \strong{type="quantile"}: coeficiente vs. cuantil (estilo plotquantile).
-#'   \item \strong{type="trace"}: traza MCMC de un coeficiente.
-#'   \item \strong{type="density"}: densidad posterior de un coeficiente.
+#'   \item \strong{type = "fit"}: Quantile regression curves versus a predictor
+#'         (optionally with points and credible bands).
+#'   \item \strong{type = "quantile"}: Coefficient value as a function of quantile
+#'         (similar to \code{plotquantile}).
+#'   \item \strong{type = "trace"}: MCMC trace plot for a selected coefficient.
+#'   \item \strong{type = "density"}: Posterior density plot for a selected coefficient.
 #' }
 #'
-#' @param x Objeto de clase \code{bqr.svy}.
-#' @param y Ignorado (compatibilidad S3).
-#' @param type \code{"fit"}, \code{"quantile"}, \code{"trace"} o \code{"density"}.
-#' @param predictor Predictor numérico para \code{type="fit"}; si es \code{NULL}, se usa el primero numérico distinto a la respuesta.
-#' @param tau Vector de cuantiles a graficar (debe estar en \code{x$quantile}); si es \code{NULL}, usa todos los del objeto.
-#' @param which Coeficiente (nombre o índice) para \code{type="quantile"}, \code{"trace"} o \code{"density"}.
-#' @param add_points Lógico; si \code{TRUE}, dibuja puntos del dataset en \code{type="fit"}.
-#' @param combine Lógico; con múltiples \code{tau} y \code{type="fit"}: \code{TRUE}=todos en un panel, \code{FALSE}=uno por panel.
-#' @param show_ci Lógico; si \code{TRUE}, dibuja banda creíble.
-#' @param ci_probs Par de cuantiles de la banda (p.ej. \code{c(0.1, 0.9)} = 80\%).
-#' @param at Lista nombrada con valores fijos para otras covariables cuando \code{type="fit"}.
-#' @param grid_length Tamaño de la grilla del predictor para \code{type="fit"}.
-#' @param points_alpha Opacidad de puntos (0–1).
-#' @param point_size Tamaño de puntos.
-#' @param line_size Grosor de líneas.
-#' @param main Título principal opcional.
-#' @param use_ggplot Lógico; si \code{TRUE}, usa ggplot2 para gráficos estéticos con leyenda en la parte inferior.
-#' @param theme_style Estilo de tema ggplot2: \code{"minimal"}, \code{"classic"}, \code{"bw"}, \code{"light"}.
-#' @param color_palette Paleta de colores: \code{"viridis"}, \code{"plasma"}, \code{"set2"}, \code{"dark2"}.
-#' @param add_h0 Lógico; si \code{TRUE}, agrega línea \eqn{y=0} en \code{type="quantile"}.
-#' @param add_ols Lógico; si \code{TRUE}, agrega línea OLS para el coeficiente en \code{type="quantile"}.
-#' @param ols_fit Objeto \code{lm} ya calculado; si es \code{NULL}, se ajusta con \code{x$model}/\code{x$terms}.
-#' @param ols_weights Vector de pesos para OLS (si se desea ponderado).
-#' @param ... Aceptado para compatibilidad; \strong{no se propaga} a funciones gráficas internas.
+#' @param x Object of class \code{bqr.svy}.
+#' @param y Ignored (for S3 compatibility).
+#' @param type Character string: one of \code{"fit"}, \code{"quantile"},
+#'   \code{"trace"}, or \code{"density"}.
+#' @param predictor Numeric predictor for \code{type = "fit"}; if \code{NULL},
+#'   the first numeric predictor different from the response is used.
+#' @param tau Vector of quantiles to plot (must be in \code{x$quantile});
+#'   if \code{NULL}, all quantiles from the object are used.
+#' @param which Coefficient name or index for \code{type = "quantile"},
+#'   \code{"trace"} or \code{"density"}.
+#' @param add_points Logical; if \code{TRUE}, adds dataset points for
+#'   \code{type = "fit"}.
+#' @param combine Logical; when multiple \code{tau} are provided and
+#'   \code{type = "fit"}, \code{TRUE} = all curves in one panel,
+#'   \code{FALSE} = one panel per quantile.
+#' @param show_ci Logical; if \code{TRUE}, adds credible bands.
+#' @param ci_probs Length-2 numeric vector with lower/upper credible interval
+#'   probabilities (e.g. \code{c(0.1, 0.9)} for 80 percent bands).
+#' @param at Named list of fixed values for other covariates when
+#'   \code{type = "fit"}.
+#' @param grid_length Number of points for the predictor grid in
+#'   \code{type = "fit"}.
+#' @param points_alpha Point transparency (0-1).
+#' @param point_size Point size.
+#' @param line_size Line thickness.
+#' @param main Optional main title.
+#' @param use_ggplot Logical; if \code{TRUE}, use ggplot2 for nice plots with
+#'   legend at the bottom.
+#' @param theme_style ggplot2 theme: one of \code{"minimal"}, \code{"classic"},
+#'   \code{"bw"}, \code{"light"}.
+#' @param color_palette Color palette: \code{"viridis"}, \code{"plasma"},
+#'   \code{"set2"}, \code{"dark2"}.
+#' @param add_h0 Logical; if \code{TRUE}, adds a horizontal line at
+#'   \eqn{y = 0} in \code{type = "quantile"}.
+#' @param add_ols Logical; if \code{TRUE}, adds the OLS estimate for the
+#'   selected coefficient in \code{type = "quantile"}.
+#' @param ols_fit Precomputed \code{lm} object; if \code{NULL}, it is
+#'   fitted internally using \code{x$model}/\code{x$terms}.
+#' @param ols_weights Optional vector of weights for weighted OLS.
+#' @param ... Accepted for compatibility but not passed to internal plotting
+#'   functions.
 #'
-#' @return \code{invisible(NULL)} para gráficos base, objeto ggplot para ggplot2.
+#' @return \code{invisible(NULL)} for base R plots, or a ggplot object
+#'   (if \code{use_ggplot = TRUE}).
 #'
+#' @aliases plot
 #' @importFrom stats model.matrix median quantile density formula
 #' @importFrom graphics plot lines points legend segments axis grid par
 #' @importFrom grDevices adjustcolor hcl.colors
@@ -45,6 +68,7 @@
 #' @importFrom ggplot2 scale_color_viridis_d scale_fill_viridis_d scale_color_brewer scale_fill_brewer
 #' @importFrom ggplot2 theme element_text element_blank coord_flip
 #' @method plot bqr.svy
+#' @rdname plot.bqr.svy
 #' @export
 plot.bqr.svy <- function(
     x, y = NULL,
@@ -160,9 +184,6 @@ plot.bqr.svy <- function(
     grDevices::rainbow(length(tau))
   }
 
-  # =========================
-  # FIT (curvas vs predictor)
-  # =========================
   if (type == "fit") {
     if (is.null(predictor)) {
       cand <- setdiff(names(mf), resp)
@@ -257,9 +278,6 @@ plot.bqr.svy <- function(
     }
   }
 
-  # =========================
-  # QUANTILE (coef vs tau)
-  # =========================
   if (type == "quantile") {
     if (length(tau) < 2L) {
       stop("Para 'type=\"quantile\"' debes tener al menos dos cuantiles en el objeto o pasar 'tau' con longitud > 1.", call. = FALSE)
@@ -342,9 +360,7 @@ plot.bqr.svy <- function(
     }
   }
 
-  # =========================
-  # TRACE (serie temporal)
-  # =========================
+
   if (type == "trace") {
     D <- .get_draws(x, tau_sel = tau[1])
     if (is.null(which)) which <- colnames(D)[1]
@@ -384,9 +400,6 @@ plot.bqr.svy <- function(
     }
   }
 
-  # =========================
-  # DENSITY (posterior)
-  # =========================
   if (type == "density") {
     D <- .get_draws(x, tau_sel = tau[1])
     if (is.null(which)) which <- colnames(D)[1]
@@ -551,9 +564,6 @@ plot.bqr.svy <- function(
   invisible(NULL)
 }
 
-# --------------------------------------------------------------------
-# Wrappers para clases primarias (evitan warnings y garantizan despacho)
-# --------------------------------------------------------------------
 
 #' @rdname plot.bqr.svy
 #' @export

@@ -17,9 +17,9 @@ prior(
 \arguments{
 \item{p}{Number of regression coefficients (including the intercept).}
 
-\item{type}{Character string specifying the model type: \code{"univariate"}
-for \code{bqr.svy} models or \code{"multivariate"} for \code{mo.bqr.svy}
-models. If \code{NULL} (default), defaults to \code{"univariate"}.}
+\item{type}{Character string specifying the model type: \code{"MCMC"}
+for \code{bqr.svy} models or \code{"EM"} for \code{mo.bqr.svy}
+models. If \code{NULL} (default), defaults to \code{"MCMC"}.}
 
 \item{beta_mean}{Numeric vector of prior means for regression coefficients
 (length \code{p}). If a scalar is supplied, it is expanded to length \code{p}.
@@ -55,14 +55,14 @@ creates the appropriate prior object.
 This function provides a unified interface that replaces the need to know
 the specific prior creation functions for each model type.
 
-For univariate models (\code{type = "univariate"}):
+For univariate models (\code{type = "MCMC"}):
 \itemize{
 \item Uses parameters \code{beta_mean}, \code{beta_cov}, \code{sigma_shape}, \code{sigma_rate}
 \item Creates a \code{bqr_prior} object compatible with \code{\link{bqr.svy}}
 \item Sigma parameters are only used with \code{method = "ald"}
 }
 
-For multivariate models (\code{type = "multivariate"}):
+For multivariate models (\code{type = "EM"}):
 \itemize{
 \item Uses parameters \code{beta_mean}, \code{beta_cov}, \code{sigma_shape}, \code{sigma_rate}
 \item Creates a \code{mo_bqr_prior} object compatible with \code{\link{mo.bqr.svy}}
@@ -73,17 +73,17 @@ For multivariate models (\code{type = "multivariate"}):
 # Univariate model priors (default)
 prior_univ <- prior(p = 3)
 prior_univ_info <- prior(
-  p = 3, 
+  p = 3,
   beta_mean = c(2, 1.5, -0.8),
   beta_cov = diag(c(0.25, 0.25, 0.25)),
-  sigma_shape = 3, 
+  sigma_shape = 3,
   sigma_rate = 2
 )
 
 # Multivariate model priors
 prior_mult <- prior(p = 3, type = "multivariate")
 prior_mult_info <- prior(
-  p = 3, 
+  p = 3,
   type = "multivariate",
   beta_mean = c(0, 1, -0.5),
   beta_cov = diag(c(1, 1, 1))
@@ -94,12 +94,12 @@ prior_mult_info <- prior(
 # Univariate
 fit1 <- bqr.svy(y ~ x1 + x2, data = mydata, prior = prior_univ)
 
-# Multivariate 
+# Multivariate
 fit2 <- mo.bqr.svy(cbind(y1, y2) ~ x1 + x2, data = mydata, prior = prior_mult)
 }
 
 }
 \seealso{
 \code{\link{bqr.svy}}, \code{\link{mo.bqr.svy}},
-\code{\link{summary}}, \code{\link{convergence_check}}
+\code{\link{summary}}
 }

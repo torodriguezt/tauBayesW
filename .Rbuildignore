@@ -18,3 +18,4 @@
 ^update_docs\.R$
 ^\.next$
 ^\.vscode$
+^data-raw$
