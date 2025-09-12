@@ -6,6 +6,7 @@
 \alias{summary.bqr.svy}
 \alias{summary.bwqr_fit}
 \alias{summary.mo.bqr.svy}
+\alias{summary.list}
 \title{Summary methods for tauBayesW objects}
 \usage{
 \method{summary}{bqr.svy}(object, probs = c(0.025, 0.975), digits = 3, ...)
@@ -13,17 +14,24 @@
 \method{summary}{bwqr_fit}(object, probs = c(0.025, 0.975), digits = 3, max_lag = 200, ...)
 
 \method{summary}{mo.bqr.svy}(object, digits = 4, ...)
+
+\method{summary}{list}(object, ..., methods = NULL, target_tau = 0.5, digits = 3)
 }
 \arguments{
 \item{object}{An object of class \code{mo.bqr.svy}.}
 
 \item{probs}{Credible interval probabilities.}
 
-\item{digits}{Number of decimals to print. Default 4.}
+\item{digits}{Number of decimals for printing the combined table.}
 
 \item{...}{Unused.}
 
-\item{max_lag}{Max lag for autocorrelation diagnostics.}
+\item{max_lag}{Ignored (kept for backward compatibility).}
+
+\item{methods}{Optional character vector with labels for each fit.}
+
+\item{target_tau}{For \code{bqr.svy}, choose the block with \eqn{\tau}
+closest to this value (default \code{0.5}).}
 }
 \value{
 A \code{summary.bqr.svy} object containing one block per \eqn{\tau}.
@@ -46,4 +54,9 @@ means, SDs, R-hat, bulk/tail ESS, and credible intervals.
 
 MAP-only summary per quantile and direction for \code{mo.bqr.svy}
 (no SD/CI).
+
+If \code{object} is a \emph{list} whose elements are tauBayesW fits
+(\code{bwqr_fit}, \code{bqr.svy}, \code{mo.bqr.svy}), this method
+computes each element's summary and returns a unified table. Otherwise
+it falls back to the next method.
 }

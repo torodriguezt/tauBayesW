@@ -6,6 +6,7 @@
 \alias{print.summary.bqr.svy}
 \alias{print.summary.bwqr_fit}
 \alias{print.summary.mo.bqr.svy}
+\alias{print.summary.tauBayesW_multi}
 \title{Print methods for tauBayesW objects}
 \usage{
 \method{print}{summary.bqr.svy}(x, ...)
@@ -13,6 +14,8 @@
 \method{print}{summary.bwqr_fit}(x, ...)
 
 \method{print}{summary.mo.bqr.svy}(x, ...)
+
+\method{print}{summary.tauBayesW_multi}(x, ...)
 }
 \description{
 This page groups all S3 \code{print()} methods for the summary objects

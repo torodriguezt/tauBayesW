@@ -12,7 +12,7 @@ inline bool safe_chol(mat& L, const mat& A, double& ridge, const bool lower=true
   const double diag_mean = mean(A.diag());
   ridge = std::max(ridge, 1e-12 * std::max(1.0, std::abs(diag_mean)));
   mat M;
-  for (int i = 0; i < 8; ++i) {                   // hasta 8 incrementos de ridge
+  for (int i = 0; i < 8; ++i) {
     M = A + ridge * eye<mat>(A.n_rows, A.n_cols);
     if (chol(L, M, lower ? "lower" : "upper")) return true;
     ridge *= 10.0;
@@ -22,25 +22,24 @@ inline bool safe_chol(mat& L, const mat& A, double& ridge, const bool lower=true
 
 // --- Resuelve A^{-1} s usando Cholesky: z = A^{-1} s (A SPD) ---
 inline vec spd_solve_from_chol(const mat& L, const vec& s) {
-  // L es lower-triangular: A = L L'
   vec v = solve(trimatl(L), s, solve_opts::fast);     // L v = s
   vec z = solve(trimatl(L.t()), v, solve_opts::fast); // L' z = v
   return z;
 }
 
-// --- log-posterior "Score Likelihood" estable ---
+// --- log-posterior "Score Likelihood" (sin normalizar dentro) ---
 // prior: beta ~ N(b0, B_inv^{-1})
 // s_tau(beta) = X' [ w ⊙ (tau - 1{y - X beta < 0}) ]
-// Var[s_tau] ≈ tau(1-tau) * XtWX, con XtWX = X' diag(w) X  (NO w^2)
-// Pseudo-loglik ∝ -0.5 * lambda * s' Var^{-1} s   (determinante es constante en beta)
+// Var[s_tau] ≈ tau(1-tau) * XtWX, con XtWX = X' diag(w) X
+// Pseudo-loglik ∝ -0.5 * lambda * s' Var^{-1} s   (determinante constante en beta)
 static double log_post_SL_stable(const vec& beta,
                                  const vec& b0,
                                  const mat& B_inv,
                                  const vec& y,
                                  const mat& X,
-                                 const vec& w_norm,   // pesos normalizados a media 1
+                                 const vec& w,        // <- YA normalizados en R
                                  double tau,
-                                 const mat& L_XtWX,   // chol lower de XtWX (w.r.t. w_norm)
+                                 const mat& L_XtWX,   // chol lower de XtWX (con w ya normalizados)
                                  double lambda) {
   // Prior
   vec diff = beta - b0;
@@ -48,19 +47,19 @@ static double log_post_SL_stable(const vec& beta,
 
   // Score s_tau
   vec res  = y - X * beta;
-  vec ind  = tau - conv_to<vec>::from(res < 0);      // tau - 1{res<0}
-  vec s    = X.t() * (w_norm % ind);                 // X' diag(w) (tau - I)
+  vec ind  = tau - conv_to<vec>::from(res < 0);  // tau - 1{res<0}
+  vec s    = X.t() * (w % ind);                  // X' diag(w) (tau - I)
 
-  // Var^{-1} s = [tau(1-tau) XtWX]^{-1} s = (1/(tau(1-tau))) * XtWX^{-1} s
-  vec z = spd_solve_from_chol(L_XtWX, s);            // z = XtWX^{-1} s
+  // Var^{-1} s = [tau(1-tau) XtWX]^{-1} s
+  vec z = spd_solve_from_chol(L_XtWX, s);        // z = XtWX^{-1} s
   double quad = 0.5 * (lambda / (tau * (1.0 - tau))) * dot(s, z);
 
-  return lp - quad;                                  // sin determinante: constante en beta
+  return lp - quad;
 }
 
 Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              const arma::mat& X,
-                             const arma::vec& w,
+                             const arma::vec& w,   // <- RECIBE w YA NORMALIZADOS
                              double tau = 0.5,
                              int n_mcmc  = 10000,
                              int burnin  = 2000,
@@ -76,7 +75,6 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
   if (burnin >= n_mcmc) stop("burnin debe ser < n_mcmc");
   if (thin <= 0)        stop("thin debe ser positivo");
 
-  const int n = y.n_elem;
   const int p = X.n_cols;
 
   // --- Prior ---
@@ -93,21 +91,23 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
       stop("B_prior_prec debe ser pxp");
   }
 
-  // --- Pesos: normalizar a media 1 para estabilidad ---
-  vec w_norm = w / mean(w);
-  if (w_norm.min() <= 0.0) stop("Todos los pesos deben ser > 0");
-  const double lambda = sum(w_norm); // ≈ n si ya estaban normalizados
+  // --- Pesos: usar tal cual llegan (YA normalizados en R) ---
+  if (w.min() <= 0.0) stop("Todos los pesos deben ser > 0");
+  const double mean_w = arma::mean(w);
+  if (std::abs(mean_w - 1.0) > 1e-8) {
+    Rcpp::warning("Se esperaba w normalizados a media 1; mean(w)=%.6f", mean_w);
+  }
+  const double lambda = sum(w); // ≈ n si mean(w)=1
 
   // --- XtWX y su Cholesky seguro ---
   // XtWX = X' diag(w) X = X.t() * (X.each_col() % w)
-  mat XtWX = X.t() * (X.each_col() % w_norm);
+  mat XtWX = X.t() * (X.each_col() % w);
   mat L_XtWX;
   double ridge_X = 0.0;
   if (!safe_chol(L_XtWX, XtWX, ridge_X, true))
     stop("Cholesky de XtWX falló incluso con ridge");
 
   // --- Propuesta: preacondicionada y estable ---
-  // Base: S_base = (B_inv + kappa * XtWX)^{-1}
   const double kappa = 1.0;
   mat Prec = B_inv + kappa * XtWX;
   mat L_Prec;
@@ -115,11 +115,9 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
   if (!safe_chol(L_Prec, Prec, ridge_P, true))
     stop("Cholesky de (B_inv + kappa*XtWX) falló");
 
-  // Invertir via Cholesky para obtener cov de propuesta
-  // S_base = Prec^{-1}  ⇒  chol(S_base) = inv(L_Prec')  (más estable con solve)
+  // S_base = Prec^{-1} ⇒ chol(S_base) = inv(L_Prec')
   mat I_p = eye<mat>(p, p);
-  mat L_prop_base = solve(trimatl(L_Prec.t()), I_p, solve_opts::fast); // upper solve
-  // Escala óptima 2.38^2/p y adaptación multiplicativa ct
+  mat L_prop_base = solve(trimatl(L_Prec.t()), I_p, solve_opts::fast);
   double scale0 = (p > 1) ? (2.38 * 2.38 / p) : 1.0;
 
   // --- Salida ---
@@ -132,7 +130,7 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
   double ct = 1.0;
 
   // Precomputar log posterior actual
-  double logp_curr = log_post_SL_stable(beta, b0, B_inv, y, X, w_norm, tau, L_XtWX, lambda);
+  double logp_curr = log_post_SL_stable(beta, b0, B_inv, y, X, w, tau, L_XtWX, lambda);
 
   // --- MCMC ---
   for (int k = 0; k < n_mcmc; ++k) {
@@ -141,11 +139,11 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
       R_CheckUserInterrupt();
     }
 
-    // Propuesta: beta + sqrt(ct*scale0) * L_prop_base * z, z~N(0,I)
+    // Propuesta
     vec z = randn<vec>(p);
     vec beta_prop = beta + std::sqrt(ct * scale0) * (L_prop_base * z);
 
-    double logp_prop = log_post_SL_stable(beta_prop, b0, B_inv, y, X, w_norm, tau, L_XtWX, lambda);
+    double logp_prop = log_post_SL_stable(beta_prop, b0, B_inv, y, X, w, tau, L_XtWX, lambda);
 
     double log_alpha = std::min(0.0, logp_prop - logp_curr);
     double u = R::runif(0.0, 1.0);
@@ -157,13 +155,11 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
       ++accept;
     }
 
-    // Adaptación de escala (Robbins–Monro), con límites para estabilidad
-    // objetivo ~ 0.234
+    // Adaptación de escala (Robbins–Monro), objetivo ~0.234
     double step = std::pow(k + 1.0, -0.8);
     ct = std::exp(std::log(ct) + step * (acc_prob - 0.234));
     ct = std::max(1e-4, std::min(ct, 1e4)); // clamp
 
-    // Guardar
     if (k >= burnin && ((k - burnin) % thin == 0)) {
       beta_out.row(k_out++) = beta.t();
     }

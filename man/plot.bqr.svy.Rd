@@ -41,84 +41,115 @@
 \arguments{
 \item{x}{Object of class \code{bqr.svy}.}
 
-\item{y}{Ignored (for S3 compatibility).}
+\item{y}{Ignored (S3 signature).}
 
-\item{type}{Character string: one of \code{"fit"}, \code{"quantile"},
-\code{"trace"}, or \code{"density"}.}
+\item{type}{One of \code{"fit"}, \code{"quantile"}, \code{"trace"},
+\code{"density"}.}
 
-\item{predictor}{Numeric predictor for \code{type = "fit"}; if \code{NULL},
-the first numeric predictor different from the response is used.}
+\item{predictor}{(fit) Name of a numeric predictor; if \code{NULL}, the first
+numeric predictor (excluding the response) is used.}
 
-\item{tau}{Vector of quantiles to plot (must be in \code{x$quantile});
-if \code{NULL}, all quantiles from the object are used.}
+\item{tau}{Quantile(s) to plot; must appear in \code{x$quantile}. If
+\code{NULL}, all available are used.}
 
-\item{which}{Coefficient name or index for \code{type = "quantile"},
-\code{"trace"} or \code{"density"}.}
+\item{which}{(quantile/trace/density) Coefficient name or index to display.}
 
-\item{add_points}{Logical; if \code{TRUE}, adds dataset points for
-\code{type = "fit"}.}
+\item{add_points}{(fit) Logical; overlay observed data points.}
 
-\item{combine}{Logical; when multiple \code{tau} are provided and
-\code{type = "fit"}, \code{TRUE} = all curves in one panel,
-\code{FALSE} = one panel per quantile.}
+\item{combine}{(fit) Logical; if multiple \code{tau}: \code{TRUE} overlays
+curves in one panel; \code{FALSE} uses one panel per quantile.}
 
-\item{show_ci}{Logical; if \code{TRUE}, adds credible bands.}
+\item{show_ci}{(fit) Logical; draw credible bands.}
 
-\item{ci_probs}{Length-2 numeric vector with lower/upper credible interval
-probabilities (e.g. \code{c(0.1, 0.9)} for 80 percent bands).}
+\item{ci_probs}{(fit) Length-2 numeric vector with lower/upper probabilities
+for credible bands.}
 
-\item{at}{Named list of fixed values for other covariates when
-\code{type = "fit"}.}
+\item{at}{(fit) Named list of fixed values for non-\code{predictor}
+covariates (see Details).}
 
-\item{grid_length}{Number of points for the predictor grid in
-\code{type = "fit"}.}
+\item{grid_length}{(fit) Integer; number of points in the predictor grid.}
 
-\item{points_alpha}{Point transparency (0-1).}
+\item{points_alpha}{(fit) Point transparency in \code{[0,1]}.}
 
-\item{point_size}{Point size.}
+\item{point_size}{(fit) Point size.}
 
-\item{line_size}{Line thickness.}
+\item{line_size}{(fit/quantile) Line width for fitted/summary lines.}
 
 \item{main}{Optional main title.}
 
-\item{use_ggplot}{Logical; if \code{TRUE}, use ggplot2 for nice plots with
-legend at the bottom.}
+\item{use_ggplot}{Logical; if \code{TRUE}, return a ggplot object.}
 
-\item{theme_style}{ggplot2 theme: one of \code{"minimal"}, \code{"classic"},
+\item{theme_style}{(ggplot) One of \code{"minimal"}, \code{"classic"},
 \code{"bw"}, \code{"light"}.}
 
-\item{color_palette}{Color palette: \code{"viridis"}, \code{"plasma"},
+\item{color_palette}{(ggplot) One of \code{"viridis"}, \code{"plasma"},
 \code{"set2"}, \code{"dark2"}.}
 
-\item{add_h0}{Logical; if \code{TRUE}, adds a horizontal line at
-\eqn{y = 0} in \code{type = "quantile"}.}
+\item{add_h0}{(quantile) Logical; add a horizontal reference at \eqn{y = 0}.}
 
-\item{add_ols}{Logical; if \code{TRUE}, adds the OLS estimate for the
-selected coefficient in \code{type = "quantile"}.}
+\item{add_ols}{(quantile) Logical; add the OLS estimate (dotted line) for the
+selected coefficient.}
 
-\item{ols_fit}{Precomputed \code{lm} object; if \code{NULL}, it is
-fitted internally using \code{x$model}/\code{x$terms}.}
+\item{ols_fit}{(quantile) Optional precomputed \code{lm} object; if
+\code{NULL}, an \code{lm()} is fitted internally using \code{x$model} and
+\code{x$terms}.}
 
-\item{ols_weights}{Optional vector of weights for weighted OLS.}
+\item{ols_weights}{(quantile) Optional numeric vector of weights when fitting
+OLS internally (length must match \code{nrow(x$model)}).}
 
-\item{...}{Accepted for compatibility but not passed to internal plotting
-functions.}
+\item{...}{Accepted for compatibility; ignored by internal plotting code.}
 }
 \value{
-\code{invisible(NULL)} for base R plots, or a ggplot object
-(if \code{use_ggplot = TRUE}).
+\code{invisible(NULL)} for base R graphics, or a ggplot object if
+\code{use_ggplot = TRUE}.
 }
 \description{
 Plot method for objects of class \code{bqr.svy} produced by \code{bqr.svy()}.
+It can display fitted quantile curves, coefficient–quantile profiles,
+MCMC trace plots, and posterior densities.
 }
 \details{
 Supported plot types:
 \itemize{
-\item \strong{type = "fit"}: Quantile regression curves versus a predictor
-(optionally with points and credible bands).
-\item \strong{type = "quantile"}: Coefficient value as a function of quantile
-(similar to \code{plotquantile}).
-\item \strong{type = "trace"}: MCMC trace plot for a selected coefficient.
-\item \strong{type = "density"}: Posterior density plot for a selected coefficient.
+\item \code{type = "fit"}: Fitted quantile curves versus a single
+numeric predictor. Optionally overlay observed points and credible
+bands. Other covariates can be held fixed via \code{at}.
+\item \code{type = "quantile"}: A single coefficient as a function
+of the quantile \eqn{\tau}. Optionally add a reference line at 0 and
+the corresponding OLS estimate.
+\item \code{type = "trace"}: MCMC trace for one selected
+coefficient at a chosen \eqn{\tau}.
+\item \code{type = "density"}: Posterior density for one selected
+coefficient at a chosen \eqn{\tau}.
 }
+
+Notes:
+\itemize{
+\item \code{tau} must be included in \code{x$quantile}. If \code{NULL}, all
+available quantiles in the object are used.
+\item For \code{type = "fit"}, \code{predictor} must be a numeric column in
+the original model. If \code{NULL}, the first numeric predictor
+(different from the response) is chosen automatically.
+\item For \code{type = "fit"}, \code{at} is a named list
+(\code{list(var = value, ...)}) used to fix other covariates while
+plotting versus \code{predictor}. Provide valid levels for factors.
+\item When \code{use_ggplot = TRUE}, a ggplot object is returned and the
+appearance is controlled by \code{theme_style} and
+\code{color_palette}. Otherwise, base graphics are used and the
+function returns \code{invisible(NULL)}.
+}
+}
+\examples{
+\donttest{
+data(mtcars)
+fit <- bqr.svy(mpg ~ wt + hp + cyl, data = mtcars,
+               quantile = c(0.25, 0.5, 0.75), method = "ald",
+               niter = 20000, burnin = 10000, thin = 5)
+
+plot(fit, type = "fit", predictor = "wt", show_ci = TRUE)
+plot(fit, type = "quantile", which = "wt", add_h0 = TRUE, add_ols = TRUE)
+plot(fit, type = "trace", which = "wt", tau = 0.5)
+plot(fit, type = "density", which = "wt", tau = 0.5)
+}
+
 }

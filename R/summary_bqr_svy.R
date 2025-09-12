@@ -1,4 +1,57 @@
 # ======================================================================
+# Utilities & imports (posterior-based summaries/diagnostics)
+# ======================================================================
+
+#' @keywords internal
+#' @importFrom posterior summarize_draws quantile2
+NULL
+
+`%||%` <- function(a, b) {
+  if (is.null(a)) return(b)
+  if (is.atomic(a) && length(a) == 1L) return(if (is.na(a)) b else a)
+  a
+}
+
+# Use posterior for summaries & diagnostics
+# Keeps the name and signature expected by your summary methods.
+summarise_draws_custom <- function(draws, probs = c(0.025, 0.975), ...) {
+  if (!is.matrix(draws)) draws <- as.matrix(draws)
+  if (is.null(colnames(draws))) colnames(draws) <- paste0("V", seq_len(ncol(draws)))
+
+  s <- posterior::summarize_draws(
+    draws,
+    "mean", "median", "sd",
+    "rhat", "ess_bulk", "ess_tail",
+    ~posterior::quantile2(.x, probs = probs)
+  )
+
+  # Provide lower/upper_ci columns when exactly two probs are used
+  if (length(probs) == 2) {
+    # Try common names directly (q2.5 / q97.5)
+    if (all(c("q2.5", "q97.5") %in% names(s))) {
+      s$lower_ci <- s$`q2.5`
+      s$upper_ci <- s$`q97.5`
+    } else {
+      # Fallback: take the smallest and largest available quantile cols
+      qcols <- grep("^q[0-9]", names(s), value = TRUE)
+      if (length(qcols) >= 2) {
+        # Convert qXX(.Y) to numeric for ordering
+        qnum <- suppressWarnings(as.numeric(sub("^q", "", sub("\\.#", ".", qcols))))
+        ord <- order(qnum)
+        s$lower_ci <- s[[qcols[ord[1]]]]
+        s$upper_ci <- s[[qcols[ord[length(ord)]]]]
+      }
+    }
+  }
+
+  # Return in a familiar order (non-missing columns only)
+  wanted <- c("variable","mean","median","sd","rhat","ess_bulk","ess_tail",
+              "q2.5","q97.5","lower_ci","upper_ci")
+  s[, intersect(wanted, names(s)), drop = FALSE]
+}
+
+
+# ======================================================================
 # ANCHOR DOC: SUMMARY (single manual page "summary.tauBayesW")
 # ======================================================================
 
@@ -28,10 +81,6 @@ NULL
 #' @aliases print
 NULL
 
-
-# ======================================================================
-# SUMMARY METHODS
-# ======================================================================
 
 #' @rdname summary.tauBayesW
 #'
@@ -75,7 +124,7 @@ summary.bqr.svy <- function(object, probs = c(0.025, 0.975), digits = 3, ...) {
     storage.mode(D) <- "numeric"
     if (!nrow(D) || !ncol(D)) stop("Empty draws matrix.", call. = FALSE)
 
-    stats <- summarise_draws_custom(D)
+    stats <- summarise_draws_custom(D, probs = probs)
 
     coef_idx   <- stats$variable != "sigma"
     coef_stats <- stats[coef_idx, , drop = FALSE]
@@ -124,7 +173,7 @@ summary.bqr.svy <- function(object, probs = c(0.025, 0.975), digits = 3, ...) {
 #' @param object An object of class \code{bwqr_fit}.
 #' @param probs Credible interval probabilities.
 #' @param digits Number of decimals to use for printing.
-#' @param max_lag Max lag for autocorrelation diagnostics.
+#' @param max_lag Ignored (kept for backward compatibility).
 #' @param ... Unused.
 #' @return A \code{summary.bwqr_fit} object.
 #' @exportS3Method summary bwqr_fit
@@ -135,7 +184,7 @@ summary.bwqr_fit <- function(object, probs = c(0.025, 0.975), digits = 3, max_la
   if (nrow(draws) == 0L || ncol(draws) == 0L)
     stop("'object$draws' is empty or non-numeric.", call. = FALSE)
 
-  stats <- summarise_draws_custom(draws, max_lag = max_lag)
+  stats <- summarise_draws_custom(draws, probs = probs)  # posterior-based
 
   vars <- stats$variable
   ic <- (function(D, vars, probs) {
@@ -235,10 +284,6 @@ summary.mo.bqr.svy <- function(object, digits = 4, ...) {
   out
 }
 
-
-# ======================================================================
-# PRINT METHODS
-# ======================================================================
 
 #' @rdname print.tauBayesW
 #' @exportS3Method print summary.bqr.svy
@@ -361,5 +406,100 @@ print.summary.mo.bqr.svy <- function(x, ...) {
     cat("\nScale sigma: ", round(b$sigma, dig), " (posterior mode)\n\n", sep = "")
   }
 
+  invisible(x)
+}
+
+# Internal helper: tidy any tauBayesW summary into a common schema
+..tidy_tauBayesW_summary <- function(s, target_tau = 0.5) {
+  if (inherits(s, "summary.bwqr_fit")) {
+    df <- s$coefficients
+  } else if (inherits(s, "summary.bqr.svy")) {
+    taus <- vapply(s$per_tau, `[[`, numeric(1), "tau")
+    idx  <- which.min(abs(taus - target_tau))
+    df   <- s$per_tau[[idx]]$coef_summary
+  } else if (inherits(s, "summary.mo.bqr.svy")) {
+    blocks <- s$blocks
+    make_df <- function(b) {
+      data.frame(
+        variable = paste0(
+          b$coef_tab$parameter,
+          " [dir ", b$dir_id, ", tau=", formatC(b$tau, format = "f", digits = 3), "]"
+        ),
+        mean     = b$coef_tab$MAP,
+        sd       = NA_real_,
+        rhat     = NA_real_,
+        ess_bulk = NA_real_,
+        ess_tail = NA_real_,
+        lower_ci = NA_real_,
+        upper_ci = NA_real_,
+        check.names = FALSE
+      )
+    }
+    df <- do.call(rbind, lapply(blocks, make_df))
+  } else {
+    stop("Unknown summary object class: ", paste(class(s), collapse = ", "))
+  }
+
+  wanted <- c("variable","mean","sd","rhat","ess_bulk","ess_tail","lower_ci","upper_ci")
+  miss <- setdiff(wanted, names(df))
+  for (nm in miss) df[[nm]] <- NA_real_
+  df[, wanted, drop = FALSE]
+}
+
+#' @rdname summary.tauBayesW
+#' @description
+#' If \code{object} is a \emph{list} whose elements are tauBayesW fits
+#' (\code{bwqr_fit}, \code{bqr.svy}, \code{mo.bqr.svy}), this method
+#' computes each element's summary and returns a unified table. Otherwise
+#' it falls back to the next method.
+#' @param methods Optional character vector with labels for each fit.
+#' @param target_tau For \code{bqr.svy}, choose the block with \eqn{\tau}
+#'   closest to this value (default \code{0.5}).
+#' @param digits Number of decimals for printing the combined table.
+#' @exportS3Method summary list
+summary.list <- function(object, ..., methods = NULL, target_tau = 0.5, digits = 3) {
+  supported <- c("bwqr_fit","bqr.svy","mo.bqr.svy")
+  is_supported <- function(x) any(inherits(x, supported))
+  if (!length(object) || !all(vapply(object, is_supported, logical(1)))) {
+    return(NextMethod())
+  }
+
+  smry <- lapply(object, function(f) summary(f, ...))
+
+  if (is.null(methods)) {
+    methods <- vapply(object, function(f)
+      (f$method %||% class(f)[1]) %||% "model", character(1))
+  }
+  if (length(methods) != length(smry)) {
+    stop("'methods' must be NULL or have the same length as 'object'.")
+  }
+
+  tidied <- Map(function(s, lab) {
+    df <- ..tidy_tauBayesW_summary(s, target_tau = target_tau)
+    df$Method <- lab
+    df
+  }, smry, methods)
+
+  table <- do.call(rbind, tidied)
+  table <- table[, c("Method", setdiff(names(table), "Method")), drop = FALSE]
+
+  out <- list(
+    table      = table,
+    target_tau = target_tau,
+    components = smry,
+    digits     = digits
+  )
+  class(out) <- c("summary.tauBayesW_multi", "summary.tauBayesW")
+  out
+}
+
+#' @rdname print.tauBayesW
+#' @exportS3Method print summary.tauBayesW_multi
+print.summary.tauBayesW_multi <- function(x, ...) {
+  df <- x$table
+  num_cols <- setdiff(names(df), c("Method","variable"))
+  for (nm in num_cols) if (is.numeric(df[[nm]]))
+    df[[nm]] <- ifelse(is.finite(df[[nm]]), round(df[[nm]], x$digits), df[[nm]])
+  print(df, row.names = FALSE)
   invisible(x)
 }

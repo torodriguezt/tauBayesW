@@ -28,7 +28,8 @@ Imports:
     geometry,
     pracma,
     ggplot2,
-    rlang
+    rlang,
+    posterior
 Suggests:
     MASS,
     knitr,

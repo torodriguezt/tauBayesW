@@ -2,8 +2,8 @@
 title: "tauBayesW"
 author: "tauBayesW Package"
 date: "`r Sys.Date()`"
-output: 
-    rmarkdown::html_vignette:
+output:
+  pdf_document:
     toc: true
     toc_depth: 3
 vignette: >
@@ -24,8 +24,6 @@ knitr::opts_chunk$set(
 ```
 
 ## Introduction
-
-[![CRAN status](https://www.r-pkg.org/badges/version/tauBayesW)](https://CRAN.R-project.org/package=tauBayesW)
 
 <div style="display: flex; align-items: center;">
 
@@ -118,7 +116,7 @@ fit_ald <- bqr.svy(
   burnin    = 10000,
   thin      = 5,
   prior     = list(b0 = prior_mean, B0 = prior_cov),
-  print_progress = 10000
+  print_progress = 5000
 )
 
 fit_score <- bqr.svy(
@@ -140,7 +138,7 @@ fit_approx <- bqr.svy(
   niter     = 20000,
   burnin    = 10000,
   thin      = 5,
-  print_progress = 10000
+  print_progress = 5000
 )
 
 
@@ -480,7 +478,7 @@ true_beta <- c(2, 1.5)  # Intercept and slope
 
 # Create simulation parameters table
 sim_params <- data.frame(
-  Parameter = c("Population size", "Sample size", "Number of strata", "Quantiles", "True β₀", "True β₁"),
+  Parameter = c("Population size", "Sample size", "Number of strata", "Quantiles", "True Beta0", "True Beta1"),
   Value = c(N, n, n_est, paste(quantiles, collapse = ", "), true_beta[1], true_beta[2])
 )
 
@@ -640,7 +638,7 @@ for (q_idx in seq_along(quantiles)) {
   )
   print(knitr::kable(
     table_result, digits = 4,
-    caption = paste("Poisson Sampling - τ =", tau_val)
+    caption = paste("Poisson Sampling =", tau_val)
   ))
 }
 ```
@@ -654,7 +652,7 @@ for (q_idx in seq_along(quantiles)) {
   )
   print(knitr::kable(
     table_result, digits = 4,
-    caption = paste("Stratified Sampling - τ =", tau_val)
+    caption = paste("Stratified Sampling =", tau_val)
   ))
 }
 ```
@@ -669,7 +667,7 @@ for (q_idx in seq_along(quantiles)) {
   )
   print(knitr::kable(
     table_result, digits = 4,
-    caption = paste("Systematic Sampling - τ =", tau_val)
+    caption = paste("Systematic Sampling =", tau_val)
   ))
 }
 ```
