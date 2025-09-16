@@ -1,16 +1,17 @@
-Package: tauBayesW
-Title: Bayesian Weighted Quantile Regression with EM and MCMC Algorithm
+Package: bayesQRsurvey
+Title: Bayesian quantile regression models for complex survey data analysis
 Version: 0.1.0
 Authors@R: 
     c(
-        person("Marcus L.", "Nascimiento", email = "marcus.lavagnole@fgv.br", role = "aut"),
-        person("Kelly Cristina", "Mota Gonçalves", email = "kelly@dme.ufrj.br", role = "aut"),
+        person("Tomás", "Rodríguez Taborda", email = "torodriguezt@unal.edu.co", role = c("aut", "cre")),
         person("Johnatan", "Cardona Jiménez", email = "jcardonj@unal.edu.co", role = "aut"),
-        person("Tomás", "Rodríguez Taborda", email = "torodriguezt@unal.edu.co", role = c("aut", "cre"))
+        person("Marcus L.", "Nascimento", email = "marcus.lavagnole@fgv.br", role = "aut"),
+        person("Kelly Cristina", "Mota Gonçalves", email = "kelly@dme.ufrj.br", role = "aut")
     )
-Description: Implements Bayesian quantile regression approaches using the EM algorithm 
-    and several MCMC methods with observation weights for complex survey designs. 
-    Includes fast C++ implementations using 'Rcpp', 'RcppArmadillo', and 'RcppEigen'.
+Description: Bayesian quantile regression models for complex survey data analysis, both single 
+    and multiple-output are supported. To speed up the calculations, all algorithms are implemented 
+    in C++ using 'Rcpp', 'RcppArmadillo', and 'RcppEigen', and called from R.
+
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
