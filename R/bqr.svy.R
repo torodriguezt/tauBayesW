@@ -38,34 +38,39 @@ if (!exists("%||%"))
 #' \item{runtime}{Elapsed runtime in seconds.}
 #'
 #' @examples
-#' # Generate example data
+#' # Generate population data
 #' set.seed(123)
-#' n <- 100
-#' x1 <- rnorm(n)
-#' x2 <- runif(n, -1, 1)
-#' y <- 2 + 1.5*x1 - 0.8*x2 + rnorm(n)
-#' weights <- runif(n, 0.5, 2)
-#' data <- data.frame(y = y, x1 = x1, x2 = x2)
+#' N    <- 10000 
+#' x1_p <- runif(N, -1, 1)
+#' x2_p <- runif(N, -1, 1)
+#' y_p  <- 2 + 1.5 * x1_p - 0.8 * x2_p + rnorm(N)
 #'
-#' # Basic usage with default priors
-#' fit1 <- bqr.svy(y ~ x1 + x2, data = data, weights = weights)
+#' # Generate sample data
+#' n <- 500
+#' z_aux <- rnorm(N, mean = 1 + y_p, sd=.5)
+#' p_aux <- 1 / (1 + exp(2.5 - 0.5 * z_aux))
+#' s_ind <- sample(1:N, n, replace = FALSE, prob = p_aux)
+#' y_s   <- y_p[s_ind]
+#' x1_s  <- x1_p[s_ind]  
+#' x2_s  <- x2_p[s_ind]  
+#' w     <- 1 / p_aux[s_ind]
+#' data  <- data.frame(y = y_s, x1 = x1_s, x2 = x2_s, w = w)
+#' 
+#' # Basic usage with default method ('ald') and priors (vague)
+#' fit1 <- bqr.svy(y ~ x1 + x2, data = data, weights = w)
 #'
-#' # With informative priors
-#' prior <- prior(
-#'   p = 3,
-#'   type = "univariate",
-#'   beta_mean = c(2, 1.5, -0.8),
-#'   beta_cov = diag(c(0.25, 0.25, 0.25)),
-#'   sigma_shape = 3, sigma_rate = 2
-#' )
-#' fit2 <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
-#'                 method = "ald", prior = prior)
+#' # Specify informative priors
+#' prior<- prior(
+#'  p = 3,
+#'  beta_mean = c(2, 1.5, -0.8),
+#'  beta_cov = diag(c(0.25, 0.25, 0.25)),
+#'  sigma_shape = 1, sigma_rate = 1
+#')
+#' fit2 <- bqr.svy(y ~ x1 + x2, data = data, weights = w, prior = prior)
 #'
-#' # Compare methods
-#' fit_score <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
-#'                      method = "score")
-#' fit_approx <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
-#'                       method = "approximate")
+#' # Specify different methods
+#' fit_score  <- bqr.svy(y ~ x1 + x2, data = data, weights = w, method = "score")
+#' fit_approx <- bqr.svy(y ~ x1 + x2, data = data, weights = w, method = "approximate")
 #'
 #' @importFrom stats model.frame model.matrix model.response terms
 #' @export
