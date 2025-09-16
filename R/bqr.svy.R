@@ -2,9 +2,13 @@ if (!exists("%||%"))
   `%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
 
 # ==== MODEL FITTER ============================================================
-
-#' Bayesian Weighted Quantile Regression (Survey Design)
+    
+#' Bayesian quantile regression for complex survey data
 #'
+#' bqr.svy implements Bayesian methods for estimating quantile regression models
+#' for complex survey data analysis regarding single (univariate) outputs. To 
+#' improve computational efficiency, the Markov Chain Monte Carlo (MCMC) algorithms
+#' are implemented in C++.
 #' Fits a Bayesian quantile regression model with survey weights using one of
 #' three MCMC kernels implemented in C++:
 #' \itemize{
