@@ -18,8 +18,8 @@ if (!exists("%||%"))
 #'
 #' @param formula a symbolic description of the model to be fit.
 #' @param weights an optional numerical vector containing the survey weights. If \code{NULL}, equal weights are used.
-#' @param data A data frame containing the variables in the model.
-#' @param quantile Numeric vector of quantile levels (between 0 and 1, exclusive).
+#' @param data an optional data frame containing the variables in the model.
+#' @param quantile numerical scalar regarding the quantile of interest (default=0.5).
 #' @param algorithm Character string specifying the algorithm. Currently only \code{"em"} is supported.
 #' @param prior Prior specification. Can be:
 #'   \itemize{
