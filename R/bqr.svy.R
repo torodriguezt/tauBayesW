@@ -9,59 +9,24 @@ if (!exists("%||%"))
 #' for complex survey data analysis regarding single (univariate) outputs. To 
 #' improve computational efficiency, the Markov Chain Monte Carlo (MCMC) algorithms
 #' are implemented in C++.
-#' Fits a Bayesian quantile regression model with survey weights using one of
-#' three MCMC kernels implemented in C++:
+#'
+#' @param formula a symbolic description of the model to be fit.
+#' @param weights an optional numerical vector containing the survey weights.
+#' @param data an optional data frame containing the variables in the model.
+#' @param quantile numerical scalar or vector containing quantile(s) of interest (default=0.5).
+#' @param method one of \code{"ald"}, \code{"score"} and \code{"approximate"} (default=\code{"ald"}).
+#' @param prior a \code{bqr_prior} object of class "prior". If omitted, a vague prior is assumed (see \code{\link{prior}).
+#' @param niter number of MCMC draws.
+#' @param burnin number of initial MCMC draws to be discarded.
+#' @param thin thinning parameter, i.e., keep every keepth draw (default=1).
+#'
+#' @details  
+#' The function bqr.svy can estimate three types of models, depending on method specification.
 #' \itemize{
-#'   \item \code{.MCMC_BWQR_AL} – Asymmetric Laplace Distribution
-#'   \item \code{.MCMC_BWQR_SL} – Score likelihood
-#'   \item \code{.MCMC_BWQR_AP} – Approximate likelihood
+#'   \item \code{"ald"} – asymmetric Laplace working likelihood
+#'   \item \code{"score"} – score based working likelihood function
+#'   \item \code{"approximate"} – pseudolikelihood function based on a Gaussian approximation
 #' }
-#' One or more quantiles can be estimated, depending on the input.
-#'
-#' Survey weights are handled differently by each method:
-#' \itemize{
-#'   \item \code{"ald"} and \code{"score"}: weights are normalized (divided by their mean).
-#'   \item \code{"approximate"}: weights are used as provided (raw weights).
-#' }
-#'
-#' @param formula A \code{\link{formula}} specifying the model.
-#' @param weights Optional survey weights (numeric vector or one-sided formula).
-#'   Weights are passed directly to the underlying C++ algorithms without any
-#'   preprocessing like scaling.
-#' @param data Optional \code{data.frame} containing the variables used in the model.
-#' @param quantile Numeric scalar or vector in (0, 1): target quantile(s) \eqn{\tau}.
-#'   Duplicates are automatically removed.
-#' @param method One of \code{"ald"}, \code{"score"}, \code{"approximate"}.
-#'   Default is \code{"ald"} (Asymmetric Laplace Distribution).
-#' @param prior Prior specification. Can be:
-#'   \itemize{
-#'     \item A \code{bqr_prior} object from \code{\link{prior}}
-#'     \item A list with components \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}
-#'     \item \code{NULL} (uses default vague priors)
-#'   }
-#'   For \code{"ald"}: uses \code{b0}, \code{B0}, \code{c0}, \code{C0}.
-#'   For \code{"score"} and \code{"approximate"}: uses \code{b0}, \code{B0} only.
-#'   \strong{Tip:} Use \code{\link{prior}()} for a simpler unified interface.
-#' @param niter Integer. Number of MCMC iterations.
-#' @param burnin Integer. Number of burn-in iterations.
-#' @param thin Integer. Thinning interval.
-#' @param print_progress Integer. Print progress every \code{print_progress} iterations.
-#'   Set to 0 to disable progress printing. Default is 1000.
-#' @param ... Additional arguments passed to underlying functions (reserved for future use).
-#'
-#' @details
-#' \strong{Prior Specification:}
-#'
-#' The prior can be specified in several ways:
-#' \enumerate{
-#'   \item Using \code{\link{prior}} (recommended).
-#'   \item As a list with \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}.
-#'   \item As \code{NULL}, in which case vague priors are used.
-#' }
-#'
-#' Multiple quantiles can be fitted in a single call. The returned object
-#' adapts its class accordingly (\code{"bwqr_fit"} for one quantile,
-#' \code{"bwqr_fit_multi"} for several).
 #'
 #' @return An object of class \code{"bqr.svy"}, containing:
 #' \item{beta}{Posterior mean estimates of regression coefficients.}
