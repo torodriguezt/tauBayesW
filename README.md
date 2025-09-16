@@ -121,7 +121,7 @@ The package implements methods based on:
 - **Marcus L. Nascimento**  
   Postdoctoral Researcher, School of Applied Mathematics, Getulio Vargas Foundation (FGV EMAp)
 
-- **Kelly Christina Mota Gonçalves**  
+- **Kelly Cristina Mota Gonçalves**  
   Associate Professor, Department of Statistical Methods, Federal University of Rio de Janeiro (UFRJ)
 
 ---
