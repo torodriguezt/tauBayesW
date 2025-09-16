@@ -11,7 +11,7 @@ if (!exists("%||%"))
 #' are implemented in C++.
 #'
 #' @param formula a symbolic description of the model to be fit.
-#' @param weights an optional numerical vector containing the survey weights.
+#' @param weights an optional numerical vector containing the survey weights. If \code{NULL}, equal weights are used.
 #' @param data an optional data frame containing the variables in the model.
 #' @param quantile numerical scalar or vector containing quantile(s) of interest (default=0.5).
 #' @param method one of \code{"ald"}, \code{"score"} and \code{"approximate"} (default=\code{"ald"}).
