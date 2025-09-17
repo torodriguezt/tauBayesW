@@ -37,6 +37,11 @@ if (!exists("%||%"))
 #' \item{formula, terms, model}{Model specification details.}
 #' \item{runtime}{Elapsed runtime in seconds.}
 #'
+#' @references
+#' Nascimento, M. L. & Gonçalves, K. C. M. (2024). Bayesian Quantile Regression Models 
+#'   for Complex Survey Data Under Informative Sampling. *Journal of Survey Statistics and Methodology*,
+#'   12(4), 1105–1130.
+#'
 #' @examples
 #' # Generate population data
 #' set.seed(123)
