@@ -2,62 +2,31 @@ if (!exists("%||%"))
   `%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
 
 # ==== MODEL FITTER ============================================================
-
-#' Bayesian Weighted Quantile Regression (Survey Design)
+    
+#' Bayesian quantile regression for complex survey data
 #'
-#' Fits a Bayesian quantile regression model with survey weights using one of
-#' three MCMC kernels implemented in C++:
+#' bqr.svy implements Bayesian methods for estimating quantile regression models
+#' for complex survey data analysis regarding single (univariate) outputs. To 
+#' improve computational efficiency, the Markov Chain Monte Carlo (MCMC) algorithms
+#' are implemented in C++.
+#'
+#' @param formula a symbolic description of the model to be fit.
+#' @param weights an optional numerical vector containing the survey weights. If \code{NULL}, equal weights are used.
+#' @param data an optional data frame containing the variables in the model.
+#' @param quantile numerical scalar or vector containing quantile(s) of interest (default=0.5).
+#' @param method one of \code{"ald"}, \code{"score"} and \code{"approximate"} (default=\code{"ald"}).
+#' @param prior a \code{bqr_prior} object of class "prior". If omitted, a vague prior is assumed (see \code{\link{prior}).
+#' @param niter number of MCMC draws.
+#' @param burnin number of initial MCMC draws to be discarded.
+#' @param thin thinning parameter, i.e., keep every keepth draw (default=1).
+#'
+#' @details  
+#' The function bqr.svy can estimate three types of models, depending on method specification.
 #' \itemize{
-#'   \item \code{.MCMC_BWQR_AL} – Asymmetric Laplace Distribution
-#'   \item \code{.MCMC_BWQR_SL} – Score likelihood
-#'   \item \code{.MCMC_BWQR_AP} – Approximate likelihood
+#'   \item \code{"ald"} – asymmetric Laplace working likelihood
+#'   \item \code{"score"} – score based working likelihood function
+#'   \item \code{"approximate"} – pseudolikelihood function based on a Gaussian approximation
 #' }
-#' One or more quantiles can be estimated, depending on the input.
-#'
-#' Survey weights are handled differently by each method:
-#' \itemize{
-#'   \item \code{"ald"} and \code{"score"}: weights are normalized (divided by their mean).
-#'   \item \code{"approximate"}: weights are used as provided (raw weights).
-#' }
-#'
-#' @param formula A \code{\link{formula}} specifying the model.
-#' @param weights Optional survey weights (numeric vector or one-sided formula).
-#'   Weights are passed directly to the underlying C++ algorithms without any
-#'   preprocessing like scaling.
-#' @param data Optional \code{data.frame} containing the variables used in the model.
-#' @param quantile Numeric scalar or vector in (0, 1): target quantile(s) \eqn{\tau}.
-#'   Duplicates are automatically removed.
-#' @param method One of \code{"ald"}, \code{"score"}, \code{"approximate"}.
-#'   Default is \code{"ald"} (Asymmetric Laplace Distribution).
-#' @param prior Prior specification. Can be:
-#'   \itemize{
-#'     \item A \code{bqr_prior} object from \code{\link{prior}}
-#'     \item A list with components \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}
-#'     \item \code{NULL} (uses default vague priors)
-#'   }
-#'   For \code{"ald"}: uses \code{b0}, \code{B0}, \code{c0}, \code{C0}.
-#'   For \code{"score"} and \code{"approximate"}: uses \code{b0}, \code{B0} only.
-#'   \strong{Tip:} Use \code{\link{prior}()} for a simpler unified interface.
-#' @param niter Integer. Number of MCMC iterations.
-#' @param burnin Integer. Number of burn-in iterations.
-#' @param thin Integer. Thinning interval.
-#' @param print_progress Integer. Print progress every \code{print_progress} iterations.
-#'   Set to 0 to disable progress printing. Default is 1000.
-#' @param ... Additional arguments passed to underlying functions (reserved for future use).
-#'
-#' @details
-#' \strong{Prior Specification:}
-#'
-#' The prior can be specified in several ways:
-#' \enumerate{
-#'   \item Using \code{\link{prior}} (recommended).
-#'   \item As a list with \code{b0}, \code{B0}, and optionally \code{c0}, \code{C0}.
-#'   \item As \code{NULL}, in which case vague priors are used.
-#' }
-#'
-#' Multiple quantiles can be fitted in a single call. The returned object
-#' adapts its class accordingly (\code{"bwqr_fit"} for one quantile,
-#' \code{"bwqr_fit_multi"} for several).
 #'
 #' @return An object of class \code{"bqr.svy"}, containing:
 #' \item{beta}{Posterior mean estimates of regression coefficients.}
@@ -68,35 +37,45 @@ if (!exists("%||%"))
 #' \item{formula, terms, model}{Model specification details.}
 #' \item{runtime}{Elapsed runtime in seconds.}
 #'
+#' @references
+#' Nascimento, M. L. & Gonçalves, K. C. M. (2024). Bayesian Quantile Regression Models 
+#'   for Complex Survey Data Under Informative Sampling. *Journal of Survey Statistics and Methodology*,
+#'   12(4), 1105–1130.
+#'
 #' @examples
-#' # Generate example data
+#' # Generate population data
 #' set.seed(123)
-#' n <- 100
-#' x1 <- rnorm(n)
-#' x2 <- runif(n, -1, 1)
-#' y <- 2 + 1.5*x1 - 0.8*x2 + rnorm(n)
-#' weights <- runif(n, 0.5, 2)
-#' data <- data.frame(y = y, x1 = x1, x2 = x2)
+#' N    <- 10000 
+#' x1_p <- runif(N, -1, 1)
+#' x2_p <- runif(N, -1, 1)
+#' y_p  <- 2 + 1.5 * x1_p - 0.8 * x2_p + rnorm(N)
 #'
-#' # Basic usage with default priors
-#' fit1 <- bqr.svy(y ~ x1 + x2, data = data, weights = weights)
+#' # Generate sample data
+#' n <- 500
+#' z_aux <- rnorm(N, mean = 1 + y_p, sd=.5)
+#' p_aux <- 1 / (1 + exp(2.5 - 0.5 * z_aux))
+#' s_ind <- sample(1:N, n, replace = FALSE, prob = p_aux)
+#' y_s   <- y_p[s_ind]
+#' x1_s  <- x1_p[s_ind]  
+#' x2_s  <- x2_p[s_ind]  
+#' w     <- 1 / p_aux[s_ind]
+#' data  <- data.frame(y = y_s, x1 = x1_s, x2 = x2_s, w = w)
+#' 
+#' # Basic usage with default method ('ald') and priors (vague)
+#' fit1 <- bqr.svy(y ~ x1 + x2, data = data, weights = w)
 #'
-#' # With informative priors
-#' prior <- prior(
-#'   p = 3,
-#'   type = "univariate",
-#'   beta_mean = c(2, 1.5, -0.8),
-#'   beta_cov = diag(c(0.25, 0.25, 0.25)),
-#'   sigma_shape = 3, sigma_rate = 2
-#' )
-#' fit2 <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
-#'                 method = "ald", prior = prior)
+#' # Specify informative priors
+#' prior<- prior(
+#'  p = 3,
+#'  beta_mean = c(2, 1.5, -0.8),
+#'  beta_cov = diag(c(0.25, 0.25, 0.25)),
+#'  sigma_shape = 1, sigma_rate = 1
+#')
+#' fit2 <- bqr.svy(y ~ x1 + x2, data = data, weights = w, prior = prior)
 #'
-#' # Compare methods
-#' fit_score <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
-#'                      method = "score")
-#' fit_approx <- bqr.svy(y ~ x1 + x2, data = data, weights = weights,
-#'                       method = "approximate")
+#' # Specify different methods
+#' fit_score  <- bqr.svy(y ~ x1 + x2, data = data, weights = w, method = "score")
+#' fit_approx <- bqr.svy(y ~ x1 + x2, data = data, weights = w, method = "approximate")
 #'
 #' @importFrom stats model.frame model.matrix model.response terms
 #' @export

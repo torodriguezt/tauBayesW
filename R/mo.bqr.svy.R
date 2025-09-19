@@ -8,19 +8,18 @@ if (!exists("%||%"))
 # =====================================================
 #  MODEL FITTER (multiple-output/multivariate)
 # =====================================================
-
-#' Multiple-Output Bayesian Quantile Regression for Complex Surveys (Directional EM)
+    
+#' Multiple-Output Bayesian quantile regression for complex survey data
 #'
-#' Fits Bayesian quantile regression models for multivariate responses using the
-#' EM algorithm and a directional approach. The method projects the response into
-#' random unit vectors (directions) and their orthogonal complements, and then fits
-#' univariate Bayesian quantile regression models along each projection. The
-#' collection of fitted directions defines the multivariate quantile region.
+#' mo.bqr.svy implements a Bayesian approach to multiple-output quantile regression 
+#' for complex survey data analysis. The method builds a quantile region based on
+#' a directional approach. To improve computational efficiency, an Expectation-Maximization (EM)
+#' algorithm is implemented instead of the usual Markov Chain Monte Carlo (MCMC).
 #'
-#' @param formula A formula object specifying the model.
-#' @param weights Optional vector of sampling weights. If \code{NULL}, equal weights are used.
-#' @param data A data frame containing the variables in the model.
-#' @param quantile Numeric vector of quantile levels (between 0 and 1, exclusive).
+#' @param formula a symbolic description of the model to be fit.
+#' @param weights an optional numerical vector containing the survey weights. If \code{NULL}, equal weights are used.
+#' @param data an optional data frame containing the variables in the model.
+#' @param quantile numerical scalar regarding the quantile of interest (default=0.5).
 #' @param algorithm Character string specifying the algorithm. Currently only \code{"em"} is supported.
 #' @param prior Prior specification. Can be:
 #'   \itemize{
