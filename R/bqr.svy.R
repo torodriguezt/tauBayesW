@@ -19,6 +19,7 @@ if (!exists("%||%"))
 #' @param niter number of MCMC draws.
 #' @param burnin number of initial MCMC draws to be discarded.
 #' @param thin thinning parameter, i.e., keep every keepth draw (default=1).
+#  @param verbose logical flag indicating whether to print progress messages (default=TRUE).
 #'
 #' @details  
 #' The function bqr.svy can estimate three types of models, depending on method specification.
