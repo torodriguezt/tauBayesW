@@ -19,26 +19,16 @@ if (!exists("%||%"))
 #' @param formula a symbolic description of the model to be fit.
 #' @param weights an optional numerical vector containing the survey weights. If \code{NULL}, equal weights are used.
 #' @param data an optional data frame containing the variables in the model.
-#' @param quantile numerical scalar regarding the quantile of interest (default=0.5).
-#' @param algorithm Character string specifying the algorithm. Currently only \code{"em"} is supported.
-#' @param prior Prior specification. Can be:
-#'   \itemize{
-#'     \item \code{NULL}: Default priors are used for all quantiles
-#'     \item A single \code{mo_bqr_prior} object: Recycled for all quantiles
-#'     \item A list of \code{mo_bqr_prior} objects: One prior per quantile
-#'     \item A function \code{f(tau, p, names)}: Generates quantile-specific priors
-#'   }
-#' @param n_dir Integer. Number of projection directions (if directions \code{U} are not supplied).
-#' @param epsilon Convergence tolerance for the EM algorithm.
-#' @param max_iter Maximum number of EM iterations.
-#' @param verbose Logical indicating whether to print progress messages.
-#' @param gamma_prior_var Numeric. Prior variance for the gamma coefficients
-#'   associated with orthogonal complements.
-#' @param ... Additional arguments for direction specification:
-#'   \describe{
-#'     \item{U}{Optional user-specified matrix of directions (\eqn{d \times K}). If not provided,
-#'       \code{n_dir} random unit vectors are generated automatically.}
-#'   }
+#' @param quantile numerical scalar or vector containing quantile(s) of interest (default=0.5).
+#' @param prior a \code{bqr_prior} object of class "prior". If omitted, a vague prior is assumed (see \code{\link{prior}).
+#' @param U an optional \eqn{d \times K}-matrix of directions, where \eqn{d} indicates the response variable dimension
+#' and \eqn{K} indicates indicates the number of directions. 
+#' @param gamma_U an optional list with length equal to \eqn{K} for which each element corresponds to
+#' \eqn{d \times (d-1)}-matrix of ortoghonal basis for each row of \code{U}.
+#' @param n_dir numerical scalar corresponding to the number of directions (if \code{U} and \code{gamma_U} are not supplied).
+#' @param epsilon numerical scalar indicating the convergence tolerance for the EM algorithm (default = 1e-6).
+#' @param max_iter numerical scalar indicating maximum number of EM iterations (default = 1000).
+#  @param verbose logical flag indicating whether to print progress messages (default=TRUE).
 #'
 #' @details
 #' The algorithm works by drawing or receiving as input a set of unit directions
