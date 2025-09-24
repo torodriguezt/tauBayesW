@@ -5,7 +5,7 @@ oseif (!exists("%||%"))
     
 #' Bayesian quantile regression for complex survey data
 #'
-#' bqr.svy implements Bayesian methods for estimating quantile regression models
+#' \code{bqr.svy} implements Bayesian methods for estimating quantile regression models
 #' for complex survey data analysis regarding single (univariate) outputs. To 
 #' improve computational efficiency, the Markov Chain Monte Carlo (MCMC) algorithms
 #' are implemented in C++.
