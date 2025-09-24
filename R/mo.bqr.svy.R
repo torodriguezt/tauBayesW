@@ -28,21 +28,7 @@ if (!exists("%||%"))
 #' @param n_dir numerical scalar corresponding to the number of directions (if \code{U} and \code{gamma_U} are not supplied).
 #' @param epsilon numerical scalar indicating the convergence tolerance for the EM algorithm (default = 1e-6).
 #' @param max_iter numerical scalar indicating maximum number of EM iterations (default = 1000).
-#  @param verbose logical flag indicating whether to print progress messages (default=TRUE).
-#'
-#' @details
-#' The algorithm works by drawing or receiving as input a set of unit directions
-#' \eqn{u_k \in \mathbb{R}^d}. For each direction, an orthonormal basis of its
-#' orthogonal complement \eqn{\Gamma_k} is computed using \code{pracma::nullspace}.
-#' The response \eqn{Y} is then projected into the pair \eqn{(u_k, \Gamma_k)}, and
-#' a Bayesian quantile regression is fitted along that direction using the EM
-#' algorithm. Results across all directions can be combined to approximate the
-#' multivariate quantile region.
-#'
-#' Prior distributions can be specified globally or quantile-specific. When a list
-#' of priors is provided, elements can be named using either \code{"q0.1"} format or
-#' \code{"0.1"} format to match specific quantiles. When a function is provided, it
-#' will be called with \code{(tau, p, names)} for each quantile level.
+#  @param verbose logical flag indicating whether to print progress messages (default=FALSE).
 #'
 #' @return An object of class \code{"mo.bqr.svy"} containing:
 #'   \item{call}{The matched call}
@@ -61,53 +47,47 @@ if (!exists("%||%"))
 #'   \item{response_dim}{Dimension of the response \eqn{d}}
 #'
 #' @examples
-#' \donttest{
-#' # Datos simulados para el ejemplo
-#' set.seed(1)
-#' n  <- 150
-#' x1 <- runif(n,-1,1)
-#' x2 <- rnorm(n)
-#' y  <- 1 + 2*x1 + 0.5*x2 + rnorm(n)
-#' mydata <- data.frame(y, x1, x2)
+#' library(MASS)
 #'
-#' # Basic usage with default priors
-#' fit1 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
-#'                    quantile = c(0.1, 0.5, 0.9))
+#' # Generate population data
+#' set.seed(123)
+#' N    <- 10000 
+#' data <- mvrnorm(N,rep(0,3),matrix(c(4,0,2,0,1,1.5,2,1.5,9),3,3))
+#' x_p  <- as.matrix(data[,1])
+#' y_p  <- data[,2:3]+cbind(rep(0,N),x_p)
 #'
-#' # Using quantile-specific priors via function
-#' prior_fn <- function(tau, p, names) {
-#'   variance <- ifelse(tau < 0.2 | tau > 0.8, 0.1, 1.0)
-#'   mo_prior_default(p = p, beta_cov = diag(variance, p), names = names)
-#' }
-#' fit2 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
-#'                    quantile = c(0.1, 0.5, 0.9), prior = prior_fn)
+#' # Generate sample data
+#' n <- 500
+#' z_aux <- rnorm(N, mean = 1 + y_p, sd=.5)
+#' p_aux <- 1 / (1 + exp(2.5 - 0.5 * z_aux))
+#' s_ind <- sample(1:N, n, replace = FALSE, prob = p_aux)
+#' y_s <- y_p[s_ind,]
+#' x_s <- x_p[s_ind,]
+#' w   <- 1 / p_aux[s_ind]
+#' data_s<- data.frame(y1 = y_s[,1], y2 = y_s[,2],  x1 = x_s, w = w)
 #'
-#' # Explicit control of directions
-#' set.seed(1)
-#' y1 <- 1 + 2*x1 + 0.5*x2 + rnorm(n)
-#' y2 <- -1 + 1.5*x1 + rnorm(n)
-#' y3 <- 0.5 - x2 + rnorm(n)
-#' mydata <- data.frame(y1, y2, y3, x1, x2)
-#' U <- matrix(rnorm(9), nrow = 3)  # d=3, K=2
-#' U <- apply(U, 2, function(v) v / sqrt(sum(v^2))) # normalize
-#' fit3 <- mo.bqr.svy(cbind(y1,y2,y3) ~ x1 + x2, data = mydata,
-#'                    quantile = 0.5, U = U)
-#' }
+#' # Basic usage with default priors when U and gamma_U are given
+#' fit1 <- mo.bqr.svy(cbind(y1, y2) ~ x1, weights = w, data = data_s, quantile = c(0.1, 0.2), 
+#'  U = matrix(c(0,1,1/sqrt(2),1/sqrt(2)),2), 
+#'  gamma_U = list(c(1,0),c(1/sqrt(2),-1/sqrt(2))))
+#'
+#' # Basic usage with default priors when n_dir is given
+#' fit2 <- mo.bqr.svy(cbind(y1, y2) ~ x1, weights = w, data = data_s, quantile = c(0.1, 0.2), n_dir=2)
+#'
 #' @export
 #' @importFrom stats model.frame model.matrix model.response
 #' @importFrom pracma nullspace
 mo.bqr.svy <- function(formula,
                        weights  = NULL,
-                       data,
+                       data     = NULL,
                        quantile = 0.5,
-                       algorithm = "em",
                        prior    = NULL,
-                       n_dir    = 1,
+                       U        = NULL,
+                       gamma_U  = NULL,
+                       n_dir    = NULL,
                        epsilon  = 1e-6,
                        max_iter = 1000,
-                       verbose  = FALSE,
-                       gamma_prior_var = 1e6,
-                       ...) {
+                       verbose  = FALSE) {
 
   if (algorithm != "em") stop("Only 'em' is implemented.")
   if (missing(data))     stop("'data' must be provided.")
