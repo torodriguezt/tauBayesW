@@ -63,7 +63,7 @@ oseif (!exists("%||%"))
 #' data  <- data.frame(y = y_s, x1 = x1_s, x2 = x2_s, w = w)
 #' 
 #' # Basic usage with default method ('ald') and priors (vague)
-#' fit1 <- bqr.svy(y ~ x1 + x2, data = data, weights = w)
+#' fit1 <- bqr.svy(y ~ x1 + x2, weights = w, data = data)
 #'
 #' # Specify informative priors
 #' prior<- prior(
@@ -72,11 +72,11 @@ oseif (!exists("%||%"))
 #'  sigma_shape = 1, 
 #'  sigma_rate = 1
 #')
-#' fit2 <- bqr.svy(y ~ x1 + x2, data = data, weights = w, prior = prior)
+#' fit2 <- bqr.svy(y ~ x1 + x2, weights = w, data = data, prior = prior)
 #'
 #' # Specify different methods
-#' fit_score  <- bqr.svy(y ~ x1 + x2, data = data, weights = w, method = "score")
-#' fit_approx <- bqr.svy(y ~ x1 + x2, data = data, weights = w, method = "approximate")
+#' fit_score  <- bqr.svy(y ~ x1 + x2, weights = w, data = data, method = "score")
+#' fit_approx <- bqr.svy(y ~ x1 + x2, weights = w, data = data, method = "approximate")
 #'
 #' @importFrom stats model.frame model.matrix model.response terms
 #' @export
