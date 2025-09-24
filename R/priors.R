@@ -64,9 +64,9 @@ if (!exists("%||%"))
 #' )
 #'
 #' # Estimate the model parameters with informative prior
-#' fit_ald <- bqr.svy(y ~ x1 + x2, data = mydata, weights = w, prior = prior_ald)
-#' fit_scr <- bqr.svy(y ~ x1 + x2, data = mydata, weights = w, method = "score", prior = prior_score)
-#' fit_apx <- bqr.svy(y ~ x1 + x2, data = mydata, weights = w, method = "approximate", prior = prior_approximate)
+#' fit_ald <- bqr.svy(y ~ x1 + x2, weights = w, data = mydata, prior = prior_ald)
+#' fit_scr <- bqr.svy(y ~ x1 + x2, weights = w, data = mydata, method = "score", prior = prior_score)
+#' fit_apx <- bqr.svy(y ~ x1 + x2, weights = w, data = mydata, method = "approximate", prior = prior_approximate)
 #'    
 #' # Create an informative prior object regarding the multiple-output method
 #' prior_mo <- prior(
@@ -79,7 +79,7 @@ if (!exists("%||%"))
 #' )
 #'
 #' # Estimate the model parameters with informative prior
-#' fit_mo <- mo.bqr.svy(cbind(y1, y2) ~ x1 + x2, data = mydata, weights = w, prior = prior_mo, n_dir = 10)
+#' fit_mo <- mo.bqr.svy(cbind(y1, y2) ~ x1 + x2, weights = w, data = mydata, prior = prior_mo, n_dir = 10)
 #'
 #' @seealso \code{\link{bqr.svy}}, \code{\link{mo.bqr.svy}},
 #'   \code{\link{summary}}
