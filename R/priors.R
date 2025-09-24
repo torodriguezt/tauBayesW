@@ -85,8 +85,8 @@ if (!exists("%||%"))
 #'   \code{\link{summary}}
 #' @export
 prior <- function(
-                  beta_x_mean = rep(0, p),
-                  beta_x_cov = diag(1e6, p),
+                  beta_x_mean = rep(0, (p+1)),
+                  beta_x_cov = diag(1e6, (p+1)),
                   sigma_shape = 0.001,
                   sigma_rate = 0.001,
                   beta_y_mean = rep(0, (d-1)),
