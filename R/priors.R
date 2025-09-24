@@ -30,7 +30,6 @@ if (!exists("%||%"))
 #' \code{bqr.svy} and for the multiple-output quantile regression implemented in the function \code{mo.bqr.svy}.
 #' Every nonspecified prior parameter will get the default value.
 #'   
-#' For univariate models (\code{type = "MCMC"}):
 #' \itemize{
 #'   \item \code{method = "ald"} in function \code{bqr.svy} allow the specification of hyperparameters 
 #'         \code{beta_x_mean}, \code{beta_x_cov}, \code{sigma_shape}, and \code{sigma_rate}.
