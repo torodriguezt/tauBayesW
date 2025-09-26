@@ -42,7 +42,7 @@ The following benchmark compares the R and C++ versions of the main algorithms o
 install.packages("devtools")
 
 # Install the latest bayesQRsurvey from GitHub
-devtools::install_github("torodriguezt/tauBayesW")
+devtools::install_github("torodriguezt/bayesQRsurvey")
 
 # Load the package
 library(bayesQRsurvey)
