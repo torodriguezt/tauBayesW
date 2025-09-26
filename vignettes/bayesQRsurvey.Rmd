@@ -1,13 +1,13 @@
 ---
-title: "tauBayesW"
-author: "tauBayesW Package"
+title: "bayesQRsurvey"
+author: "bayesQRsurvey Package"
 date: "`r Sys.Date()`"
-output:
-  pdf_document:
+output: 
+    rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{tauBayesW}
+  %\VignetteIndexEntry{bayesQRsurvey}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -25,14 +25,16 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
+[![CRAN status](https://www.r-pkg.org/badges/version/bayesQRsurvey)](https://CRAN.R-project.org/package=bayesQRsurvey)
+
 <div style="display: flex; align-items: center;">
 
 <div style="flex: 0 0 200px; padding-right: 20px;">
-  <img src="logo_tau.png" width="180" alt="tauBayesW logo"/>
+  <img src="logo_tau.png" width="180" alt="bayesQRsurvey logo"/>
 </div>
 
 <div style="flex: 1;">
-The **tauBayesW** package implements four approaches for Bayesian weighted quantile regression:
+The **bayesQRsurvey** package implements four approaches for Bayesian weighted quantile regression:
 
 - **Asymmetric Laplace Distribution (ALD)**: Uses the ALD as a working likelihood, incorporating survey weights in the scale parameter. Posterior inference is carried out via Gibbs sampling.  
 - **Score**: Builds a working likelihood from estimating equations (score function), following Huang, Xu and Tashnev (2015). It accounts for survey weights and uses adaptive Metropolis–Hastings for inference.  
@@ -44,17 +46,17 @@ The **tauBayesW** package implements four approaches for Bayesian weighted quant
 
 
 
-Also, this vignette compares the performance of **bayesQR** with the three MCMC methods implemented in **tauBayesW** using a simulated dataset and the classic Prostate cancer dataset included in the `bayesQR` package.  
+Also, this vignette compares the performance of **bayesQR** with the three MCMC methods implemented in **bayesQRsurvey** using a simulated dataset and the classic Prostate cancer dataset included in the `bayesQR` package.  
 We estimate the 25th, 50th, and 75th quantile and compare coefficient estimates across all methods.
 
 
 
-## tauBayesW usage examples
+## bayesQRsurvey usage examples
 
-Let's begin showing how to use tauBayesW methods:
+Let's begin showing how to use bayesQRsurvey methods:
 
 ```{r}
-library(tauBayesW)
+library(bayesQRsurvey)
 ```
 
 ### Creating Priors
@@ -73,18 +75,16 @@ way.
 > contains the prior information. If the object is omitted in a call to
 > `bqr.svy()` or `mo.bqr.svy()`, a **standard vague prior** is used by default.
 
-Doing an example using tauBayesW
+Doing an example using bayesQRsurvey
 
 ```{r prior-examples}
-my_prior <- tauBayesW::prior(
-  p = 5,                                    # Number of regression parameters (including intercept)
-  type = "MCMC",                            # Prior type: "MCMC" or "EM"
-  beta_mean = rep(0, 5),                    # Vector of prior means for regression coefficients
-  beta_cov = diag(1000, 5),                 # Prior covariance matrix (large values = vague prior)
-  sigma_shape = 0.001,                      # Shape parameter of Inverse-Gamma prior on variance (ALD only)
-  sigma_rate = 0.001,                       # Rate parameter of Inverse-Gamma prior on variance (ALD only)
-  names = c("Int", "x1", "x2", "x3", "x4")  # Optional coefficient names
+my_prior <- bayesQRsurvey::prior(
+  beta_x_mean = rep(0, 4),              
+  beta_x_cov  = diag(1000, 4),          
+  sigma_shape = 0.001,                  
+  sigma_rate  = 0.001                   
 )
+
 print(my_prior)
 ```
 
@@ -103,10 +103,6 @@ mtcars_scaled[, c("wt", "hp", "cyl")] <- scale(mtcars[, c("wt", "hp", "cyl")])
 
 form <- mpg ~ wt + hp + cyl
 
-p <- length(attr(terms(form), "term.labels")) + 1
-prior_mean <- rep(0, p)
-prior_cov  <- diag(1000, p)   
-
 fit_ald <- bqr.svy(
   form,
   data      = mtcars_scaled,
@@ -115,8 +111,8 @@ fit_ald <- bqr.svy(
   niter     = 20000,
   burnin    = 10000,
   thin      = 5,
-  prior     = list(b0 = prior_mean, B0 = prior_cov),
-  print_progress = 5000
+  prior     = my_prior,
+  verbose   = TRUE
 )
 
 fit_score <- bqr.svy(
@@ -126,8 +122,9 @@ fit_score <- bqr.svy(
   method    = "score",
   niter     = 20000,    
   burnin    = 10000,
+  prior     = my_prior, 
   thin      = 5,
-  print_progress = 10000
+  verbose   = TRUE
 )
 
 fit_approx <- bqr.svy(
@@ -137,8 +134,9 @@ fit_approx <- bqr.svy(
   method    = "approximate",
   niter     = 20000,
   burnin    = 10000,
+  prior     = my_prior,
   thin      = 5,
-  print_progress = 5000
+  verbose   = TRUE
 )
 
 
@@ -160,22 +158,12 @@ for (k in 1:n_dir) {
   U[, k] <- u_k / sqrt(sum(u_k^2))
 }
 
-p <- 3
-prior_mo <- tauBayesW::prior(
-  p     = p,
-  type  = "EM",
-  beta_mean   = rep(0, p),
-  beta_cov    = diag(1e6, p),
-  sigma_shape = 0.001,
-  sigma_rate  = 0.001
-)
-
 fit_mo <- mo.bqr.svy(
-  cbind(mpg, hp) ~ wt + cyl,
+  cbind(mpg, hp) ~ wt + cyl + disp,
   data     = mtcars,
   quantile = c(0.25, 0.5, 0.75),
   U        = U,         
-  prior    = prior_mo,
+  prior    = my_prior,
   n_dir    = n_dir,
   max_iter = 5000,     
   verbose  = FALSE
@@ -184,9 +172,32 @@ fit_mo <- mo.bqr.svy(
 
 We can also fit several quantiles at once by passing a vector of probabilities with `c()`, for example `quantile = c(0.25, 0.5, 0.75)`.
 
+In addition, it is possible to explicitly supply the orthogonal basis to mo.bqr.svy through the gamma_U (their orthogonal complements), instead of relying on the function to generate them internally.
+
+```{r}
+gamma_U <- vector("list", n_dir)
+for (k in 1:n_dir) {
+  gamma_U[[k]] <- pracma::nullspace(t(U[, k]))
+}
+
+fit_mo <- mo.bqr.svy(
+  cbind(mpg, hp) ~ wt + cyl + disp,
+  data     = mtcars,
+  quantile = c(0.25, 0.5, 0.75),
+  U        = U,
+  gamma_U  = gamma_U,    
+  prior    = my_prior,
+  n_dir    = n_dir,
+  max_iter = 5000,
+  verbose  = FALSE
+)
+
+```
+
+
 ### Model Output: Print and Summary Methods
 
-There are also print() and summary() created for the output objects of tauBayesW
+There are also print() and summary() created for the output objects of bayesQRsurvey
 
 We can expore the return of the object bqr.svy
 
@@ -251,7 +262,7 @@ knitr::kable(
 
 ### Visualization functions
 
-The `tauBayesW` package provides comprehensive visualization capabilities through its `plot()` method. The plotting system supports both **base R graphics** (default) and **ggplot2** (when `use_ggplot = TRUE`).
+The `bayesQRsurvey` package provides comprehensive visualization capabilities through its `plot()` method. The plotting system supports both **base R graphics** (default) and **ggplot2** (when `use_ggplot = TRUE`).
 
 #### 1-. Fitted regression plot
 
@@ -296,7 +307,7 @@ fit_multi <- bqr.svy(
   niter = 10000,
   burnin = 5000,
   thin = 5,
-  print_progress = 10000
+  verbose  = TRUE 
 )
 
 plot(fit_multi, type = "quantile", which = "(Intercept)")
@@ -313,7 +324,7 @@ fit_multi <- bqr.svy(mpg ~ wt + hp, data = mtcars,
                      quantile = c(0.25, 0.5, 0.75), method = "ald",
                      niter = 5000, burnin = 2500)
 ```
-The `plot()` method in **tauBayesW** makes this straightforward: by passing several quantiles in the `tau` argument, the function can overlay multiple fitted curves in the same plot.
+The `plot()` method in **bayesQRsurvey** makes this straightforward: by passing several quantiles in the `tau` argument, the function can overlay multiple fitted curves in the same plot.
 
 ```{r}
 # Multi-panel coefficient plot
@@ -331,7 +342,7 @@ plot(fit_multi, type = "fit", use_ggplot = TRUE, ncol = 3, combine = FALSE)
 
 ### Simulation Study
 
-We conduct a simulation study to illustrate **tauBayesW** capabilities and compare with **bayesQR** using three different sampling designs: Poisson sampling, stratified sampling, and systematic sampling. Each design simulates complex survey data with known population parameters.
+We conduct a simulation study to illustrate **bayesQRsurvey** capabilities and compare with **bayesQR** using three different sampling designs: Poisson sampling, stratified sampling, and systematic sampling. Each design simulates complex survey data with known population parameters.
 
 The used simulation functions can be found in the data-raw folder simulation.R file
 
@@ -478,7 +489,7 @@ true_beta <- c(2, 1.5)  # Intercept and slope
 
 # Create simulation parameters table
 sim_params <- data.frame(
-  Parameter = c("Population size", "Sample size", "Number of strata", "Quantiles", "True Beta0", "True Beta1"),
+  Parameter = c("Population size", "Sample size", "Number of strata", "Quantiles", "True β₀", "True β₁"),
   Value = c(N, n, n_est, paste(quantiles, collapse = ", "), true_beta[1], true_beta[2])
 )
 
@@ -529,7 +540,7 @@ fit_and_compare <- function(data, design_name) {
     keep = 1
   )
   
-  # tauBayesW - ALD method
+  # bayesQRsurvey - ALD method
   fit_ald <- bqr.svy(
     y ~ x,
     data = data,
@@ -538,10 +549,10 @@ fit_and_compare <- function(data, design_name) {
     method = "ald",
     niter = niter,
     burnin = burnin,
-    print_progress = 5000
+    verbose  = TRUE 
   )
   
-  # tauBayesW - Score method
+  # bayesQRsurvey - Score method
   fit_score <- bqr.svy(
     y ~ x,
     data = data,
@@ -550,10 +561,10 @@ fit_and_compare <- function(data, design_name) {
     method = "score", 
     niter = niter,
     burnin = burnin,
-    print_progress = 5000
+    verbose  = TRUE 
   )
   
-  # tauBayesW - Approximate method
+  # bayesQRsurvey - Approximate method
   fit_approx <- bqr.svy(
     y ~ x,
     data = data,
@@ -562,7 +573,7 @@ fit_and_compare <- function(data, design_name) {
     method = "approximate",
     niter = niter,
     burnin = burnin,
-    print_progress = 5000
+    verbose  = TRUE 
   )
   
   # Extract coefficient estimates
@@ -638,7 +649,7 @@ for (q_idx in seq_along(quantiles)) {
   )
   print(knitr::kable(
     table_result, digits = 4,
-    caption = paste("Poisson Sampling =", tau_val)
+    caption = paste("Poisson Sampling - τ =", tau_val)
   ))
 }
 ```
@@ -652,7 +663,7 @@ for (q_idx in seq_along(quantiles)) {
   )
   print(knitr::kable(
     table_result, digits = 4,
-    caption = paste("Stratified Sampling =", tau_val)
+    caption = paste("Stratified Sampling - τ =", tau_val)
   ))
 }
 ```
@@ -667,7 +678,7 @@ for (q_idx in seq_along(quantiles)) {
   )
   print(knitr::kable(
     table_result, digits = 4,
-    caption = paste("Systematic Sampling =", tau_val)
+    caption = paste("Systematic Sampling - τ =", tau_val)
   ))
 }
 ```
@@ -828,7 +839,7 @@ kable(out_poi2$comparison_tau0.5,
 These data come from a study that examined the correlation between the level of prostate specific antigen and a number of clinical measures in men who were about to receive a radical prostatectomy. It is a data frame with 97 rows and 9 columns and is loaded form the bayesQR package.
 
 ```{r data-prep, results='asis'}
-library(tauBayesW)
+library(bayesQRsurvey)
 library(bayesQR)
 
 # Load Prostate dataset
@@ -865,16 +876,14 @@ knitr::kable(predictors_info, caption = "Predictor Variables")
 
 
 ```{r priors, results='asis'}
-# Prior for tauBayesW (all methods)
-prior_tbw <- tauBayesW::prior(
-  p = ncol(X),
-  type = "MCMC",
-  beta_mean = rep(0, ncol(X)),
-  beta_cov = diag(1e6, ncol(X)),  # Very vague prior
-  sigma_shape = 0.001,            # For ALD method
-  sigma_rate = 0.001,
-  names = colnames(X)
+# Prior for bayesQRsurvey (all methods)
+prior_tbw <- bayesQRsurvey::prior(
+  beta_x_mean = rep(0, ncol(X)),        
+  beta_x_cov  = diag(1e6, ncol(X)),     
+  sigma_shape = 0.001,                 
+  sigma_rate  = 0.001                   
 )
+
 
 # Prior for bayesQR 
 prior_bqr <- bayesQR::prior(
@@ -911,9 +920,9 @@ rownames(coef_mat) <- paste0("tau = ", taus)
 colnames(coef_mat) <- colnames(X)
 ```
 
-#### tauBayesW Method 1: ALD (Asymmetric Laplace Distribution)
+#### bayesQRsurvey Method 1: ALD (Asymmetric Laplace Distribution)
 
-```{r tauBayesW-ald, results='hide'}
+```{r bayesQRsurvey-ald, results='hide'}
 set.seed(12345)
 
 fit_ald <- bqr.svy(
@@ -925,15 +934,15 @@ fit_ald <- bqr.svy(
   niter    = 50000,
   burnin   = 25000,
   thin     = 5,
-  print_progress = 25000
+  verbose  = TRUE 
 )
 
 coef_ald <- fit_ald$beta
 ```
 
-#### tauBayesW Method 2: Score Likelihood
+#### bayesQRsurvey Method 2: Score Likelihood
 
-```{r tauBayesW-score, results='hide'}
+```{r bayesQRsurvey-score, results='hide'}
 set.seed(12345)
 
 fit_score <- bqr.svy(
@@ -945,15 +954,15 @@ fit_score <- bqr.svy(
   niter    = 50000,
   burnin   = 25000,
   thin     = 5,
-  print_progress = 25000
+  verbose  = TRUE 
 )
 
 coef_score <- fit_score$beta
 ```
 
-#### tauBayesW Method 3: Approximate Method
+#### bayesQRsurvey Method 3: Approximate Method
 
-```{r tauBayesW-approximate, results='hide'}
+```{r bayesQRsurvey-approximate, results='hide'}
 set.seed(12345)
 
 fit_approximate <- bqr.svy(
@@ -965,7 +974,7 @@ fit_approximate <- bqr.svy(
   niter    = 50000,
   burnin   = 25000,
   thin     = 5,
-  print_progress = 25000
+  verbose  = TRUE 
 )
 
 coef_approximate <- fit_approximate$beta
@@ -983,7 +992,7 @@ make_results_table <- function(q_index, q_label) {
   vars <- names(coef_bqr)
   
   results <- data.frame(
-    Method = c("bayesQR", "tauBayesW - ALD", "tauBayesW - Score", "tauBayesW - Approximate"),
+    Method = c("bayesQR", "bayesQRsurvey - ALD", "bayesQRsurvey - Score", "bayesQRsurvey - Approximate"),
     t(sapply(list(coef_bqr, coef_ald, coef_score, coef_approx), function(coefs) coefs[vars]))
   )
   
