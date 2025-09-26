@@ -1,8 +1,8 @@
-# tauBayesW: Bayesian Weighted Quantile Regression
+# bayesQRsurvey: Bayesian Weighted Quantile Regression
 
 [![CRAN status](https://www.r-pkg.org/badges/version/tauBayesW)](https://CRAN.R-project.org/package=tauBayesW)
 
-**tauBayesW** is an R package for **Bayesian weighted quantile regression** for complex survey designs. The package provides both single and multiple-output quantile regression estimation using efficient MCMC and EM algorithms with fast C++ implementations.
+**bayesQRsurvey** is an R package for **Bayesian weighted quantile regression** for complex survey designs. The package provides both single and multiple-output quantile regression estimation using efficient MCMC and EM algorithms with fast C++ implementations.
 
 <p align="center">
   <img src="web/public/logo_tau.png" width="180" alt="tauBayesW logo"/>
@@ -41,11 +41,11 @@ The following benchmark compares the R and C++ versions of the main algorithms o
 # Install 'devtools' (or 'remotes') once
 install.packages("devtools")
 
-# Install the latest tauBayesW from GitHub
+# Install the latest bayesQRsurvey from GitHub
 devtools::install_github("torodriguezt/tauBayesW")
 
 # Load the package
-library(tauBayesW)
+library(bayesQRsurvey)
 ```
 
 ---
@@ -61,7 +61,7 @@ Fits Bayesian quantile regression for a single quantile using MCMC methods:
 - **Approximate**
 
 ```r
-library(tauBayesW)
+library(bayesQRsurvey)
 
 # Simulate data
 set.seed(123)

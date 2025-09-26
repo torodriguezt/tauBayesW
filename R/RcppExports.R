@@ -2,22 +2,22 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 .bwqr_weighted_em_cpp_sep <- function(y, x, w, u, gamma_u, tau, mu0, sigma0, a0, b0, eps = 1e-6, max_iter = 1000L, verbose = FALSE) {
-    .Call(`_tauBayesW_bwqr_weighted_em_cpp_sep_wrap`, y, x, w, u, gamma_u, tau, mu0, sigma0, a0, b0, eps, max_iter, verbose)
+    .Call(`_bayesQRsurvey_bwqr_weighted_em_cpp_sep_wrap`, y, x, w, u, gamma_u, tau, mu0, sigma0, a0, b0, eps, max_iter, verbose)
 }
 
 .MCMC_BWQR_AL <- function(y, X, w, tau = 0.5, n_mcmc = 50000L, burnin = 10000L, thin = 10L, b_prior_mean = NULL, B_prior_prec = NULL, c0 = 0.001, C0 = 0.001, print_progress = 0L) {
-    .Call(`_tauBayesW_MCMC_BWQR_AL_wrap`, y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec, c0, C0, print_progress)
+    .Call(`_bayesQRsurvey_MCMC_BWQR_AL_wrap`, y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec, c0, C0, print_progress)
 }
 
 .MCMC_BWQR_AP <- function(y, X, w, n_mcmc, burnin, thin, tau = 0.5, b_prior_mean = NULL, B_prior_prec = NULL, print_progress = 0L) {
-    .Call(`_tauBayesW_MCMC_BWQR_AP_wrap`, y, X, w, n_mcmc, burnin, thin, tau, b_prior_mean, B_prior_prec, print_progress)
+    .Call(`_bayesQRsurvey_MCMC_BWQR_AP_wrap`, y, X, w, n_mcmc, burnin, thin, tau, b_prior_mean, B_prior_prec, print_progress)
 }
 
 .MCMC_BWQR_SL <- function(y, X, w, tau = 0.5, n_mcmc = 10000L, burnin = 2000L, thin = 10L, b_prior_mean = NULL, B_prior_prec = NULL, print_progress = 1000L) {
-    .Call(`_tauBayesW_MCMC_BWQR_SL_wrap`, y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec, print_progress)
+    .Call(`_bayesQRsurvey_MCMC_BWQR_SL_wrap`, y, X, w, tau, n_mcmc, burnin, thin, b_prior_mean, B_prior_prec, print_progress)
 }
 
 # Register entry points for exported C++ functions
 methods::setLoadAction(function(ns) {
-    .Call(`_tauBayesW_RcppExport_registerCCallable`)
+    .Call(`_bayesQRsurvey_RcppExport_registerCCallable`)
 })

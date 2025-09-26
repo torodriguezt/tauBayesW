@@ -91,12 +91,12 @@ mo.bqr.svy <- function(formula,
                        verbose  = FALSE) {
 
   algorithm <- "em"  # Always use EM algorithm
-  if (missing(data))     stop("'data' must be provided.")
+  if (missing(data)) stop("'data' must be provided.")
 
   if (length(quantile) == 0) stop("'quantile' cannot be empty.")
   if (any(!is.finite(quantile))) stop("'quantile' must be numeric and finite.")
   if (any(quantile <= 0 | quantile >= 1)) stop("'quantile' must be in (0,1).")
-  quantile <- sort(quantile)
+  quantile <- sort(unique(quantile))
 
   mf <- model.frame(formula, data)
   y  <- model.response(mf)
@@ -197,49 +197,26 @@ mo.bqr.svy <- function(formula,
     }
   }
 
-  # ---------- Prior handling (simplified): prior is either NULL or class 'prior' ----------
-  make_default_prior <- function(p) {
-    structure(list(
-      beta_mean      = rep(0, p),
-      beta_cov       = diag(1e6, p),
-      sigma_shape    = 1e-3,
-      sigma_rate     = 1e-3,
-      beta_star_mean = NULL,
-      beta_star_cov  = NULL,
-      p              = p,
-      names          = colnames(X)
-    ), class = "prior")
-  }
-
-  if (is.null(prior)) {
-    base_prior <- make_default_prior(p)
+  # ---------- Unified prior: NULL or class 'prior' (or 'mo_bqr_prior' legacy) ----------
+  pri <- if (is.null(prior)) {
+    as_mo_bqr_prior(prior(), p = p, d = d, names_x = coef_names, names_y = NULL)
+  } else if (inherits(prior, "prior")) {
+    as_mo_bqr_prior(prior, p = p, d = d, names_x = coef_names, names_y = NULL)
+  } else if (inherits(prior, "mo_bqr_prior")) { # backward compatibility
+    prior
   } else {
-    if (!inherits(prior, "prior"))
-      stop("'prior' must be either NULL or an object of class 'prior'.")
-    # Basic validation of beta block
-    if (length(prior$beta_mean) != p)
-      stop("length(prior$beta_mean) must be equal to the number of covariates p.")
-    if (!is.matrix(prior$beta_cov) || any(dim(prior$beta_cov) != c(p, p)))
-      stop("prior$beta_cov must be a p x p matrix.")
-    if (!is.numeric(prior$sigma_shape) || prior$sigma_shape <= 0)
-      stop("prior$sigma_shape must be a positive scalar.")
-    if (!is.numeric(prior$sigma_rate) || prior$sigma_rate <= 0)
-      stop("prior$sigma_rate must be a positive scalar.")
-    base_prior <- prior
+    stop("'prior' must be NULL, a 'prior' object (see prior()), or a 'mo_bqr_prior' (legacy).", call. = FALSE)
   }
-  # Same prior for all quantiles:
-  prior_list <- replicate(length(quantile), base_prior, simplify = FALSE)
-  names(prior_list) <- paste0("q", quantile)
 
   # --- Main fitting loop ---
   results <- vector("list", length(quantile))
   names(results) <- paste0("q", quantile)
 
   for (qi in seq_along(quantile)) {
-    q  <- quantile[qi]
-    pr <- prior_list[[qi]]
+    qtau <- quantile[qi]
+    pr   <- pri  # same prior for all quantiles
 
-    if (verbose) message(sprintf("Fitting tau = %.3f (d=%d, K=%d)", q, d, K))
+    if (verbose) message(sprintf("Fitting tau = %.3f (d=%d, K=%d)", qtau, d, K))
 
     direction_results <- vector("list", K)
     names(direction_results) <- paste0("dir_", seq_len(K))
@@ -299,7 +276,7 @@ mo.bqr.svy <- function(formula,
         w        = wts,
         u        = u_k_matrix,
         gamma_u  = gamma_k_matrix,
-        tau      = q,
+        tau      = qtau,
         mu0      = mu0_ext,
         sigma0   = sigma0_ext,
         a0       = pr$sigma_shape,
@@ -309,7 +286,7 @@ mo.bqr.svy <- function(formula,
         verbose  = verbose
       )
 
-      beta_k <- as.numeric(cpp_result$beta[1, ])
+      beta_k  <- as.numeric(cpp_result$beta[1, ])
       sigma_k <- as.numeric(cpp_result$sigma[1])
       covariate_names <- c(coef_names,
                            if (r_k > 0) paste0("gamma_", seq_len(r_k)) else character(0))
@@ -330,7 +307,7 @@ mo.bqr.svy <- function(formula,
       prior       = pr,
       U           = U,
       Gamma_list  = Gamma_list,
-      quantile    = q
+      quantile    = qtau
     )
   }
 
@@ -347,7 +324,7 @@ mo.bqr.svy <- function(formula,
     terms        = attr(mf, "terms"),
     quantile     = quantile,
     algorithm    = algorithm,
-    prior        = prior_list,
+    prior        = pri,        
     fit          = results,
     coefficients = coefficients_all,
     n_dir        = K,

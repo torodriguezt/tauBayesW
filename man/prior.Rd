@@ -2,101 +2,91 @@
 % Please edit documentation in R/priors.R
 \name{prior}
 \alias{prior}
-\title{Unified Prior Specification for Bayesian Quantile Regression}
+\title{Create prior for Bayesian quantile regression models for complex survey data}
 \usage{
 prior(
-  p,
-  type = NULL,
-  beta_mean = rep(0, p),
-  beta_cov = diag(1e+06, p),
+  beta_x_mean = NULL,
+  beta_x_cov = NULL,
   sigma_shape = 0.001,
   sigma_rate = 0.001,
-  names = NULL
+  beta_y_mean = NULL,
+  beta_y_cov = NULL
 )
 }
 \arguments{
-\item{p}{Number of regression coefficients (including the intercept).}
+\item{beta_x_mean}{vector of prior means for the regression coefficients. (default = NULL).}
 
-\item{type}{Character string specifying the model type: \code{"MCMC"}
-for \code{bqr.svy} models or \code{"EM"} for \code{mo.bqr.svy}
-models. If \code{NULL} (default), defaults to \code{"MCMC"}.}
+\item{beta_x_cov}{prior covariance matrix for the regression coefficients. (default = NULL).}
 
-\item{beta_mean}{Numeric vector of prior means for regression coefficients
-(length \code{p}). If a scalar is supplied, it is expanded to length \code{p}.
-Default is a vector of zeros.}
+\item{sigma_shape}{shape parameter for inverse Gamma prior for \eqn{\sigma^2}. (default = 0.001).}
 
-\item{beta_cov}{Prior covariance matrix for regression coefficients. May be:
-\itemize{
-\item A \code{p x p} matrix
-\item A scalar (expanded to \code{diag(scalar, p)})
-\item A length-\code{p} vector (expanded to \code{diag(vector)})
-}
-Default is \code{diag(1e6, p)} (vague prior).}
+\item{sigma_rate}{rate parameter for inverse Gamma prior for \eqn{\sigma^2}. (default = 0.001).}
 
-\item{sigma_shape}{Shape parameter for the Inverse-Gamma prior on \eqn{\sigma^2}.
-Only used for ALD method in univariate models. Default is 0.001.}
+\item{beta_y_mean}{prior means for the coefficients related to the variables that emerge from the product between the orthogonal basis and the outputs
+(default = NULL).}
 
-\item{sigma_rate}{Rate parameter for the Inverse-Gamma prior on \eqn{\sigma^2}.
-Only used for ALD method in univariate models. Default is 0.001.}
-
-\item{names}{Optional character vector of coefficient names to attach to the prior.}
+\item{beta_y_cov}{prior covariance matrix for the coefficients related to the variables that emerge from the product between the orthogonal basis and the outputs.
+(default = NULL).}
 }
 \value{
-For univariate models: a \code{bqr_prior} object.
-For multivariate models: a \code{mo_bqr_prior} object.
+An object of class \code{"prior"}.
 }
 \description{
-A unified interface for creating prior distributions for both univariate
-(\code{bqr.svy}) and multivariate (\code{mo.bqr.svy}) Bayesian quantile
-regression models. This function automatically detects the model type and
-creates the appropriate prior object.
+\code{prior} creates prior distributions for both single (\code{bqr.svy}) and multiple-output
+(\code{mo.bqr.svy}) Bayesian quantile regression models for complex survey data.
 }
 \details{
-This function provides a unified interface that replaces the need to know
-the specific prior creation functions for each model type.
+The function \code{prior} builds prior distributions for the three methods implemented in the function
+\code{bqr.svy} and for the multiple-output quantile regression implemented in the function \code{mo.bqr.svy}.
+Every nonspecified prior parameter will get the default value.
 
-For univariate models (\code{type = "MCMC"}):
 \itemize{
-\item Uses parameters \code{beta_mean}, \code{beta_cov}, \code{sigma_shape}, \code{sigma_rate}
-\item Creates a \code{bqr_prior} object compatible with \code{\link{bqr.svy}}
-\item Sigma parameters are only used with \code{method = "ald"}
-}
-
-For multivariate models (\code{type = "EM"}):
-\itemize{
-\item Uses parameters \code{beta_mean}, \code{beta_cov}, \code{sigma_shape}, \code{sigma_rate}
-\item Creates a \code{mo_bqr_prior} object compatible with \code{\link{mo.bqr.svy}}
-\item All parameters are used in the multivariate setting
+\item \code{method = "ald"} in function \code{bqr.svy} allow the specification of hyperparameters
+\code{beta_x_mean}, \code{beta_x_cov}, \code{sigma_shape}, and \code{sigma_rate}.
+\item \code{method = "score"} in function \code{bqr.svy} allow the specification of hyperparameters
+\code{beta_x_mean} and \code{beta_x_cov}.
+\item \code{method = "approximate"} in function \code{bqr.svy} allow the specification of hyperparameters
+\code{beta_x_mean} and \code{beta_x_cov}.
+\item In function \code{mo.bqr.svy}, the specification of hyperparameters \code{beta_x_mean},\code{beta_x_cov},
+\code{sigma_shape}, \code{sigma_rate}, \code{beta_y_mean}, and \code{beta_y_cov} are allowed.
 }
 }
 \examples{
-# Univariate model priors (default)
-prior_univ <- prior(p = 3)
-prior_univ_info <- prior(
-  p = 3,
-  beta_mean = c(2, 1.5, -0.8),
-  beta_cov = diag(c(0.25, 0.25, 0.25)),
+# Create informative prior objects regarding the single-output methods
+prior_ald <- prior(
+  beta_x_mean = c(2, 1.5, -0.8),
+  beta_x_cov = diag(c(0.25, 0.25, 0.25)),
   sigma_shape = 3,
   sigma_rate = 2
 )
 
-# Multivariate model priors
-prior_mult <- prior(p = 3, type = "multivariate")
-prior_mult_info <- prior(
-  p = 3,
-  type = "multivariate",
-  beta_mean = c(0, 1, -0.5),
-  beta_cov = diag(c(1, 1, 1))
+prior_score <- prior(
+  beta_x_mean = c(2, 1.5, -0.8),
+  beta_x_cov = diag(c(0.25, 0.25, 0.25))
 )
 
-# Usage in models
-\dontrun{
-# Univariate
-fit1 <- bqr.svy(y ~ x1 + x2, data = mydata, prior = prior_univ)
+prior_approximate <- prior(
+  beta_x_mean = c(2, 1.5, -0.8),
+  beta_x_cov = diag(c(0.25, 0.25, 0.25))
+)
 
-# Multivariate
-fit2 <- mo.bqr.svy(cbind(y1, y2) ~ x1 + x2, data = mydata, prior = prior_mult)
-}
+# Estimate the model parameters with informative prior
+fit_ald <- bqr.svy(y ~ x1 + x2, weights = w, data = mydata, prior = prior_ald)
+fit_scr <- bqr.svy(y ~ x1 + x2, weights = w, data = mydata, method = "score", prior = prior_score)
+fit_apx <- bqr.svy(y ~ x1 + x2, weights = w, data = mydata, method = "approximate", prior = prior_approximate)
+   
+# Create an informative prior object regarding the multiple-output method
+prior_mo <- prior(
+  beta_x_mean = c(2, 1.5, -0.8),
+  beta_x_cov = diag(c(0.25, 0.25, 0.25)),
+  sigma_shape = 3,
+  sigma_rate = 2,
+  beta_y_mean = 1,
+  beta_y_cov = 0.25
+)
+
+# Estimate the model parameters with informative prior
+fit_mo <- mo.bqr.svy(cbind(y1, y2) ~ x1 + x2, weights = w, data = mydata, prior = prior_mo, n_dir = 10)
 
 }
 \seealso{

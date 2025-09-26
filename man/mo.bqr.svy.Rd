@@ -2,58 +2,46 @@
 % Please edit documentation in R/mo.bqr.svy.R
 \name{mo.bqr.svy}
 \alias{mo.bqr.svy}
-\title{Multiple-Output Bayesian Quantile Regression for Complex Surveys (Directional EM)}
+\title{Multiple-Output Bayesian quantile regression for complex survey data}
 \usage{
 mo.bqr.svy(
   formula,
   weights = NULL,
-  data,
+  data = NULL,
   quantile = 0.5,
-  algorithm = "em",
   prior = NULL,
-  n_dir = 1,
+  U = NULL,
+  gamma_U = NULL,
+  n_dir = NULL,
   epsilon = 1e-06,
   max_iter = 1000,
-  verbose = FALSE,
-  gamma_prior_var = 1e+06,
-  ...
+  verbose = FALSE
 )
 }
 \arguments{
-\item{formula}{A formula object specifying the model.}
+\item{formula}{a symbolic description of the model to be fit.}
 
-\item{weights}{Optional vector of sampling weights. If \code{NULL}, equal weights are used.}
+\item{weights}{an optional numerical vector containing the survey weights. If \code{NULL}, equal weights are used.}
 
-\item{data}{A data frame containing the variables in the model.}
+\item{data}{an optional data frame containing the variables in the model.}
 
-\item{quantile}{Numeric vector of quantile levels (between 0 and 1, exclusive).}
+\item{quantile}{numerical scalar or vector containing quantile(s) of interest (default=0.5).}
 
-\item{algorithm}{Character string specifying the algorithm. Currently only \code{"em"} is supported.}
+\item{prior}{a \code{bqr_prior} object of class "prior". If omitted, a vague prior is assumed (see \code{\link{prior}}).}
 
-\item{prior}{Prior specification. Can be:
-\itemize{
-\item \code{NULL}: Default priors are used for all quantiles
-\item A single \code{mo_bqr_prior} object: Recycled for all quantiles
-\item A list of \code{mo_bqr_prior} objects: One prior per quantile
-\item A function \code{f(tau, p, names)}: Generates quantile-specific priors
-}}
+\item{U}{an optional \eqn{d \times K}-matrix of directions, where \eqn{d} indicates the response variable dimension
+and \eqn{K} indicates indicates the number of directions.}
 
-\item{n_dir}{Integer. Number of projection directions (if directions \code{U} are not supplied).}
+\item{gamma_U}{an optional list with length equal to \eqn{K} for which each element corresponds to
+\eqn{d \times (d-1)}-matrix of ortoghonal basis for each row of \code{U}.}
 
-\item{epsilon}{Convergence tolerance for the EM algorithm.}
+\item{n_dir}{numerical scalar corresponding to the number of directions (if \code{U} and \code{gamma_U} are not supplied).}
 
-\item{max_iter}{Maximum number of EM iterations.}
+\item{epsilon}{numerical scalar indicating the convergence tolerance for the EM algorithm (default = 1e-6).}
 
-\item{verbose}{Logical indicating whether to print progress messages.}
+\item{max_iter}{numerical scalar indicating maximum number of EM iterations (default = 1000).}
 
-\item{gamma_prior_var}{Numeric. Prior variance for the gamma coefficients
-associated with orthogonal complements.}
-
-\item{...}{Additional arguments for direction specification:
-\describe{
-\item{U}{Optional user-specified matrix of directions (\eqn{d \times K}). If not provided,
-\code{n_dir} random unit vectors are generated automatically.}
-}}
+\item{verbose}{logical flag indicating whether to print progress messages (default=FALSE).}
 }
 \value{
 An object of class \code{"mo.bqr.svy"} containing:
@@ -61,7 +49,6 @@ An object of class \code{"mo.bqr.svy"} containing:
 \item{formula}{The model formula}
 \item{terms}{The terms object}
 \item{quantile}{Vector of fitted quantiles}
-\item{algorithm}{Algorithm used}
 \item{prior}{List of priors used for each quantile}
 \item{fit}{List of fitted results for each quantile, each containing one sub-list per direction}
 \item{coefficients}{Coefficients from the first quantile}
@@ -73,57 +60,37 @@ An object of class \code{"mo.bqr.svy"} containing:
 \item{response_dim}{Dimension of the response \eqn{d}}
 }
 \description{
-Fits Bayesian quantile regression models for multivariate responses using the
-EM algorithm and a directional approach. The method projects the response into
-random unit vectors (directions) and their orthogonal complements, and then fits
-univariate Bayesian quantile regression models along each projection. The
-collection of fitted directions defines the multivariate quantile region.
-}
-\details{
-The algorithm works by drawing or receiving as input a set of unit directions
-\eqn{u_k \in \mathbb{R}^d}. For each direction, an orthonormal basis of its
-orthogonal complement \eqn{\Gamma_k} is computed using \code{pracma::nullspace}.
-The response \eqn{Y} is then projected into the pair \eqn{(u_k, \Gamma_k)}, and
-a Bayesian quantile regression is fitted along that direction using the EM
-algorithm. Results across all directions can be combined to approximate the
-multivariate quantile region.
-
-Prior distributions can be specified globally or quantile-specific. When a list
-of priors is provided, elements can be named using either \code{"q0.1"} format or
-\code{"0.1"} format to match specific quantiles. When a function is provided, it
-will be called with \code{(tau, p, names)} for each quantile level.
+mo.bqr.svy implements a Bayesian approach to multiple-output quantile regression
+for complex survey data analysis. The method builds a quantile region based on
+a directional approach. To improve computational efficiency, an Expectation-Maximization (EM)
+algorithm is implemented instead of the usual Markov Chain Monte Carlo (MCMC).
 }
 \examples{
-\donttest{
-# Datos simulados para el ejemplo
-set.seed(1)
-n  <- 150
-x1 <- runif(n,-1,1)
-x2 <- rnorm(n)
-y  <- 1 + 2*x1 + 0.5*x2 + rnorm(n)
-mydata <- data.frame(y, x1, x2)
+library(MASS)
 
-# Basic usage with default priors
-fit1 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
-                   quantile = c(0.1, 0.5, 0.9))
+# Generate population data
+set.seed(123)
+N    <- 10000 
+data <- mvrnorm(N,rep(0,3),matrix(c(4,0,2,0,1,1.5,2,1.5,9),3,3))
+x_p  <- as.matrix(data[,1])
+y_p  <- data[,2:3]+cbind(rep(0,N),x_p)
 
-# Using quantile-specific priors via function
-prior_fn <- function(tau, p, names) {
-  variance <- ifelse(tau < 0.2 | tau > 0.8, 0.1, 1.0)
-  mo_prior_default(p = p, beta_cov = diag(variance, p), names = names)
-}
-fit2 <- mo.bqr.svy(y ~ x1 + x2, data = mydata,
-                   quantile = c(0.1, 0.5, 0.9), prior = prior_fn)
+# Generate sample data
+n <- 500
+z_aux <- rnorm(N, mean = 1 + y_p, sd=.5)
+p_aux <- 1 / (1 + exp(2.5 - 0.5 * z_aux))
+s_ind <- sample(1:N, n, replace = FALSE, prob = p_aux)
+y_s <- y_p[s_ind,]
+x_s <- x_p[s_ind,]
+w   <- 1 / p_aux[s_ind]
+data_s<- data.frame(y1 = y_s[,1], y2 = y_s[,2],  x1 = x_s, w = w)
 
-# Explicit control of directions
-set.seed(1)
-y1 <- 1 + 2*x1 + 0.5*x2 + rnorm(n)
-y2 <- -1 + 1.5*x1 + rnorm(n)
-y3 <- 0.5 - x2 + rnorm(n)
-mydata <- data.frame(y1, y2, y3, x1, x2)
-U <- matrix(rnorm(9), nrow = 3)  # d=3, K=2
-U <- apply(U, 2, function(v) v / sqrt(sum(v^2))) # normalize
-fit3 <- mo.bqr.svy(cbind(y1,y2,y3) ~ x1 + x2, data = mydata,
-                   quantile = 0.5, U = U)
-}
+# Basic usage with default priors when U and gamma_U are given
+fit1 <- mo.bqr.svy(cbind(y1, y2) ~ x1, weights = w, data = data_s, quantile = c(0.1, 0.2), 
+ U = matrix(c(0,1,1/sqrt(2),1/sqrt(2)),2), 
+ gamma_U = list(c(1,0),c(1/sqrt(2),-1/sqrt(2))))
+
+# Basic usage with default priors when n_dir is given
+fit2 <- mo.bqr.svy(cbind(y1, y2) ~ x1, weights = w, data = data_s, quantile = c(0.1, 0.2), n_dir=2)
+
 }

@@ -1,5 +1,5 @@
 # =============================================================================
-# Unified Prior Interface for tauBayesW
+# Prior Interface for bayesQRsurvey
 # =============================================================================
 
 if (!exists("%||%"))
@@ -22,20 +22,14 @@ if (!exists("%||%"))
 #' \code{prior} creates prior distributions for both single (\code{bqr.svy}) and multiple-output 
 #' (\code{mo.bqr.svy}) Bayesian quantile regression models for complex survey data. 
 #'
-#' @param beta_x_mean (p+1)-dimensional vector of prior means for the regression coefficients,
-#'  where p is the number of covariates (default = \code{rep(0,(p+1)}}).   
-#' @param beta_x_cov ((p+1)x(p+1))-dimensional prior covariance matrix for the regression coefficients.
-#'  (default = \code{diag(1e6, (p+1))}).
-#' @param sigma_shape shape parameter for inverse Gamma prior for \eqn{\sigma^2}.
-#'  (default = 0.001).
-#' @param sigma_rate rate parameter for inverse Gamma prior for \eqn{\sigma^2}.
-#'  (default = 0.001).
-#' @param beta_y_mean (d-1)-dimensional vector of prior means for the coefficients related to 
-#'  the variables that emerge from the product between the orthogonal basis and the outputs.
-#'  where d is the number of outputs (default = \code{rep(0,(d-1)}}).
-#' @param beta_y_cov ((d-1)x(d-1))-dimensional prior covariance matrix for the coefficients related to 
-#'  the variables that emerge from the product between the orthogonal basis and the outputs.
-#'  (default = \code{diag(1e6, (d-1))}).
+#' @param beta_x_mean vector of prior means for the regression coefficients. (default = NULL).   
+#' @param beta_x_cov prior covariance matrix for the regression coefficients. (default = NULL).
+#' @param sigma_shape shape parameter for inverse Gamma prior for \eqn{\sigma^2}. (default = 0.001).
+#' @param sigma_rate rate parameter for inverse Gamma prior for \eqn{\sigma^2}. (default = 0.001).
+#' @param beta_y_mean prior means for the coefficients related to the variables that emerge from the product between the orthogonal basis and the outputs
+#' (default = NULL).
+#' @param beta_y_cov prior covariance matrix for the coefficients related to the variables that emerge from the product between the orthogonal basis and the outputs.
+#'  (default = NULL).
 #'
 #' @details
 #' The function \code{prior} builds prior distributions for the three methods implemented in the function 
@@ -53,8 +47,7 @@ if (!exists("%||%"))
 #'         \code{sigma_shape}, \code{sigma_rate}, \code{beta_y_mean}, and \code{beta_y_cov} are allowed.
 #' }
 #'
-#' @return An object of class \code{bqr_prior} for the single-output models and an object of class 
-#'  \code{mo_bqr_prior} for the multiple-output model.
+#' @return An object of class \code{"prior"}.
 #'
 #' @examples
 #' # Create informative prior objects regarding the single-output methods
@@ -87,7 +80,7 @@ if (!exists("%||%"))
 #'   sigma_shape = 3,
 #'   sigma_rate = 2,
 #'   beta_y_mean = 1,
-#'   beta_y_cov = 0.25,
+#'   beta_y_cov = 0.25
 #' )
 #'
 #' # Estimate the model parameters with informative prior
@@ -122,15 +115,93 @@ prior <- function(
   )
 }
 
+#' @export
 print.prior <- function(x, digits = 3, ...) {
-  cat("Unified prior (class 'prior')\n")
-  cat("  beta_x_mean: ", if (is.null(x$beta_x_mean)) "NULL" else paste(round(head(x$beta_x_mean), digits), collapse=" "), "\n", sep = "")
-  cat("  beta_x_cov:  ", if (is.null(x$beta_x_cov))  "NULL" else "provided", "\n", sep = "")
-  cat("  sigma IG:    ",
-      if (is.null(x$sigma_shape) || is.null(x$sigma_rate)) "NULL"
-      else paste0("shape=", round(x$sigma_shape, digits), ", rate=", round(x$sigma_rate, digits)),
-      "\n", sep = "")
-  cat("  beta_y_mean: ", if (is.null(x$beta_y_mean)) "NULL" else paste(round(head(x$beta_y_mean), digits), collapse=" "), "\n", sep = "")
-  cat("  beta_y_cov:  ", if (is.null(x$beta_y_cov))  "NULL" else "provided", "\n", sep = "")
+  cat("Prior")
+  
+  # beta_x_mean
+  if (is.null(x$beta_x_mean)) {
+    cat("  beta_x_mean: diffuse (all zeros)\n")
+  } else {
+    cat("  beta_x_mean: ", paste(round(x$beta_x_mean, digits), collapse=" "), "\n", sep = "")
+  }
+  
+  # beta_x_cov
+  if (is.null(x$beta_x_cov)) {
+    cat("  beta_x_cov:  diffuse (large diagonal: 1e6)\n")
+  } else {
+    cat("  beta_x_cov:\n")
+    print(round(x$beta_x_cov, digits))
+  }
+  
+  # sigma prior
+  if (is.null(x$sigma_shape) || is.null(x$sigma_rate)) {
+    cat("  sigma IG:    diffuse (shape=0.001, rate=0.001)\n")
+  } else {
+    cat("  sigma IG:    shape=", round(x$sigma_shape, digits),
+        ", rate=", round(x$sigma_rate, digits), "\n", sep = "")
+  }
+  
+  # beta_y_mean
+  if (is.null(x$beta_y_mean)) {
+    cat("  beta_y_mean: diffuse (all zeros)\n")
+  } else {
+    cat("  beta_y_mean: ", paste(round(x$beta_y_mean, digits), collapse=" "), "\n", sep = "")
+  }
+  
+  # beta_y_cov
+  if (is.null(x$beta_y_cov)) {
+    cat("  beta_y_cov:  diffuse (large diagonal: 1e6)\n")
+  } else {
+    cat("  beta_y_cov:\n")
+    print(round(x$beta_y_cov, digits))
+  }
+  
   invisible(x)
+}
+
+
+
+#' @keywords internal
+#' @noRd
+as_bqr_prior <- function(x, ...) UseMethod("as_bqr_prior")
+
+#' @keywords internal
+#' @noRd
+as_mo_bqr_prior <- function(x, ...) UseMethod("as_mo_bqr_prior")
+
+#' @keywords internal
+#' @noRd
+#' @exportS3Method as_bqr_prior prior
+as_bqr_prior.prior <- function(x, p, names_x = NULL, ...) {
+  bmean <- if (is.null(x$beta_x_mean)) rep(0, p) else if (length(x$beta_x_mean)==1L) rep(x$beta_x_mean, p) else x$beta_x_mean
+  if (length(bmean)!=p) stop("beta_x_mean must have length p (", p, ").")
+  bcov <- if (is.null(x$beta_x_cov)) diag(1e6, p) else .as_diag(x$beta_x_cov, p, "beta_x_cov")
+  if (!is.null(names_x)) { names(bmean) <- names_x; dimnames(bcov) <- list(names_x,names_x) }
+  c0 <- x$sigma_shape %||% 0.001
+  C0 <- x$sigma_rate  %||% 0.001
+  structure(list(b0=bmean, B0=bcov, c0=c0, C0=C0), class="bqr_prior")
+}
+
+#' @keywords internal
+#' @noRd
+#' @exportS3Method as_mo_bqr_prior prior
+as_mo_bqr_prior.prior <- function(x, p, d, names_x=NULL, names_y=NULL, ...) {
+  bmean <- if (is.null(x$beta_x_mean)) rep(0, p) else if (length(x$beta_x_mean)==1L) rep(x$beta_x_mean, p) else x$beta_x_mean
+  if (length(bmean)!=p) stop("beta_x_mean must have length p (", p, ").")
+  bcov <- if (is.null(x$beta_x_cov)) diag(1e6, p) else .as_diag(x$beta_x_cov, p, "beta_x_cov")
+
+  q <- max(d-1L,0L)
+  ymean <- if (q==0) NULL else if (is.null(x$beta_y_mean)) rep(0,q) else if (length(x$beta_y_mean)==1L) rep(x$beta_y_mean,q) else x$beta_y_mean
+  if (q>0 && length(ymean)!=q) stop("beta_y_mean must have length d-1 (", q, ").")
+  ycov <- if (q==0) NULL else if (is.null(x$beta_y_cov)) diag(1e6,q) else .as_diag(x$beta_y_cov,q,"beta_y_cov")
+
+  if (!is.null(names_x)) { names(bmean) <- names_x; dimnames(bcov) <- list(names_x,names_x) }
+  if (!is.null(ymean) && !is.null(names_y)) { names(ymean) <- names_y; if (!is.null(ycov)) dimnames(ycov) <- list(names_y,names_y) }
+
+  structure(list(beta_mean=bmean, beta_cov=bcov,
+                 sigma_shape=x$sigma_shape %||% 0.001,
+                 sigma_rate =x$sigma_rate  %||% 0.001,
+                 beta_star_mean=ymean, beta_star_cov=ycov),
+            class="mo_bqr_prior")
 }

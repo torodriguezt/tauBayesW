@@ -96,7 +96,7 @@ bqr.svy <- function(formula,
   method <- match.arg(method)
   cl <- match.call()
 
-  # --- NEW: allow one or multiple taus ---
+  # --- Quantiles ---
   if (!is.numeric(quantile) || any(!is.finite(quantile)))
     stop("'quantile' must be numeric and finite.", call. = FALSE)
   if (any(quantile <= 0 | quantile >= 1))
@@ -105,22 +105,15 @@ bqr.svy <- function(formula,
   if (length(taus) < length(quantile))
     warning("Duplicated quantiles were provided; using unique sorted values.")
 
+  # --- MCMC controls ---
   if (niter <= 0 || burnin < 0 || thin <= 0)
     stop("'niter' and 'thin' must be > 0, and 'burnin' >= 0.", call. = FALSE)
-
   if (!is.logical(verbose) || length(verbose) != 1)
     stop("'verbose' must be a logical value (TRUE or FALSE).", call. = FALSE)
+  print_progress <- if (verbose) as.integer(round(niter * 0.10)) else 0L
 
-  # Calculate print_progress automatically based on niter
-  # Print every 10% of iterations
-  print_progress <- if (verbose) {
-    as.integer(round(niter * 0.10))
-  } else {
-    0L
-  }
-
+  # --- Model frame ---
   if (is.null(data)) data <- environment(formula)
-
   mf <- model.frame(formula, data, na.action = NULL)
   if (anyNA(mf))
     stop("Data contains missing values; please remove or impute them.", call. = FALSE)
@@ -130,7 +123,7 @@ bqr.svy <- function(formula,
   coef_names <- colnames(X)
   mt <- attr(mf, "terms")
 
-  # Weights
+  # --- Weights ---
   w <- if (is.null(weights)) {
     rep(1, length(y))
   } else if (is.numeric(weights)) {
@@ -139,66 +132,69 @@ bqr.svy <- function(formula,
     weights
   } else if (inherits(weights, "formula")) {
     model.frame(weights, data)[[1L]]
-  } else stop("'weights' must be numeric or formula.", call. = FALSE)
+  } else stop("'weights' must be numeric or a one-sided formula.", call. = FALSE)
 
   p <- ncol(X)
 
-  # Prior
-  prior <- if (is.null(prior)) {
-    prior_default(p, names = coef_names)
+  # --- Prior (unified -> bqr_prior interno) ---
+  pri <- if (is.null(prior)) {
+    as_bqr_prior(prior(), p = p, names_x = coef_names)
+  } else if (inherits(prior, "prior")) {
+    as_bqr_prior(prior, p = p, names_x = coef_names)
+  } else if (inherits(prior, "bqr_prior")) { # compatibilidad hacia atrás (opcional)
+    prior
   } else {
-    as_bqr_prior(prior, p = p, names = coef_names, method = method)
+    stop("'prior' must be NULL, a 'prior' object (see prior()), or a 'bqr_prior' (legacy).", call. = FALSE)
   }
 
-  # Check for unused sigma hyperparameters in non-ALD methods
+  # --- Aviso: sigma no usada en métodos sin ALD ---
   if (method %in% c("score", "approximate")) {
-    if (!is.null(prior$c0) || !is.null(prior$C0)) {
-      warning("Method '", method, "' does not estimate sigma, so hyperparameters 'c0' and 'C0' ",
-              "specified in the prior will be ignored.", call. = FALSE)
+    if (!is.null(pri$c0) || !is.null(pri$C0)) {
+      warning("Method '", method, "' does not estimate sigma; 'c0' and 'C0' in prior will be ignored.", call. = FALSE)
     }
   }
 
-  # ALD/Score use normalized weights; Approximate uses raw weights
+  # --- Pesos normalizados según método ---
   w_norm <- w / mean(w)
 
-  # --- helper to run backend for a single tau ---
+  # --- Backend para un tau ---
   run_backend_one <- function(tau_i) {
     draws_i <- switch(method,
-                      "ald" = .MCMC_BWQR_AL(
-                        y, X, w_norm,
-                        tau           = tau_i,
-                        n_mcmc        = niter,
-                        burnin        = burnin,
-                        thin          = thin,
-                        b_prior_mean  = prior$b0,
-                        B_prior_prec  = solve(prior$B0),
-                        c0            = prior$c0 %||% 0.001,
-                        C0            = prior$C0 %||% 0.001,
-                        print_progress = print_progress
-                      ),
-                      "score" = .MCMC_BWQR_SL(
-                        y, X, w_norm,
-                        tau           = tau_i,
-                        n_mcmc        = niter,
-                        burnin        = burnin,
-                        thin          = thin,
-                        b_prior_mean  = prior$b0,
-                        B_prior_prec  = solve(prior$B0),
-                        print_progress = print_progress
-                      ),
-                      "approximate" = .MCMC_BWQR_AP(
-                        y, X, w,
-                        n_mcmc        = niter,
-                        burnin        = burnin,
-                        thin          = thin,
-                        tau           = tau_i,
-                        b_prior_mean  = prior$b0,
-                        B_prior_prec  = solve(prior$B0),
-                        print_progress = print_progress
-                      )
+      "ald" = .MCMC_BWQR_AL(
+        y, X, w_norm,
+        tau            = tau_i,
+        n_mcmc         = niter,
+        burnin         = burnin,
+        thin           = thin,
+        b_prior_mean   = pri$b0,
+        B_prior_prec   = solve(pri$B0),
+        c0             = pri$c0 %||% 0.001,
+        C0             = pri$C0 %||% 0.001,
+        print_progress = print_progress
+      ),
+      "score" = .MCMC_BWQR_SL(
+        y, X, w_norm,
+        tau            = tau_i,
+        n_mcmc         = niter,
+        burnin         = burnin,
+        thin           = thin,
+        b_prior_mean   = pri$b0,
+        B_prior_prec   = solve(pri$B0),
+        print_progress = print_progress
+      ),
+      "approximate" = .MCMC_BWQR_AP(
+        y, X, w,
+        n_mcmc         = niter,
+        burnin         = burnin,
+        thin           = thin,
+        tau            = tau_i,
+        b_prior_mean   = pri$b0,
+        B_prior_prec   = solve(pri$B0),
+        print_progress = print_progress
+      )
     )
 
-    # coerce/clean draws
+    # --- Limpieza y coerción de draws ---
     if (is.list(draws_i) && !is.data.frame(draws_i)) {
       draws_i <- lapply(draws_i, function(x) if (is.numeric(x) || is.matrix(x)) x)
       draws_i <- draws_i[!vapply(draws_i, is.null, logical(1))]
@@ -212,17 +208,20 @@ bqr.svy <- function(formula,
     if (anyNA(draws_i))
       stop("Backend returned non-numeric values; cannot summarize.", call. = FALSE)
 
+    # Manejo robusto de columnas diagnósticas
     diag_cols <- c("accept_rate", "n_mcmc", "burnin", "thin", "n_samples")
-    keep_idx  <- !colnames(draws_i) %in% diag_cols
-    accept_rate_i <- if ("accept_rate" %in% colnames(draws_i))
-      mean(draws_i[, "accept_rate"]) else NA_real_
+    cn <- colnames(draws_i)
+    keep_idx <- if (is.null(cn)) rep(TRUE, ncol(draws_i)) else !(cn %in% diag_cols)
+    accept_rate_i <- if (!is.null(cn) && "accept_rate" %in% cn) mean(draws_i[, "accept_rate"]) else NA_real_
     draws_i <- draws_i[, keep_idx, drop = FALSE]
 
-    if (ncol(draws_i) >= p)
+    # Nombres de columnas y betas
+    if (ncol(draws_i) >= p) {
+      if (is.null(colnames(draws_i))) colnames(draws_i) <- paste0("V", seq_len(ncol(draws_i)))
       colnames(draws_i)[1:p] <- coef_names
-    idx_blank <- which(is.na(colnames(draws_i)) | colnames(draws_i) == "")
-    if (length(idx_blank))
-      colnames(draws_i)[idx_blank] <- sprintf("V%d", idx_blank)
+    } else if (is.null(colnames(draws_i))) {
+      colnames(draws_i) <- paste0("V", seq_len(ncol(draws_i)))
+    }
 
     beta_hat_i <- if (ncol(draws_i) >= p) colMeans(draws_i[, seq_len(p), drop = FALSE]) else numeric(0)
     names(beta_hat_i) <- if (length(beta_hat_i) > 0) coef_names else character(0)
@@ -230,13 +229,13 @@ bqr.svy <- function(formula,
     list(draws = draws_i, beta = beta_hat_i, accept_rate = accept_rate_i)
   }
 
-  # run for all taus
+  # --- Ejecutar para todos los taus ---
   fits <- lapply(taus, run_backend_one)
   names(fits) <- paste0("tau=", formatC(taus, format = "f", digits = 3))
 
   runtime <- proc.time()[["elapsed"]] - tic
 
-  # --- return single- or multi-tau object ---
+  # --- Salida ---
   if (length(taus) == 1L) {
     out <- list(
       beta         = fits[[1]]$beta,
@@ -249,7 +248,7 @@ bqr.svy <- function(formula,
       call         = cl,
       method       = method,
       quantile     = taus,
-      prior        = prior,
+      prior        = pri,          
       terms        = mt,
       model        = mf,
       formula      = formula
@@ -258,9 +257,9 @@ bqr.svy <- function(formula,
     class(out) <- c("bwqr_fit", "bqr.svy")
     return(out)
   } else {
-    beta_mat <- do.call(cbind, lapply(fits, `[[`, "beta"))    # p × K
+    beta_mat  <- do.call(cbind, lapply(fits, `[[`, "beta"))     # p × K
     colnames(beta_mat) <- names(fits)
-    draws_list <- lapply(fits, `[[`, "draws")                 # list of matrices
+    draws_list <- lapply(fits, `[[`, "draws")                   # list of matrices
     acc_vec    <- vapply(fits, `[[`, numeric(1), "accept_rate")
     names(acc_vec) <- names(fits)
 
@@ -275,7 +274,7 @@ bqr.svy <- function(formula,
       call         = cl,
       method       = method,
       quantile     = taus,
-      prior        = prior,
+      prior        = pri,         
       terms        = mt,
       model        = mf,
       formula      = formula

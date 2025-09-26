@@ -2,7 +2,7 @@
 # Imports and linking configuration
 # =====================================================
 
-#' @useDynLib tauBayesW, .registration = TRUE
+#' @useDynLib bayesQRsurvey, .registration = TRUE
 #' @import Rcpp
 #'
 #' @importFrom stats acf mad median predict qnorm quantile rnorm runif sd var setNames
