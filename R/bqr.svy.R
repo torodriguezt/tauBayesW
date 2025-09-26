@@ -1,11 +1,11 @@
-if (!exists("%||%"))
+oseif (!exists("%||%"))
   `%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
 
 # ==== MODEL FITTER ============================================================
     
 #' Bayesian quantile regression for complex survey data
 #'
-#' bqr.svy implements Bayesian methods for estimating quantile regression models
+#' \code{bqr.svy} implements Bayesian methods for estimating quantile regression models
 #' for complex survey data analysis regarding single (univariate) outputs. To 
 #' improve computational efficiency, the Markov Chain Monte Carlo (MCMC) algorithms
 #' are implemented in C++.
@@ -63,20 +63,20 @@ if (!exists("%||%"))
 #' data  <- data.frame(y = y_s, x1 = x1_s, x2 = x2_s, w = w)
 #' 
 #' # Basic usage with default method ('ald') and priors (vague)
-#' fit1 <- bqr.svy(y ~ x1 + x2, data = data, weights = w)
+#' fit1 <- bqr.svy(y ~ x1 + x2, weights = w, data = data)
 #'
 #' # Specify informative priors
 #' prior<- prior(
-#'  p = 3,
 #'  beta_mean = c(2, 1.5, -0.8),
 #'  beta_cov = diag(c(0.25, 0.25, 0.25)),
-#'  sigma_shape = 1, sigma_rate = 1
+#'  sigma_shape = 1, 
+#'  sigma_rate = 1
 #')
-#' fit2 <- bqr.svy(y ~ x1 + x2, data = data, weights = w, prior = prior)
+#' fit2 <- bqr.svy(y ~ x1 + x2, weights = w, data = data, prior = prior)
 #'
 #' # Specify different methods
-#' fit_score  <- bqr.svy(y ~ x1 + x2, data = data, weights = w, method = "score")
-#' fit_approx <- bqr.svy(y ~ x1 + x2, data = data, weights = w, method = "approximate")
+#' fit_score  <- bqr.svy(y ~ x1 + x2, weights = w, data = data, method = "score")
+#' fit_approx <- bqr.svy(y ~ x1 + x2, weights = w, data = data, method = "approximate")
 #'
 #' @importFrom stats model.frame model.matrix model.response terms
 #' @export
@@ -89,8 +89,7 @@ bqr.svy <- function(formula,
                     niter    = 50000,
                     burnin   = 10000,
                     thin     = 1,
-                    print_progress = 1000,
-                    ...) {
+                    verbose  = TRUE) {
 
   tic    <- proc.time()[["elapsed"]]
   method <- match.arg(method)
