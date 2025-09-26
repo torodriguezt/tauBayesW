@@ -39,5 +39,6 @@ Suggests:
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 SystemRequirements: BLAS, LAPACK
-URL: https://github.com/torodriguezt/tauBayesW
-BugReports: https://github.com/torodriguezt/tauBayesW/issues
+URL: https://github.com/torodriguezt/bayesQRsurvey
+BugReports: https://github.com/torodriguezt/bayesQRsurvey/issues
+
