@@ -1,8 +1,8 @@
-oseif (!exists("%||%"))
+if (!exists("%||%"))
   `%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
 
 # ==== MODEL FITTER ============================================================
-    
+
 #' Bayesian quantile regression for complex survey data
 #'
 #' \code{bqr.svy} implements Bayesian methods for estimating quantile regression models
@@ -15,11 +15,11 @@ oseif (!exists("%||%"))
 #' @param data an optional data frame containing the variables in the model.
 #' @param quantile numerical scalar or vector containing quantile(s) of interest (default=0.5).
 #' @param method one of \code{"ald"}, \code{"score"} and \code{"approximate"} (default=\code{"ald"}).
-#' @param prior a \code{bqr_prior} object of class "prior". If omitted, a vague prior is assumed (see \code{\link{prior}).
+#' @param prior a \code{bqr_prior} object of class "prior". If omitted, a vague prior is assumed (see \code{\link{prior}}).
 #' @param niter number of MCMC draws.
 #' @param burnin number of initial MCMC draws to be discarded.
 #' @param thin thinning parameter, i.e., keep every keepth draw (default=1).
-#  @param verbose logical flag indicating whether to print progress messages (default=TRUE).
+#' @param verbose logical flag indicating whether to print progress messages (default=TRUE).
 #'
 #' @details  
 #' The function bqr.svy can estimate three types of models, depending on method specification.
@@ -78,6 +78,7 @@ oseif (!exists("%||%"))
 #' fit_score  <- bqr.svy(y ~ x1 + x2, weights = w, data = data, method = "score")
 #' fit_approx <- bqr.svy(y ~ x1 + x2, weights = w, data = data, method = "approximate")
 #'
+#'
 #' @importFrom stats model.frame model.matrix model.response terms
 #' @export
 bqr.svy <- function(formula,
@@ -107,9 +108,16 @@ bqr.svy <- function(formula,
   if (niter <= 0 || burnin < 0 || thin <= 0)
     stop("'niter' and 'thin' must be > 0, and 'burnin' >= 0.", call. = FALSE)
 
-  if (!is.numeric(print_progress) || length(print_progress) != 1 || print_progress < 0)
-    stop("'print_progress' must be a non-negative integer.", call. = FALSE)
-  print_progress <- as.integer(print_progress)
+  if (!is.logical(verbose) || length(verbose) != 1)
+    stop("'verbose' must be a logical value (TRUE or FALSE).", call. = FALSE)
+
+  # Calculate print_progress automatically based on niter
+  # Print every 10% of iterations
+  print_progress <- if (verbose) {
+    as.integer(round(niter * 0.10))
+  } else {
+    0L
+  }
 
   if (is.null(data)) data <- environment(formula)
 
