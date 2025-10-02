@@ -88,6 +88,96 @@ if (!exists("%||%"))
 #'
 #' @importFrom stats model.frame model.matrix model.response terms
 #' @export
+if (!exists("%||%"))
+  `%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
+
+# ==== MODEL FITTER ============================================================
+
+#' Bayesian quantile regression for complex survey data
+#'
+#' \code{bqr.svy} implements Bayesian methods for estimating quantile regression models
+#' for complex survey data analysis regarding single (univariate) outputs. To 
+#' improve computational efficiency, the Markov Chain Monte Carlo (MCMC) algorithms
+#' are implemented in C++.
+#'
+#' @param formula a symbolic description of the model to be fit.
+#' @param weights an optional numerical vector containing the survey weights. If \code{NULL}, equal weights are used.
+#' @param data an optional data frame containing the variables in the model.
+#' @param quantile numerical scalar or vector containing quantile(s) of interest (default=0.5).
+#' @param method one of \code{"ald"}, \code{"score"} and \code{"approximate"} (default=\code{"ald"}).
+#' @param prior a \code{bqr_prior} object of class "prior". If omitted, a vague prior is assumed (see \code{\link{prior}}).
+#' @param niter number of MCMC draws.
+#' @param burnin number of initial MCMC draws to be discarded.
+#' @param thin thinning parameter, i.e., keep every keepth draw (default=1).
+#' @param verbose logical flag indicating whether to print progress messages (default=TRUE).
+#' @param estimate_sigma logical flag; if \code{TRUE}, the scale parameter 
+#'   \eqn{\sigma^2} is estimated (when method = "ald"). 
+#'   If \code{FALSE}, \eqn{\sigma^2} is fixed to 1 (default).
+#'
+#' @details  
+#' The function bqr.svy can estimate three types of models, depending on method specification.
+#' \itemize{
+#'   \item \code{"ald"} – asymmetric Laplace working likelihood
+#'   \item \code{"score"} – score based working likelihood function
+#'   \item \code{"approximate"} – pseudolikelihood function based on a Gaussian approximation
+#' }
+#'
+#' @return An object of class \code{"bqr.svy"}, containing:
+#' \item{beta}{Posterior mean estimates of regression coefficients.}
+#' \item{draws}{Posterior draws from the MCMC sampler.}
+#' \item{accept_rate}{Average acceptance rate (if available).}
+#' \item{warmup, thin}{MCMC control parameters used during sampling.}
+#' \item{quantile}{The quantile(s) fitted.}
+#' \item{prior}{Prior specification used.}
+#' \item{formula, terms, model}{Model specification details.}
+#' \item{runtime}{Elapsed runtime in seconds.}
+#' \item{method}{Estimation method}
+#' \item{estimate_sigma}{Logical flag indicating whether the scale parameter
+#'   \eqn{\sigma^2} was estimated (\code{TRUE}) or fixed at 1 (\code{FALSE}).}
+#'
+#' @references
+#' Nascimento, M. L. & Gonçalves, K. C. M. (2024). Bayesian Quantile Regression Models 
+#'   for Complex Survey Data Under Informative Sampling. *Journal of Survey Statistics and Methodology*,
+#'   12(4), 1105–1130.
+#'
+#' @examples
+#' # Generate population data
+#' set.seed(123)
+#' N    <- 10000 
+#' x1_p <- runif(N, -1, 1)
+#' x2_p <- runif(N, -1, 1)
+#' y_p  <- 2 + 1.5 * x1_p - 0.8 * x2_p + rnorm(N)
+#'
+#' # Generate sample data
+#' n <- 500
+#' z_aux <- rnorm(N, mean = 1 + y_p, sd=.5)
+#' p_aux <- 1 / (1 + exp(2.5 - 0.5 * z_aux))
+#' s_ind <- sample(1:N, n, replace = FALSE, prob = p_aux)
+#' y_s   <- y_p[s_ind]
+#' x1_s  <- x1_p[s_ind]  
+#' x2_s  <- x2_p[s_ind]  
+#' w     <- 1 / p_aux[s_ind]
+#' data  <- data.frame(y = y_s, x1 = x1_s, x2 = x2_s, w = w)
+#' 
+#' # Basic usage with default method ('ald') and priors (vague)
+#' fit1 <- bqr.svy(y ~ x1 + x2, weights = w, data = data)
+#'
+#' # Specify informative priors
+#' prior<- prior(
+#'  beta_x_mean = c(2, 1.5, -0.8),
+#'  beta_x_cov = diag(c(0.25, 0.25, 0.25)),
+#'  sigma_shape = 1, 
+#'  sigma_rate = 1
+#')
+#' fit2 <- bqr.svy(y ~ x1 + x2, weights = w, data = data, prior = prior)
+#'
+#' # Specify different methods
+#' fit_score  <- bqr.svy(y ~ x1 + x2, weights = w, data = data, method = "score")
+#' fit_approx <- bqr.svy(y ~ x1 + x2, weights = w, data = data, method = "approximate")
+#'
+#'
+#' @importFrom stats model.frame model.matrix model.response terms
+#' @export
 bqr.svy <- function(formula,
                     weights  = NULL,
                     data     = NULL,
@@ -103,6 +193,15 @@ bqr.svy <- function(formula,
   tic    <- proc.time()[["elapsed"]]
   method <- match.arg(method)
   cl <- match.call()
+  
+  if (!is.null(estimate_sigma) && method %in% c("score", "approximate")) {
+    warning(
+      "'estimate_sigma' only applies to the 'ald' method and will be ignored",
+      call. = FALSE
+    )
+  }
+  
+  
   
   # --- Quantiles ---
   if (!is.numeric(quantile) || any(!is.finite(quantile)))
@@ -333,3 +432,4 @@ bqr.svy <- function(formula,
     return(out)
   }
 }
+
