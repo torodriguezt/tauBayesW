@@ -9,7 +9,7 @@
 \usage{
 \method{print}{bqr.svy}(x, digits = 3, ...)
 
-\method{print}{mo.bqr.svy}(x, digits = 3, ...)
+\method{print}{mo.bqr.svy}(x, digits = 3, max_rows = NULL, ...)
 }
 \description{
 print.bayesQRsurvey is an S3 method that prints the content of an S3 object of class

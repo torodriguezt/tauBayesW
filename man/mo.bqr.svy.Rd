@@ -15,7 +15,8 @@ mo.bqr.svy(
   n_dir = NULL,
   epsilon = 1e-06,
   max_iter = 1000,
-  verbose = FALSE
+  verbose = FALSE,
+  estimate_sigma = FALSE
 )
 }
 \arguments{
@@ -42,6 +43,9 @@ and \eqn{K} indicates indicates the number of directions.}
 \item{max_iter}{numerical scalar indicating maximum number of EM iterations (default = 1000).}
 
 \item{verbose}{logical flag indicating whether to print progress messages (default=FALSE).}
+
+\item{estimate_sigma}{logical flag; if \code{TRUE}, the scale parameter
+\eqn{\sigma^2} is estimated by EM. If \code{FALSE}, \eqn{\sigma^2} is fixed to 1 (default).}
 }
 \value{
 An object of class \code{"mo.bqr.svy"} containing:
@@ -51,13 +55,19 @@ An object of class \code{"mo.bqr.svy"} containing:
 \item{quantile}{Vector of fitted quantiles}
 \item{prior}{List of priors used for each quantile}
 \item{fit}{List of fitted results for each quantile, each containing one sub-list per direction}
-\item{coefficients}{Coefficients from the first quantile}
+\item{coefficients}{Coefficients organized by quantile}
+\item{sigma}{List of scale parameters by quantile and direction.
+If \code{estimate_sigma = FALSE}, all entries are fixed at 1.
+If \code{estimate_sigma = TRUE}, each entry contains the
+estimated value of \eqn{\sigma} (posterior mode from EM).}
 \item{n_dir}{Number of directions}
 \item{U}{Matrix of projection directions (\eqn{d \times K})}
 \item{Gamma_list}{List of orthogonal complement bases, one per direction}
 \item{n_obs}{Number of observations}
 \item{n_vars}{Number of covariates}
 \item{response_dim}{Dimension of the response \eqn{d}}
+\item{estimate_sigma}{Logical flag indicating whether the scale parameter
+\eqn{\sigma^2} was estimated (\code{TRUE}) or fixed at 1 (\code{FALSE}).}
 }
 \description{
 mo.bqr.svy implements a Bayesian approach to multiple-output quantile regression

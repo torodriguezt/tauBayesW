@@ -394,31 +394,159 @@ NULL
 print.bqr.svy <- function(x, digits = 3, ...) {
   cat("Bayesian Quantile Regression for survey data\n")
   cat("Method   :", x$method, "\n")
-  cat("Quantile :", x$quantile, "\n")
+  cat("Quantile :", paste(formatC(x$quantile, digits = 3, format = "f"),
+                          collapse = " "), "\n")
   cat("Formula  :", deparse(x$formula), "\n")
-  cat("Runtime  :", x$runtime, "\n\n")
+  if (!is.null(x$runtime)) cat("Runtime  :", round(x$runtime, 3), "sec\n")
   
-  cat("Coefficients (posterior means):\n")
+  cat("\nCoefficients (posterior means):\n")
   print(round(x$beta, digits))
   
-  if (!is.null(x$accept_rate)) {
-    cat("\nAcceptance rate:", round(x$accept_rate, 3), "\n")
+  # ---- Scale (sigma) only for ALD ----
+  if (identical(x$method, "ald")) {
+    cat("\nScale (sigma):\n")
+    
+    # 1) Determinar si se estimó sigma (flag del objeto)
+    est_flag <- isTRUE(x$estimate_sigma)
+    
+    # 2) Etiquetas de tau
+    tau_labs <- paste0("tau=", formatC(x$quantile, digits = 3, format = "f"))
+    
+    # 3) Extraer un punto (media posterior) de sigma por cuantil si hay draws
+    make_point <- function(m) {
+      if (is.matrix(m) && "sigma" %in% colnames(m)) {
+        mean(m[, "sigma"], na.rm = TRUE)
+      } else {
+        NA_real_
+      }
+    }
+    
+    # Construir vector de sigmas por tau (o NA si no disponible)
+    sig_vec <- rep(NA_real_, length(x$quantile))
+    if (is.matrix(x$draws) && length(x$quantile) == 1) {
+      sig_vec[1] <- make_point(x$draws)
+    } else if (is.list(x$draws) && length(x$draws) == length(x$quantile)) {
+      sig_vec <- vapply(x$draws, make_point, numeric(1))
+    }
+    
+    # 4) Imprimir según fijo/estimado
+    if (isFALSE(est_flag)) {
+      cat("  (sigma fixed at 1 by default)\n")
+      for (i in seq_along(tau_labs)) {
+        cat(" ", tau_labs[i], ": 1.000 (fixed)\n", sep = "")
+      }
+    } else {
+      for (i in seq_along(tau_labs)) {
+        val <- sig_vec[i]
+        if (is.na(val)) {
+          cat(" ", tau_labs[i], ": not available\n", sep = "")
+        } else {
+          cat(" ", tau_labs[i], ": ", formatC(val, format = "f", digits = digits), "\n", sep = "")
+        }
+      }
+    }
   }
+  
+  # ---- Acceptance rate ----
+  if (!is.null(x$accept_rate)) {
+    if (is.numeric(x$accept_rate) && length(x$accept_rate) == 1L) {
+      cat("\nAcceptance rate:", round(x$accept_rate, 3), "\n")
+    } else if (is.numeric(x$accept_rate) && length(x$accept_rate) > 1L) {
+      cat("\nAcceptance rate by quantile:\n")
+      print(round(x$accept_rate, 3))
+    }
+  }
+  
   invisible(x)
 }
 
 
+
+#' @keywords internal
+sigma.mo.bqr.svy <- function(x) {
+  if (!inherits(x, "mo.bqr.svy")) stop("Not a 'mo.bqr.svy' object.", call. = FALSE)
+  # prefer top-level x$sigma if present
+  if (is.list(x$sigma) && length(x$sigma) == length(x$quantile)) return(x$sigma)
+  # fallback: build from nested structure
+  out <- vector("list", length(x$fit))
+  names(out) <- paste0("tau=", formatC(x$quantile, digits = 3, format = "f"))
+  for (qi in seq_along(x$fit)) {
+    block <- x$fit[[qi]]
+    if (!is.list(block$directions)) next
+    vals <- vapply(block$directions, function(dk) {
+      v <- tryCatch(as.numeric(dk$sigma)[1], error = function(e) NA_real_)
+      ifelse(is.finite(v), v, NA_real_)
+    }, numeric(1))
+    names(vals) <- paste0("dir", seq_along(vals))
+    out[[qi]] <- vals
+  }
+  out
+}
+
 #' @rdname print.bayesQRsurvey
 #' @title Print a \code{mo.bqr.svy} model
 #' @exportS3Method print mo.bqr.svy
-print.mo.bqr.svy <- function(x, digits = 3, ...) {
+print.mo.bqr.svy <- function(x, digits = 3, max_rows = NULL, ...) {
+  # Header
   cat("Multiple-Output Bayesian Quantile Regression (survey data)\n")
   cat("Algorithm :", x$algorithm, "\n")
-  cat("Quantile  :", x$quantile, "\n")
+  cat("Quantiles :", paste(formatC(x$quantile, digits = 3, format = "f"), collapse = " "), "\n")
   cat("Formula   :", deparse(x$formula), "\n")
-  cat("Directions:", x$n_dir, "\n\n")
+  cat("Directions:", x$n_dir, "\n")
+  if (!is.null(x$n_obs) && !is.null(x$response_dim)) {
+    cat("N x d     :", x$n_obs, "x", x$response_dim, "\n")
+  }
+  cat("\n")
   
-  cat("Coefficients by direction (posterior means):\n")
-  print(round(x$coefficients, digits))
+  # Coefficients matrices per tau
+  is_new_structure <- is.list(x$coefficients) && all(vapply(x$coefficients, is.matrix, logical(1)))
+  if (!is_new_structure) {
+    cat("Note: coefficients stored in legacy format (single vector).\n",
+        "      Updating mo.bqr.svy will organize by quantile and direction.\n\n", sep = "")
+    print(round(x$coefficients, digits))
+  } else {
+    cat("Coefficients per quantile (rows = coefficients, columns = directions)\n")
+    if (!is.null(max_rows) && (!is.numeric(max_rows) || length(max_rows) != 1 || max_rows < 1)) {
+      warning("'max_rows' should be a positive scalar; ignoring.", call. = FALSE)
+      max_rows <- NULL
+    }
+    for (qi in seq_along(x$coefficients)) {
+      tau_lab <- if (!is.null(names(x$coefficients)[qi])) names(x$coefficients)[qi] else {
+        paste0("tau=", formatC(x$quantile[qi], digits = 3, format = "f"))
+      }
+      cat("\n", tau_lab, "\n", sep = "")
+      cat(strrep("-", nchar(tau_lab)), "\n", sep = "")
+      M <- x$coefficients[[qi]]
+      M_to_print <- if (!is.null(max_rows) && nrow(M) > max_rows) M[seq_len(max_rows), , drop = FALSE] else M
+      print(round(M_to_print, digits))
+      if (!is.null(max_rows) && nrow(M) > max_rows) {
+        cat(sprintf("... %d more rows not shown (use max_rows = NULL to show all).\n", nrow(M) - max_rows))
+      }
+    }
+  }
+  
+  # Sigma (point estimates) by tau & direction, using the extractor
+  cat("\nScale (sigma) by quantile and direction:\n")
+  sig <- sigma.mo.bqr.svy(x)
+  for (qi in seq_along(sig)) {
+    tau_lab <- names(sig)[qi]
+    cat(" ", tau_lab, ":\n", sep = "")
+    v <- sig[[qi]]
+    if (all(is.na(v))) {
+      cat("   not available\n")
+    } else {
+      # print as a compact named vector
+      out <- paste0(names(v), "=", formatC(v, format = "f", digits = digits))
+      cat("   ", paste(out, collapse = ", "), "\n", sep = "")
+    }
+  }
+  
+  # Note
+  if (!is.null(x$estimate_sigma)) {
+    if (isFALSE(x$estimate_sigma)) {
+      cat("\nNote: sigma is fixed at 1.\n")
+    }
+  }
+  
   invisible(x)
 }

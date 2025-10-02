@@ -48,43 +48,46 @@ if (!exists("%||%"))
 #' }
 #'
 #' @return An object of class \code{"prior"}.
-#'
 #' @examples
-#' # Create informative prior objects regarding the single-output methods
-#' prior_ald <- prior(
+#'
+#' #Simulate data
+#' set.seed(123)
+#' n  <- 200
+#' x1 <- rnorm(n, 0, 1)
+#' x2 <- runif(n, -1, 1)
+#' w  <- runif(n, 0.5, 2)   # survey weights
+#'
+#' y1 <- 2 + 1.5*x1 - 0.8*x2 + rnorm(n, 0, 1)
+#' y2 <- 1 + 0.5*x1 - 0.2*x2 + rnorm(n, 0, 1)
+#'
+#' data <- data.frame(y1 = y1, y2 = y2, x1 = x1, x2 = x2, w = w)
+#'
+#' 
+#' # Define a general informative prior
+#' prior_general <- prior(
 #'   beta_x_mean = c(2, 1.5, -0.8),
-#'   beta_x_cov = diag(c(0.25, 0.25, 0.25)),
+#'   beta_x_cov  = diag(c(0.25, 0.25, 0.25)),
 #'   sigma_shape = 3,
-#'   sigma_rate = 2
-#' )
-#'
-#' prior_score <- prior(
-#'   beta_x_mean = c(2, 1.5, -0.8),
-#'   beta_x_cov = diag(c(0.25, 0.25, 0.25))
-#' )
-#'
-#' prior_approximate <- prior(
-#'   beta_x_mean = c(2, 1.5, -0.8),
-#'   beta_x_cov = diag(c(0.25, 0.25, 0.25))
-#' )
-#'
-#' # Estimate the model parameters with informative prior
-#' fit_ald <- bqr.svy(y ~ x1 + x2, weights = w, data = mydata, prior = prior_ald)
-#' fit_scr <- bqr.svy(y ~ x1 + x2, weights = w, data = mydata, method = "score", prior = prior_score)
-#' fit_apx <- bqr.svy(y ~ x1 + x2, weights = w, data = mydata, method = "approximate", prior = prior_approximate)
-#'    
-#' # Create an informative prior object regarding the multiple-output method
-#' prior_mo <- prior(
-#'   beta_x_mean = c(2, 1.5, -0.8),
-#'   beta_x_cov = diag(c(0.25, 0.25, 0.25)),
-#'   sigma_shape = 3,
-#'   sigma_rate = 2,
+#'   sigma_rate  = 2,
 #'   beta_y_mean = 1,
-#'   beta_y_cov = 0.25
+#'   beta_y_cov  = 0.25
 #' )
 #'
-#' # Estimate the model parameters with informative prior
-#' fit_mo <- mo.bqr.svy(cbind(y1, y2) ~ x1 + x2, weights = w, data = mydata, prior = prior_mo, n_dir = 10)
+#' #Estimate the model parameters with informative prior
+#'
+#' 
+#' fit_ald <- bqr.svy(y1 ~ x1 + x2, weights = w, data = data,
+#'                    prior = prior_general, method = "ald")
+#'
+#' fit_scr <- bqr.svy(y1 ~ x1 + x2, weights = w, data = data,
+#'                    prior = prior_general, method = "score")
+#'
+#' fit_apx <- bqr.svy(y1 ~ x1 + x2, weights = w, data = data,
+#'                    prior = prior_general, method = "approximate")
+#'
+#' # Multiple-output method
+#' fit_mo <- mo.bqr.svy(cbind(y1, y2) ~ x1 + x2, weights = w,
+#'                      data = data, prior = prior_general, n_dir = 10)
 #'
 #' @seealso \code{\link{bqr.svy}}, \code{\link{mo.bqr.svy}},
 #'   \code{\link{summary}}

@@ -3,7 +3,7 @@ title: "bayesQRsurvey"
 author: "bayesQRsurvey Package"
 date: "`r Sys.Date()`"
 output: 
-    rmarkdown::html_vignette:
+  pdf_document:
     toc: true
     toc_depth: 3
 vignette: >
@@ -11,6 +11,7 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
+
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
@@ -24,8 +25,6 @@ knitr::opts_chunk$set(
 ```
 
 ## Introduction
-
-[![CRAN status](https://www.r-pkg.org/badges/version/bayesQRsurvey)](https://CRAN.R-project.org/package=bayesQRsurvey)
 
 <div style="display: flex; align-items: center;">
 
@@ -482,7 +481,7 @@ true_beta <- c(2, 1.5)  # Intercept and slope
 
 # Create simulation parameters table
 sim_params <- data.frame(
-  Parameter = c("Population size", "Sample size", "Number of strata", "Quantiles", "True β₀", "True β₁"),
+  Parameter = c("Population size", "Sample size", "Number of strata", "Quantiles", "True Beta0", "True Beta1"),
   Value = c(N, n, n_est, paste(quantiles, collapse = ", "), true_beta[1], true_beta[2])
 )
 
@@ -642,7 +641,7 @@ for (q_idx in seq_along(quantiles)) {
   )
   print(knitr::kable(
     table_result, digits = 4,
-    caption = paste("Poisson Sampling - τ =", tau_val)
+    caption = paste("Poisson Sampling - Tau =", tau_val)
   ))
 }
 ```
@@ -656,7 +655,7 @@ for (q_idx in seq_along(quantiles)) {
   )
   print(knitr::kable(
     table_result, digits = 4,
-    caption = paste("Stratified Sampling - τ =", tau_val)
+    caption = paste("Stratified Sampling - Tau =", tau_val)
   ))
 }
 ```
@@ -671,7 +670,7 @@ for (q_idx in seq_along(quantiles)) {
   )
   print(knitr::kable(
     table_result, digits = 4,
-    caption = paste("Systematic Sampling - τ =", tau_val)
+    caption = paste("Systematic Sampling - Tau =", tau_val)
   ))
 }
 ```
@@ -744,7 +743,7 @@ run_mo_sim <- function(design = "poi",
     U[, k] <- uk / sqrt(sum(uk^2))
   }
 
-  pr_mo <- prior(
+  pr_mo <- bayesQRsurvey::prior(
     beta_x_mean = rep(0, p),
     beta_x_cov  = diag(1e6, p),
     sigma_shape = 0.001,
@@ -806,6 +805,7 @@ out_poi2 <- run_mo_sim(
   taus = c(0.25, 0.5, 0.75), n_dir = 10,
   max_iter = 400, keep_intercept = TRUE
 )
+
 
 ```
 

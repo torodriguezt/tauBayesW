@@ -14,7 +14,8 @@ bqr.svy(
   niter = 50000,
   burnin = 10000,
   thin = 1,
-  verbose = TRUE
+  verbose = TRUE,
+  estimate_sigma = FALSE
 )
 }
 \arguments{
@@ -37,16 +38,24 @@ bqr.svy(
 \item{thin}{thinning parameter, i.e., keep every keepth draw (default=1).}
 
 \item{verbose}{logical flag indicating whether to print progress messages (default=TRUE).}
+
+\item{estimate_sigma}{logical flag; if \code{TRUE}, the scale parameter
+\eqn{\sigma^2} is estimated (when method = "ald").
+If \code{FALSE}, \eqn{\sigma^2} is fixed to 1 (default).}
 }
 \value{
 An object of class \code{"bqr.svy"}, containing:
 \item{beta}{Posterior mean estimates of regression coefficients.}
 \item{draws}{Posterior draws from the MCMC sampler.}
 \item{accept_rate}{Average acceptance rate (if available).}
+\item{warmup, thin}{MCMC control parameters used during sampling.}
 \item{quantile}{The quantile(s) fitted.}
 \item{prior}{Prior specification used.}
 \item{formula, terms, model}{Model specification details.}
 \item{runtime}{Elapsed runtime in seconds.}
+\item{method}{Estimation method}
+\item{estimate_sigma}{Logical flag indicating whether the scale parameter
+\eqn{\sigma^2} was estimated (\code{TRUE}) or fixed at 1 (\code{FALSE}).}
 }
 \description{
 \code{bqr.svy} implements Bayesian methods for estimating quantile regression models
@@ -86,8 +95,8 @@ fit1 <- bqr.svy(y ~ x1 + x2, weights = w, data = data)
 
 # Specify informative priors
 prior<- prior(
- beta_mean = c(2, 1.5, -0.8),
- beta_cov = diag(c(0.25, 0.25, 0.25)),
+ beta_x_mean = c(2, 1.5, -0.8),
+ beta_x_cov = diag(c(0.25, 0.25, 0.25)),
  sigma_shape = 1, 
  sigma_rate = 1
 )

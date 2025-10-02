@@ -48,14 +48,13 @@ static arma::vec draw_beta(
     ridge = 1e-6;
   }
 
-  // ---- FIX: añadir término de prior B_inv * b_mean ----
+  // prior term
   arma::vec rhs = B_inv * b_mean + X.t() * (wv % (y - theta * v)) / (delta2 * sigma_eff);
   arma::vec mu = Sigma * rhs;
 
   arma::mat L;
   ok = arma::chol(L, Sigma + ridge * arma::eye<arma::mat>(Sigma.n_rows, Sigma.n_cols), "lower");
   if (!ok) {
-    // Fallback robusto: proyectar Sigma a SPD vía eigen
     arma::vec eigval;
     arma::mat eigvec;
     arma::eig_sym(eigval, eigvec, Sigma);
@@ -107,7 +106,7 @@ static void update_v(
 
   for (int i = 0; i < N; ++i) {
     const double resid = y[i] - arma::dot(X.row(i), beta);
-    const double chi = w[i] * resid * resid / (delta2 * sigma_eff); // ---- FIX
+    const double chi = w[i] * resid * resid / (delta2 * sigma_eff);
     const double psi = w[i] * (2.0 / sigma_eff + theta * theta / (delta2 * sigma_eff));
     const double mu = std::sqrt(chi / psi);
     const double lambda = std::sqrt(chi * psi);
@@ -115,7 +114,6 @@ static void update_v(
   }
 }
 
-// -------- Main ALD MCMC --------
 Rcpp::List _mcmc_bwqr_al_cpp(
     const arma::vec& y,
     const arma::mat& X,
@@ -128,7 +126,9 @@ Rcpp::List _mcmc_bwqr_al_cpp(
     Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue,
     double c0 = 0.001,
     double C0 = 0.001,
-    int print_progress = 1000) {
+    int print_progress = 1000,
+    Rcpp::Nullable<Rcpp::NumericVector> fix_sigma = R_NilValue 
+) {
 
   if (y.n_elem != X.n_rows || y.n_elem != w.n_elem)
     stop("Dimensions of y, X, and w must match.");
@@ -142,33 +142,49 @@ Rcpp::List _mcmc_bwqr_al_cpp(
   if ((int)b_mean.n_elem != p)
     stop("b_prior_mean must have length equal to ncol(X).");
   arma::mat B_prec = B_prior_prec.isNotNull() ?
-  Rcpp::as<arma::mat>(B_prior_prec) : (arma::eye<arma::mat>(p, p) / 1000.0); // precision = 1/1000 => cov ≈ 1000 I
+    Rcpp::as<arma::mat>(B_prior_prec) : (arma::eye<arma::mat>(p, p) / 1000.0); // precision = 1/1000 => cov ≈ 1000 I
   if ((int)B_prec.n_rows != p || (int)B_prec.n_cols != p)
     stop("B_prior_prec must be a p x p matrix.");
+
+  // <<< NEW: manejo de sigma fija (si se provee)
+  bool use_fixed_sigma = false;
+  double sigma_fixed_val = 1.0;
+  if (fix_sigma.isNotNull()) {
+    NumericVector fs(fix_sigma);
+    if (fs.size() != 1 || !R_finite(fs[0]) || fs[0] <= 0.0)
+      stop("'fix_sigma' must be a positive scalar if provided.");
+    use_fixed_sigma = true;
+    sigma_fixed_val = fs[0];
+  }
 
   arma::mat beta_chain(n_mcmc, p, arma::fill::zeros);
   arma::vec sigma_chain(n_mcmc, arma::fill::zeros);
 
   // Inicialización
   beta_chain.row(0) = arma::solve(X, y).t();
-  sigma_chain[0] = 1.0;
+  sigma_chain[0] = use_fixed_sigma ? sigma_fixed_val : 1.0;  // <<< NEW
   arma::vec v = arma::randg<arma::vec>(n, arma::distr_param(2.0, 1.0));
 
   const double delta2 = 2.0 / (tau * (1.0 - tau));
-  const double theta = (1.0 - 2.0 * tau) / (tau * (1.0 - tau));
-  const double tau2 = delta2;
+  const double theta  = (1.0 - 2.0 * tau) / (tau * (1.0 - tau));
+  const double tau2   = delta2;
 
   for (int k = 1; k < n_mcmc; ++k) {
     if (print_progress > 0 && k % print_progress == 0) {
       Rprintf("Iteration %d of %d\n", k, n_mcmc);
       R_CheckUserInterrupt();
     }
+
     arma::vec beta_k = draw_beta(X, w, v, y, sigma_chain[k - 1], delta2, theta, B_prec, b_mean);
     beta_chain.row(k) = beta_k.t();
 
     update_v(v, X, w, beta_k, y, delta2, theta, sigma_chain[k - 1]);
 
-    sigma_chain[k] = draw_sigma(X, w, beta_k, v, y, tau2, theta, c0, C0);
+    if (use_fixed_sigma) {                           // <<< NEW
+      sigma_chain[k] = sigma_fixed_val;              // mantener fija
+    } else {
+      sigma_chain[k] = draw_sigma(X, w, beta_k, v, y, tau2, theta, c0, C0);
+    }
   }
 
   // Guardar draws post-burnin cada 'thin' (índices 0-based)
@@ -185,7 +201,7 @@ Rcpp::List _mcmc_bwqr_al_cpp(
   }
 
   return List::create(
-    _["beta"] = beta_out,
+    _["beta"]  = beta_out,
     _["sigma"] = sigma_out
   );
 }

@@ -29,6 +29,8 @@ if (!exists("%||%"))
 #' @param epsilon numerical scalar indicating the convergence tolerance for the EM algorithm (default = 1e-6).
 #' @param max_iter numerical scalar indicating maximum number of EM iterations (default = 1000).
 #' @param verbose logical flag indicating whether to print progress messages (default=FALSE).
+#' @param estimate_sigma logical flag; if \code{TRUE}, the scale parameter 
+#'   \eqn{\sigma^2} is estimated by EM. If \code{FALSE}, \eqn{\sigma^2} is fixed to 1 (default).
 #'
 #'
 #' @return An object of class \code{"mo.bqr.svy"} containing:
@@ -38,13 +40,19 @@ if (!exists("%||%"))
 #'   \item{quantile}{Vector of fitted quantiles}
 #'   \item{prior}{List of priors used for each quantile}
 #'   \item{fit}{List of fitted results for each quantile, each containing one sub-list per direction}
-#'   \item{coefficients}{Coefficients from the first quantile}
+#'   \item{coefficients}{Coefficients organized by quantile}
+#'   \item{sigma}{List of scale parameters by quantile and direction. 
+#'                If \code{estimate_sigma = FALSE}, all entries are fixed at 1. 
+#'                If \code{estimate_sigma = TRUE}, each entry contains the 
+#'                estimated value of \eqn{\sigma} (posterior mode from EM).}
 #'   \item{n_dir}{Number of directions}
 #'   \item{U}{Matrix of projection directions (\eqn{d \times K})}
 #'   \item{Gamma_list}{List of orthogonal complement bases, one per direction}
 #'   \item{n_obs}{Number of observations}
 #'   \item{n_vars}{Number of covariates}
 #'   \item{response_dim}{Dimension of the response \eqn{d}}
+#'   \item{estimate_sigma}{Logical flag indicating whether the scale parameter 
+#'                         \eqn{\sigma^2} was estimated (\code{TRUE}) or fixed at 1 (\code{FALSE}).}
 #'
 #' @examples
 #' library(MASS)
@@ -77,7 +85,6 @@ if (!exists("%||%"))
 #' @export
 #' @importFrom stats model.frame model.matrix model.response
 #' @importFrom pracma nullspace
-
 mo.bqr.svy <- function(formula,
                        weights  = NULL,
                        data     = NULL,
@@ -88,44 +95,48 @@ mo.bqr.svy <- function(formula,
                        n_dir    = NULL,
                        epsilon  = 1e-6,
                        max_iter = 1000,
-                       verbose  = FALSE) {
-
-  algorithm <- "em"  # Always use EM algorithm
+                       verbose  = FALSE,
+                       estimate_sigma = FALSE) {
+  
+  algorithm <- "em"
   if (missing(data)) stop("'data' must be provided.")
-
+  
+  # --- quantiles ---
   if (length(quantile) == 0) stop("'quantile' cannot be empty.")
   if (any(!is.finite(quantile))) stop("'quantile' must be numeric and finite.")
   if (any(quantile <= 0 | quantile >= 1)) stop("'quantile' must be in (0,1).")
   quantile <- sort(unique(quantile))
-
+  
+  # --- model frame ---
   mf <- model.frame(formula, data)
   y  <- model.response(mf)
   if (is.vector(y)) y <- matrix(y, ncol = 1)
   if (!is.matrix(y)) stop("'y' must be a numeric matrix or vector.")
   if (any(!is.finite(y))) stop("Response 'y' contains non-finite values.")
   n <- nrow(y); d <- ncol(y)
-
+  
   X  <- model.matrix(attr(mf, "terms"), mf)
   if (nrow(X) != n) stop("nrow(X) must match nrow(y).")
   p  <- ncol(X)
   coef_names <- colnames(X)
-
+  
+  # --- weights ---
   wts <- if (is.null(weights)) rep(1, n) else as.numeric(weights)
   if (length(wts) != n)  stop("'weights' must have length n.")
   if (any(!is.finite(wts)) || any(wts <= 0)) stop("Invalid weights.")
   wts <- wts / mean(wts)
-
+  
   if (!requireNamespace("pracma", quietly = TRUE)) {
     stop("Package 'pracma' is required for nullspace calculation")
   }
-
+  
   # ---------- Build U and Gamma_list ----------
   if (!is.null(U)) {
     U <- as.matrix(U)
     if (nrow(U) != d) stop("U must have d rows.")
     K <- ncol(U)
-
-    # Normalize U columns and check non-zero
+    
+    # normalize U columns
     tol_u <- 1e-12
     for (k in seq_len(K)) {
       nk <- sqrt(sum(U[, k]^2))
@@ -136,22 +147,20 @@ mo.bqr.svy <- function(formula,
         U[, k] <- U[, k] / nk
       }
     }
-
+    
     if (!is.null(gamma_U)) {
-      # User provided U and gamma_U: use their bases with validation
       if (!is.list(gamma_U)) stop("'gamma_U' must be a list of K matrices.")
       if (length(gamma_U) != K) stop("length(gamma_U) must equal ncol(U) = K.")
-
+      
       Gamma_list <- vector("list", K)
       for (k in seq_len(K)) {
         if (d == 1) {
-          Gamma_list[[k]] <- matrix(numeric(0), 1, 0)  # r_k = 0
+          Gamma_list[[k]] <- matrix(numeric(0), 1, 0)
         } else {
           Gk <- as.matrix(gamma_U[[k]])
           if (nrow(Gk) != d) stop(sprintf("gamma_U[[%d]] must have %d rows.", k, d))
           if (ncol(Gk) != (d - 1))
             stop(sprintf("gamma_U[[%d]] must have %d columns (d-1).", k, d - 1))
-          # Orthogonality and rank checks
           u_k <- U[, k]
           tol <- 1e-8
           ortho_err <- max(abs(drop(crossprod(Gk, u_k))))
@@ -169,18 +178,16 @@ mo.bqr.svy <- function(formula,
           Gamma_list[[k]] <- Gk
         }
       }
-
+      
     } else {
-      # User passed U but not gamma_U: compute nullspace
       if (d == 1) {
         Gamma_list <- replicate(K, matrix(numeric(0), 1, 0), simplify = FALSE)
       } else {
         Gamma_list <- lapply(seq_len(K), function(k) pracma::nullspace(t(U[, k])))
       }
     }
-
+    
   } else {
-    # User did not pass U
     if (!is.null(gamma_U)) stop("If you provide 'gamma_U', you must also provide 'U'.")
     if (d == 1) {
       U <- matrix(1.0, 1, 1); K <- 1
@@ -196,45 +203,54 @@ mo.bqr.svy <- function(formula,
       }
     }
   }
-
-  # ---------- Unified prior: NULL or class 'prior' (or 'mo_bqr_prior' legacy) ----------
+  
+  # ---------- Unified prior ----------
   pri <- if (is.null(prior)) {
     as_mo_bqr_prior(prior(), p = p, d = d, names_x = coef_names, names_y = NULL)
   } else if (inherits(prior, "prior")) {
     as_mo_bqr_prior(prior, p = p, d = d, names_x = coef_names, names_y = NULL)
-  } else if (inherits(prior, "mo_bqr_prior")) { # backward compatibility
+  } else if (inherits(prior, "mo_bqr_prior")) {
     prior
   } else {
     stop("'prior' must be NULL, a 'prior' object (see prior()), or a 'mo_bqr_prior' (legacy).", call. = FALSE)
   }
-
-  # --- Main fitting loop ---
+  
+  # --- Warning only if sigma is NOT estimated and prior specified sigma params ---
+  user_defined_sigma_prior <- !is.null(pri$sigma_shape) && !is.na(pri$sigma_shape) &&
+    !is.null(pri$sigma_rate)  && !is.na(pri$sigma_rate)
+  if (!estimate_sigma && isTRUE(user_defined_sigma_prior)) {
+    warning("With estimate_sigma=FALSE 'sigma_shape' and 'sigma_rate' in prior will be ignored.",
+            call. = FALSE)
+  }
+  
+  # --- Backend 'fix_sigma' support?
+  backend_supports_fix <- tryCatch({
+    "fix_sigma" %in% names(formals(.bwqr_weighted_em_cpp_sep))
+  }, error = function(e) FALSE)
+  
   results <- vector("list", length(quantile))
-  names(results) <- paste0("q", quantile)
-
+  names(results) <- paste0("tau=", formatC(quantile, digits = 3, format = "f"))
+  
   for (qi in seq_along(quantile)) {
     qtau <- quantile[qi]
-    pr   <- pri  # same prior for all quantiles
-
+    pr   <- pri
+    
     if (verbose) message(sprintf("Fitting tau = %.3f (d=%d, K=%d)", qtau, d, K))
-
+    
     direction_results <- vector("list", K)
     names(direction_results) <- paste0("dir_", seq_len(K))
-
+    
     for (k in seq_len(K)) {
       u_k <- U[, k]
       gamma_uk <- Gamma_list[[k]]
       r_k <- if (d > 1) ncol(gamma_uk) else 0
       p_ext <- p + r_k
-
-      # --- Build extended prior mean and covariance (beta + gamma blocks) ---
-      # Beta (model coefficients) block:
+      
+      # prior blocks
       beta_mean_k <- pr$beta_mean
       beta_cov_k  <- pr$beta_cov
-
-      # Gamma (orthogonal complement) block:
+      
       if (r_k > 0) {
-        # mean
         if (is.null(pr$beta_star_mean)) {
           gamma_mean_k <- rep(0, r_k)
         } else if (length(pr$beta_star_mean) == 1L) {
@@ -242,11 +258,12 @@ mo.bqr.svy <- function(formula,
         } else if (length(pr$beta_star_mean) == r_k) {
           gamma_mean_k <- pr$beta_star_mean
         } else {
-          stop(sprintf("Length of prior$beta_star_mean (%d) must be 1 or r_k=%d.", length(pr$beta_star_mean), r_k))
+          stop(sprintf("Length of prior$beta_star_mean (%d) must be 1 or r_k=%d.",
+                       length(pr$beta_star_mean), r_k))
         }
-        # cov
+        
         if (is.null(pr$beta_star_cov)) {
-          gamma_cov_k <- diag(1e6, r_k)  # vague
+          gamma_cov_k <- diag(1e6, r_k)
         } else if (is.numeric(pr$beta_star_cov) && length(pr$beta_star_cov) == 1L) {
           gamma_cov_k <- diag(as.numeric(pr$beta_star_cov), r_k)
         } else if (is.numeric(pr$beta_star_cov) && is.null(dim(pr$beta_star_cov)) &&
@@ -261,37 +278,78 @@ mo.bqr.svy <- function(formula,
         gamma_mean_k <- numeric(0)
         gamma_cov_k  <- matrix(numeric(0), 0, 0)
       }
-
+      
       mu0_ext <- c(beta_mean_k, gamma_mean_k)
       sigma0_ext <- matrix(0, p_ext, p_ext)
       sigma0_ext[1:p, 1:p] <- beta_cov_k
       if (r_k > 0) sigma0_ext[(p+1):p_ext, (p+1):p_ext] <- gamma_cov_k
-
-      u_k_matrix <- matrix(u_k, ncol = 1)
+      
+      u_k_matrix     <- matrix(u_k, ncol = 1)
       gamma_k_matrix <- if (d > 1) gamma_uk else matrix(numeric(0), d, 0)
-
-      cpp_result <- .bwqr_weighted_em_cpp_sep(
-        y        = y,
-        x        = X,
-        w        = wts,
-        u        = u_k_matrix,
-        gamma_u  = gamma_k_matrix,
-        tau      = qtau,
-        mu0      = mu0_ext,
-        sigma0   = sigma0_ext,
-        a0       = pr$sigma_shape,
-        b0       = pr$sigma_rate,
-        eps      = epsilon,
-        max_iter = max_iter,
-        verbose  = verbose
-      )
-
+      
+      # --- Backend call: estimate sigma or fix to 1
+      cpp_result <- if (isTRUE(estimate_sigma)) {
+        .bwqr_weighted_em_cpp_sep(
+          y        = y,
+          x        = X,
+          w        = wts,
+          u        = u_k_matrix,
+          gamma_u  = gamma_k_matrix,
+          tau      = qtau,
+          mu0      = mu0_ext,
+          sigma0   = sigma0_ext,
+          a0       = pr$sigma_shape,
+          b0       = pr$sigma_rate,
+          eps      = epsilon,
+          max_iter = max_iter,
+          verbose  = verbose
+        )
+      } else if (backend_supports_fix) {
+        .bwqr_weighted_em_cpp_sep(
+          y        = y,
+          x        = X,
+          w        = wts,
+          u        = u_k_matrix,
+          gamma_u  = gamma_k_matrix,
+          tau      = qtau,
+          mu0      = mu0_ext,
+          sigma0   = sigma0_ext,
+          a0       = pr$sigma_shape,
+          b0       = pr$sigma_rate,
+          eps      = epsilon,
+          max_iter = max_iter,
+          verbose  = verbose,
+          fix_sigma = 1.0
+        )
+      } else {
+        # Fallback: concentrate prior at 1 (mode≈1) and force output to 1
+        a0_use <- 1e9; b0_use <- a0_use + 1
+        if (verbose) message("Backend without 'fix_sigma'; using highly concentrated prior at sigma^2≈1.")
+        out <- .bwqr_weighted_em_cpp_sep(
+          y        = y,
+          x        = X,
+          w        = wts,
+          u        = u_k_matrix,
+          gamma_u  = gamma_k_matrix,
+          tau      = qtau,
+          mu0      = mu0_ext,
+          sigma0   = sigma0_ext,
+          a0       = a0_use,
+          b0       = b0_use,
+          eps      = epsilon,
+          max_iter = max_iter,
+          verbose  = verbose
+        )
+        if (!is.null(out$sigma)) out$sigma[] <- 1.0
+        out
+      }
+      
       beta_k  <- as.numeric(cpp_result$beta[1, ])
-      sigma_k <- as.numeric(cpp_result$sigma[1])
+      sigma_k <- if (isTRUE(estimate_sigma)) as.numeric(cpp_result$sigma[1]) else 1.0
       covariate_names <- c(coef_names,
                            if (r_k > 0) paste0("gamma_", seq_len(r_k)) else character(0))
       names(beta_k) <- covariate_names
-
+      
       direction_results[[k]] <- list(
         beta        = beta_k,
         sigma       = sigma_k,
@@ -301,40 +359,64 @@ mo.bqr.svy <- function(formula,
         gamma_u     = gamma_uk
       )
     }
-
+    
     results[[qi]] <- list(
       directions  = direction_results,
-      prior       = pr,
+      prior       = pri,
       U           = U,
       Gamma_list  = Gamma_list,
       quantile    = qtau
     )
   }
-
-  first_result <- results[[1]]
-  coefficients_all <- unlist(lapply(seq_len(K), function(k) {
-    beta_k <- first_result$directions[[k]]$beta
-    names(beta_k) <- paste0(names(beta_k), "_dir", k)
-    beta_k
-  }))
-
+  
+  # --- Coefficients: list per tau (matrix coef x directions) ---
+  coefficients_list <- vector("list", length(quantile))
+  names(coefficients_list) <- names(results)
+  for (qi in seq_along(results)) {
+    dir_list <- results[[qi]]$directions
+    all_rows <- unique(unlist(lapply(dir_list, function(dd) names(dd$beta))))
+    mat <- matrix(NA_real_, nrow = length(all_rows), ncol = length(dir_list))
+    rownames(mat) <- all_rows
+    colnames(mat) <- paste0("dir", seq_along(dir_list))
+    for (k in seq_along(dir_list)) {
+      b <- dir_list[[k]]$beta
+      mat[names(b), k] <- b
+    }
+    coefficients_list[[qi]] <- mat
+  }
+  
+  # --- Sigma: list per tau (numeric vector per directions) ---
+  sigma_list <- vector("list", length(quantile))
+  names(sigma_list) <- names(results)
+  for (qi in seq_along(results)) {
+    dir_list <- results[[qi]]$directions
+    vals <- vapply(dir_list, function(dd) {
+      v <- tryCatch(as.numeric(dd$sigma)[1], error = function(e) NA_real_)
+      ifelse(is.finite(v), v, NA_real_)
+    }, numeric(1))
+    names(vals) <- paste0("dir", seq_along(dir_list))
+    sigma_list[[qi]] <- vals
+  }
+  
   structure(list(
-    call         = match.call(),
-    formula      = formula,
-    terms        = attr(mf, "terms"),
-    quantile     = quantile,
-    algorithm    = algorithm,
-    prior        = pri,        
-    fit          = results,
-    coefficients = coefficients_all,
-    n_dir        = K,
-    U            = U,
-    Gamma_list   = Gamma_list,
-    n_obs        = n,
-    n_vars       = p,
-    response_dim = d
+    call            = match.call(),
+    formula         = formula,
+    terms           = attr(mf, "terms"),
+    quantile        = quantile,
+    prior           = pri,
+    fit             = results,
+    coefficients    = coefficients_list,
+    sigma           = sigma_list,       # <- NEW: easy sigma access per tau/dir
+    n_dir           = K,
+    U               = U,
+    Gamma_list      = Gamma_list,
+    n_obs           = n,
+    n_vars          = p,
+    response_dim    = d,
+    estimate_sigma  = isTRUE(estimate_sigma)
   ), class = "mo.bqr.svy")
 }
+
 
 
 #' @keywords internal

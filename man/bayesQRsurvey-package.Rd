@@ -55,8 +55,8 @@ quantile regression. \emph{Journal of Statistical Computation and Simulation},
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/torodriguezt/tauBayesW}
-  \item Report bugs at \url{https://github.com/torodriguezt/tauBayesW/issues}
+  \item \url{https://github.com/torodriguezt/bayesQRsurvey}
+  \item Report bugs at \url{https://github.com/torodriguezt/bayesQRsurvey/issues}
 }
 
 }

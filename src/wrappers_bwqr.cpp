@@ -1,6 +1,14 @@
+// [[Rcpp::depends(RcppArmadillo, RcppEigen)]]
+// [[Rcpp::plugins(cpp17)]]
+
 #include <RcppArmadillo.h>
 #include <RcppEigen.h>
 using namespace Rcpp;
+
+// ================================================================
+//  Declaraciones adelantadas (FORWARD DECLARATIONS)
+//  Nota: se agrega 'fix_sigma' al backend EM separable.
+// ================================================================
 
 Rcpp::List _bwqr_weighted_em_cpp_sep(  // SEPARABLE (por dirección)
     const Eigen::MatrixXd& y,
@@ -15,9 +23,11 @@ Rcpp::List _bwqr_weighted_em_cpp_sep(  // SEPARABLE (por dirección)
     double b0,
     double eps,
     int max_iter,
-    bool verbose
+    bool verbose,
+    Rcpp::Nullable<Rcpp::NumericVector> fix_sigma = R_NilValue // <<< NUEVO
 );
 
+// --- ACTUALIZADO: ALD con 'fix_sigma' en la declaración del backend ---
 Rcpp::List _mcmc_bwqr_al_cpp(const arma::vec& y,
                              const arma::mat& X,
                              const arma::vec& w,
@@ -29,7 +39,8 @@ Rcpp::List _mcmc_bwqr_al_cpp(const arma::vec& y,
                              Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec,
                              double c0,
                              double C0,
-                             int print_progress = 0);
+                             int print_progress = 0,
+                             Rcpp::Nullable<Rcpp::NumericVector> fix_sigma = R_NilValue);
 
 Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
                              const arma::mat& X,
@@ -53,7 +64,9 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec,
                              int print_progress = 1000);
 
-
+// ================================================================
+//  WRAPPERS EXPORTADOS A R
+// ================================================================
 
 // [[Rcpp::export(name = ".bwqr_weighted_em_cpp_sep")]]
 Rcpp::List bwqr_weighted_em_cpp_sep_wrap(
@@ -69,13 +82,18 @@ Rcpp::List bwqr_weighted_em_cpp_sep_wrap(
     double b0,
     double eps      = 1e-6,
     int    max_iter = 1000,
-    bool   verbose  = false
+    bool   verbose  = false,
+    Rcpp::Nullable<Rcpp::NumericVector> fix_sigma = R_NilValue // <<< NUEVO
 ) {
-  return _bwqr_weighted_em_cpp_sep(y, x, w, u, gamma_u,
-                                   tau, mu0, sigma0,
-                                   a0, b0, eps, max_iter, verbose);
+  return _bwqr_weighted_em_cpp_sep(
+    y, x, w, u, gamma_u,
+    tau, mu0, sigma0,
+    a0, b0, eps, max_iter, verbose,
+    fix_sigma
+  );
 }
 
+// --- ACTUALIZADO: wrapper de AL con fix_sigma ---
 // [[Rcpp::export(name = ".MCMC_BWQR_AL")]]
 Rcpp::List MCMC_BWQR_AL_wrap(const arma::vec& y,
                              const arma::mat& X,
@@ -88,9 +106,11 @@ Rcpp::List MCMC_BWQR_AL_wrap(const arma::vec& y,
                              Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue,
                              double c0 = 0.001,
                              double C0 = 0.001,
-                             int print_progress = 0) {
+                             int print_progress = 0,
+                             Rcpp::Nullable<Rcpp::NumericVector> fix_sigma = R_NilValue) {
   return _mcmc_bwqr_al_cpp(y, X, w, tau, n_mcmc, burnin, thin,
-                           b_prior_mean, B_prior_prec, c0, C0, print_progress);
+                           b_prior_mean, B_prior_prec, c0, C0,
+                           print_progress, fix_sigma);
 }
 
 // [[Rcpp::export(name = ".MCMC_BWQR_AP")]]
