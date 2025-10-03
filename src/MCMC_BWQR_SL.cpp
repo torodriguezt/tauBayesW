@@ -2,6 +2,11 @@
 // [[Rcpp::plugins(cpp14)]]
 
 #include <RcppArmadillo.h>
+#include <cmath>
+#include <algorithm>
+#include <R_ext/Utils.h>   // R_CheckUserInterrupt
+#include <R_ext/Print.h>   // Rprintf, R_FlushConsole
+
 using namespace Rcpp;
 using namespace arma;
 
@@ -66,7 +71,7 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
                              int thin    = 10,
                              Rcpp::Nullable<Rcpp::NumericVector> b_prior_mean = R_NilValue,
                              Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue,
-                             int print_progress = 1000) {
+                             int print_progress = 0) {
   // --- Basic checks ---
   if (y.n_elem != X.n_rows || w.n_elem != y.n_elem)
     stop("Incompatible dimensions between y, X, and w.");
@@ -132,11 +137,25 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
   // Precompute current log-posterior
   double logp_curr = log_post_SL_stable(beta, b0, B_inv, y, X, w, tau, L_XtWX, lambda);
   
+  // --- Barra de progreso estética (10%, 20%, ..., 100%) ---
+  const int bar_width = 40;
+  int last_decile = -1;
+
   // --- MCMC ---
   for (int k = 0; k < n_mcmc; ++k) {
-    if (print_progress > 0 && (k + 1) % print_progress == 0) {
-      Rprintf("Iteration %d of %d\n", k + 1, n_mcmc);
-      R_CheckUserInterrupt();
+    // Progreso en una sola línea (solo si print_progress > 0)
+    if (print_progress > 0) {
+      double perc = 100.0 * (k + 1.0) / n_mcmc;
+      int decile = (static_cast<int>(std::floor(perc)) / 10) * 10;  // 0,10,...,100
+      if (decile >= 10 && decile <= 100 && decile > last_decile) {
+        int filled = static_cast<int>(std::round(bar_width * perc / 100.0));
+        Rprintf("\r[");
+        for (int j = 0; j < bar_width; ++j) Rprintf(j < filled ? "=" : " ");
+        Rprintf("] %5.1f%%", perc);
+        R_FlushConsole();
+        R_CheckUserInterrupt();
+        last_decile = decile;
+      }
     }
     
     // Proposal
@@ -163,6 +182,14 @@ Rcpp::List _mcmc_bwqr_sl_cpp(const arma::vec& y,
     if (k >= burnin && ((k - burnin) % thin == 0)) {
       beta_out.row(k_out++) = beta.t();
     }
+  }
+
+  // Cierre limpio de la barra: fuerza 100% y salto de línea
+  if (print_progress > 0) {
+    Rprintf("\r[");
+    for (int j = 0; j < bar_width; ++j) Rprintf("=");
+    Rprintf("] %5.1f%%\n", 100.0);
+    R_FlushConsole();
   }
   
   return List::create(

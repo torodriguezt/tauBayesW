@@ -46,7 +46,7 @@ The **bayesQRsurvey** package implements four approaches for Bayesian weighted q
 
 
 
-Also, this vignette compares the performance of **bayesQR** with the three MCMC methods implemented in **bayesQRsurvey** using a simulated dataset and the classic Prostate cancer dataset included in the `bayesQR` package.  
+Also, this vignette compares the performance of **bayesQR** with the three MCMC methods implemented in **bayesQRsurvey** using a simulated dataset and the Prostate cancer dataset included in the `bayesQR` package.  
 We estimate the 25th, 50th, and 75th quantile and compare coefficient estimates across all methods.
 
 
@@ -109,7 +109,7 @@ fit_ald <- bqr.svy(
   burnin    = 10000,
   thin      = 5,
   prior     = my_prior,
-  verbose   = TRUE
+  verbose   = FALSE
 )
 
 fit_score <- bqr.svy(
@@ -117,11 +117,11 @@ fit_score <- bqr.svy(
   data      = mtcars_scaled,
   quantile  = 0.5,
   method    = "score",
-  niter     = 20000,    
-  burnin    = 10000,
+  niter     = 25000,    
+  burnin    = 13000,
   prior     = my_prior, 
   thin      = 5,
-  verbose   = TRUE
+  verbose   = FALSE
 )
 
 fit_approx <- bqr.svy(
@@ -129,11 +129,11 @@ fit_approx <- bqr.svy(
   data      = mtcars_scaled,
   quantile  = 0.5,
   method    = "approximate",
-  niter     = 20000,
-  burnin    = 10000,
+  niter     = 25000,
+  burnin    = 13000,
   prior     = my_prior,
   thin      = 5,
-  verbose   = TRUE
+  verbose   = FALSE
 )
 
 
@@ -219,8 +219,6 @@ if (!is.null(fit_ald$draws)) {
   )
 }
 ```
-For the `mo.bqr.svy` it is recommended to use the `summary()` method in order to obtain a cleaner and more structured view of the output. This provides posterior mode estimates, EM convergence information, and scale parameters for each quantile and direction.
-
 
 ### Convergence Diagnostics
 
@@ -917,7 +915,7 @@ fit_ald <- bqr.svy(
   niter    = 50000,
   burnin   = 25000,
   thin     = 5,
-  verbose  = TRUE 
+  verbose  = FALSE 
 )
 
 coef_ald <- fit_ald$beta
@@ -937,7 +935,7 @@ fit_score <- bqr.svy(
   niter    = 50000,
   burnin   = 25000,
   thin     = 5,
-  verbose  = TRUE 
+  verbose  = FALSE 
 )
 
 coef_score <- fit_score$beta
@@ -957,7 +955,7 @@ fit_approximate <- bqr.svy(
   niter    = 50000,
   burnin   = 25000,
   thin     = 5,
-  verbose  = TRUE 
+  verbose  = FALSE 
 )
 
 coef_approximate <- fit_approximate$beta

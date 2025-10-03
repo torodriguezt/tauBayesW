@@ -88,6 +88,8 @@ if (!exists("%||%"))
 #' # Multiple-output method
 #' fit_mo <- mo.bqr.svy(cbind(y1, y2) ~ x1 + x2, weights = w,
 #'                      data = data, prior = prior_general, n_dir = 10)
+#' 
+#' plot(fit_ald, type = "trace", which = "x1", tau = 0.5)
 #'
 #' @seealso \code{\link{bqr.svy}}, \code{\link{mo.bqr.svy}},
 #'   \code{\link{summary}}

@@ -3,6 +3,8 @@
 #include <RcppArmadillo.h>
 #include <cmath>
 #include <algorithm>
+#include <R_ext/Utils.h>   // R_CheckUserInterrupt
+#include <R_ext/Print.h>   // Rprintf, R_FlushConsole
 
 using namespace Rcpp;
 using namespace arma;
@@ -126,8 +128,8 @@ Rcpp::List _mcmc_bwqr_al_cpp(
     Rcpp::Nullable<Rcpp::NumericMatrix> B_prior_prec = R_NilValue,
     double c0 = 0.001,
     double C0 = 0.001,
-    int print_progress = 1000,
-    Rcpp::Nullable<Rcpp::NumericVector> fix_sigma = R_NilValue 
+    int print_progress = 1000,   // si >0, habilita barra de progreso
+    Rcpp::Nullable<Rcpp::NumericVector> fix_sigma = R_NilValue
 ) {
 
   if (y.n_elem != X.n_rows || y.n_elem != w.n_elem)
@@ -146,7 +148,7 @@ Rcpp::List _mcmc_bwqr_al_cpp(
   if ((int)B_prec.n_rows != p || (int)B_prec.n_cols != p)
     stop("B_prior_prec must be a p x p matrix.");
 
-  // <<< NEW: manejo de sigma fija (si se provee)
+  // --- Manejo de sigma fija (si se provee)
   bool use_fixed_sigma = false;
   double sigma_fixed_val = 1.0;
   if (fix_sigma.isNotNull()) {
@@ -162,17 +164,31 @@ Rcpp::List _mcmc_bwqr_al_cpp(
 
   // Inicialización
   beta_chain.row(0) = arma::solve(X, y).t();
-  sigma_chain[0] = use_fixed_sigma ? sigma_fixed_val : 1.0;  // <<< NEW
+  sigma_chain[0] = use_fixed_sigma ? sigma_fixed_val : 1.0;
   arma::vec v = arma::randg<arma::vec>(n, arma::distr_param(2.0, 1.0));
 
   const double delta2 = 2.0 / (tau * (1.0 - tau));
   const double theta  = (1.0 - 2.0 * tau) / (tau * (1.0 - tau));
   const double tau2   = delta2;
 
+  // --- Progreso: barra estética cada 10% ---
+  const int bar_width = 40;
+  int last_decile = -1;
+
   for (int k = 1; k < n_mcmc; ++k) {
-    if (print_progress > 0 && k % print_progress == 0) {
-      Rprintf("Iteration %d of %d\n", k, n_mcmc);
-      R_CheckUserInterrupt();
+    // Barra de progreso (10%, 20%, ..., 100%) en una sola línea
+    if (print_progress > 0) {
+      double perc = 100.0 * (k + 0.0) / (n_mcmc - 1.0);   // k va de 1 .. n_mcmc-1
+      int decile = ((int)std::floor(perc)) / 10 * 10;     // 0,10,20,...,100
+      if (decile >= 10 && decile <= 100 && decile > last_decile) {
+        int filled = (int)std::round(bar_width * perc / 100.0);
+        Rprintf("\r[");
+        for (int j = 0; j < bar_width; ++j) Rprintf(j < filled ? "=" : " ");
+        Rprintf("] %5.1f%%", perc);
+        R_FlushConsole();
+        R_CheckUserInterrupt();
+        last_decile = decile;
+      }
     }
 
     arma::vec beta_k = draw_beta(X, w, v, y, sigma_chain[k - 1], delta2, theta, B_prec, b_mean);
@@ -180,11 +196,19 @@ Rcpp::List _mcmc_bwqr_al_cpp(
 
     update_v(v, X, w, beta_k, y, delta2, theta, sigma_chain[k - 1]);
 
-    if (use_fixed_sigma) {                           // <<< NEW
-      sigma_chain[k] = sigma_fixed_val;              // mantener fija
+    if (use_fixed_sigma) {
+      sigma_chain[k] = sigma_fixed_val;   // mantener fija
     } else {
       sigma_chain[k] = draw_sigma(X, w, beta_k, v, y, tau2, theta, c0, C0);
     }
+  }
+
+  // Cierre limpio de la barra: fuerza 100% y salto de línea
+  if (print_progress > 0) {
+    Rprintf("\r[");
+    for (int j = 0; j < bar_width; ++j) Rprintf("=");
+    Rprintf("] %5.1f%%\n", 100.0);
+    R_FlushConsole();
   }
 
   // Guardar draws post-burnin cada 'thin' (índices 0-based)

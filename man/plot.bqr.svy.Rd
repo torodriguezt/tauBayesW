@@ -27,7 +27,7 @@
   use_ggplot = TRUE,
   theme_style = c("minimal", "classic", "bw", "light"),
   color_palette = c("viridis", "plasma", "set2", "dark2"),
-  add_h0 = TRUE,
+  add_h0 = FALSE,
   add_ols = FALSE,
   ols_fit = NULL,
   ols_weights = NULL,
@@ -52,7 +52,8 @@ numeric predictor (excluding the response) is used.}
 \item{tau}{Quantile(s) to plot; must appear in \code{x$quantile}. If
 \code{NULL}, all available are used.}
 
-\item{which}{(quantile/trace/density) Coefficient name or index to display.}
+\item{which}{(quantile/trace/density) Coefficient name or index to display.
+The default is the first coefficient associated with the first variable in the model.}
 
 \item{add_points}{(fit) Logical; overlay observed data points.}
 

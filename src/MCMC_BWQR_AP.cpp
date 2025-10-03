@@ -2,6 +2,11 @@
 // [[Rcpp::plugins(cpp14)]]
 
 #include <RcppArmadillo.h>
+#include <cmath>
+#include <algorithm>
+#include <R_ext/Utils.h>   // R_CheckUserInterrupt
+#include <R_ext/Print.h>   // Rprintf, R_FlushConsole
+
 using namespace Rcpp;
 using namespace arma;
 
@@ -42,14 +47,13 @@ static double log_post(const arma::vec& beta,
   // Score en el punto β
   arma::vec res = y - X * beta;
   arma::vec ind = tau - arma::conv_to<arma::vec>::from(res < 0); // τ - 1{r<0}
-  arma::vec s_tau = X.t() * (w % ind);                            // X' (w ⊙ ind)
+  arma::vec s_tau = X.t() * (w % ind);                           // X' (w ⊙ ind)
 
   // Var(score) ≈ τ(1-τ) X' diag(w) X  (independiente de β)
   bool w_all_one = arma::approx_equal(w, arma::ones<arma::vec>(w.n_elem), "absdiff", 1e-12);
   if (w_all_one) {
     wcA = tau * (1.0 - tau) * (X.t() * X);
   } else {
-    // X' diag(w) X = X' ( (diag(sqrt(w)) X) )
     arma::mat Xw = X.each_col() % arma::sqrt(w);
     wcA = tau * (1.0 - tau) * (Xw.t() * Xw);
   }
@@ -65,7 +69,7 @@ static double log_post(const arma::vec& beta,
   // Término cuadrático (concentración con λ) y normalización N(0, Var/λ)
   double quad = dot(s_tau, wc * s_tau);
   lp += -0.5 * lambda * quad
-  - 0.5 * ( p * std::log(2.0 * PI) + ld - p * std::log(lambda) );
+        - 0.5 * ( p * std::log(2.0 * PI) + ld - p * std::log(lambda) );
 
   return lp;
 }
@@ -123,9 +127,7 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
   double lambda = arma::accu(w);                     // ≈ n
   arma::mat post_prec = lambda * wcA_prop + B_inv;   // precisión aprox.
   arma::mat Sigma_prop = arma::inv_sympd(post_prec); // ~ cov posterior
-  // por robustez, un pequeño ridge por si acaso
-  Sigma_prop.diag() += 1e-12;
-
+  Sigma_prop.diag() += 1e-12;                        // robustez numérica
   arma::mat L_prop = chol(Sigma_prop, "lower");
 
   // Buffers
@@ -143,11 +145,24 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
   double ct = 2.38; // se ajusta hacia aceptar ~0.234
   int k_out = 0;
 
+  // --- Barra de progreso estética (10%, 20%, ..., 100%) ---
+  const int bar_width = 40;
+  int last_decile = -1;
+
   for (int k = 0; k < n_mcmc; ++k) {
-    // Progress printing
-    if (print_progress > 0 && k % print_progress == 0) {
-      Rcpp::Rcout << "Iteration " << k << " of " << n_mcmc << std::endl;
-      R_CheckUserInterrupt();
+    // ---- Progreso en una sola línea (solo si print_progress > 0)
+    if (print_progress > 0) {
+      double perc = 100.0 * (k + 1.0) / n_mcmc;
+      int decile = (static_cast<int>(std::floor(perc)) / 10) * 10;  // 0,10,...,100
+      if (decile >= 10 && decile <= 100 && decile > last_decile) {
+        int filled = static_cast<int>(std::round(bar_width * perc / 100.0));
+        Rprintf("\r[");
+        for (int j = 0; j < bar_width; ++j) Rprintf(j < filled ? "=" : " ");
+        Rprintf("] %5.1f%%", perc);
+        R_FlushConsole();
+        R_CheckUserInterrupt();
+        last_decile = decile;
+      }
     }
 
     arma::vec beta_prop = rmvnorm(beta_curr, std::sqrt(ct) * L_prop);
@@ -169,6 +184,14 @@ Rcpp::List _mcmc_bwqr_ap_cpp(const arma::vec& y,
     if (k >= burnin && ((k - burnin) % thin == 0)) {
       if (k_out < n_keep) beta_out.row(k_out++) = beta_curr.t();
     }
+  }
+
+  // ---- Cierre limpio de la barra: fuerza 100% y salto de línea
+  if (print_progress > 0) {
+    Rprintf("\r[");
+    for (int j = 0; j < bar_width; ++j) Rprintf("=");
+    Rprintf("] %5.1f%%\n", 100.0);
+    R_FlushConsole();
   }
 
   return List::create(

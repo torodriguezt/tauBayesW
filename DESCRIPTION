@@ -8,9 +8,11 @@ Authors@R:
         person("Marcus L.", "Nascimento", email = "marcus.lavagnole@fgv.br", role = "aut"),
         person("Kelly Cristina", "Mota Gonçalves", email = "kelly@dme.ufrj.br", role = "aut")
     )
-Description: Bayesian quantile regression models for complex survey data analysis, both single 
-    and multiple-output are supported. To speed up the calculations, all algorithms are implemented 
-    in C++ using 'Rcpp', 'RcppArmadillo', and 'RcppEigen', and called from R.
+Description: Provides Bayesian quantile regression models for complex survey data 
+    under informative sampling using survey-weighted estimators. Both single- and 
+    multiple-output models are supported. To accelerate computation, all algorithms 
+    are implemented in C++ using 'Rcpp', 'RcppArmadillo', and 'RcppEigen', and 
+    are called from R.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

@@ -44,7 +44,8 @@
 #'   numeric predictor (excluding the response) is used.
 #' @param tau Quantile(s) to plot; must appear in \code{x$quantile}. If
 #'   \code{NULL}, all available are used.
-#' @param which (quantile/trace/density) Coefficient name or index to display.
+#' @param which (quantile/trace/density) Coefficient name or index to display. 
+#' The default is the first coefficient associated with the first variable in the model.
 #' @param add_points (fit) Logical; overlay observed data points.
 #' @param combine (fit) Logical; if multiple \code{tau}: \code{TRUE} overlays
 #'   curves in one panel; \code{FALSE} uses one panel per quantile.
@@ -112,7 +113,7 @@ plot.bqr.svy <- function(
     use_ggplot = TRUE,
     theme_style = c("minimal", "classic", "bw", "light"),
     color_palette = c("viridis", "plasma", "set2", "dark2"),
-    add_h0 = TRUE,
+    add_h0 = FALSE,
     add_ols = FALSE,
     ols_fit = NULL,
     ols_weights = NULL,
