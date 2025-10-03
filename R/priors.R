@@ -19,10 +19,10 @@ if (!exists("%||%"))
 
 #' Create prior for Bayesian quantile regression models for complex survey data
 #'
-#' \code{prior} creates prior distributions for both single (\code{bqr.svy}) and multiple-output 
-#' (\code{mo.bqr.svy}) Bayesian quantile regression models for complex survey data. 
+#' \code{prior} creates prior distributions for both single (\code{bqr.svy}) and multiple-output
+#' (\code{mo.bqr.svy}) Bayesian quantile regression models for complex survey data.
 #'
-#' @param beta_x_mean vector of prior means for the regression coefficients. (default = NULL).   
+#' @param beta_x_mean vector of prior means for the regression coefficients. (default = NULL).
 #' @param beta_x_cov prior covariance matrix for the regression coefficients. (default = NULL).
 #' @param sigma_shape shape parameter for inverse Gamma prior for \eqn{\sigma^2}. (default = 0.001).
 #' @param sigma_rate rate parameter for inverse Gamma prior for \eqn{\sigma^2}. (default = 0.001).
@@ -32,16 +32,16 @@ if (!exists("%||%"))
 #'  (default = NULL).
 #'
 #' @details
-#' The function \code{prior} builds prior distributions for the three methods implemented in the function 
+#' The function \code{prior} builds prior distributions for the three methods implemented in the function
 #' \code{bqr.svy} and for the multiple-output quantile regression implemented in the function \code{mo.bqr.svy}.
 #' Every nonspecified prior parameter will get the default value.
-#'   
+#'
 #' \itemize{
-#'   \item \code{method = "ald"} in function \code{bqr.svy} allow the specification of hyperparameters 
+#'   \item \code{method = "ald"} in function \code{bqr.svy} allow the specification of hyperparameters
 #'         \code{beta_x_mean}, \code{beta_x_cov}, \code{sigma_shape}, and \code{sigma_rate}.
-#'   \item \code{method = "score"} in function \code{bqr.svy} allow the specification of hyperparameters 
+#'   \item \code{method = "score"} in function \code{bqr.svy} allow the specification of hyperparameters
 #'         \code{beta_x_mean} and \code{beta_x_cov}.
-#'   \item \code{method = "approximate"} in function \code{bqr.svy} allow the specification of hyperparameters 
+#'   \item \code{method = "approximate"} in function \code{bqr.svy} allow the specification of hyperparameters
 #'         \code{beta_x_mean} and \code{beta_x_cov}.
 #'   \item In function \code{mo.bqr.svy}, the specification of hyperparameters \code{beta_x_mean},\code{beta_x_cov},
 #'         \code{sigma_shape}, \code{sigma_rate}, \code{beta_y_mean}, and \code{beta_y_cov} are allowed.
@@ -62,7 +62,7 @@ if (!exists("%||%"))
 #'
 #' data <- data.frame(y1 = y1, y2 = y2, x1 = x1, x2 = x2, w = w)
 #'
-#' 
+#'
 #' # Define a general informative prior
 #' prior_general <- prior(
 #'   beta_x_mean = c(2, 1.5, -0.8),
@@ -75,7 +75,7 @@ if (!exists("%||%"))
 #'
 #' #Estimate the model parameters with informative prior
 #'
-#' 
+#'
 #' fit_ald <- bqr.svy(y1 ~ x1 + x2, weights = w, data = data,
 #'                    prior = prior_general, method = "ald")
 #'
@@ -88,24 +88,27 @@ if (!exists("%||%"))
 #' # Multiple-output method
 #' fit_mo <- mo.bqr.svy(cbind(y1, y2) ~ x1 + x2, weights = w,
 #'                      data = data, prior = prior_general, n_dir = 10)
-#' 
+#'
 #' plot(fit_ald, type = "trace", which = "x1", tau = 0.5)
 #'
 #' @seealso \code{\link{bqr.svy}}, \code{\link{mo.bqr.svy}},
 #'   \code{\link{summary}}
 #' @export
 prior <- function(
-  beta_x_mean = NULL,
-  beta_x_cov  = NULL,
-  sigma_shape = 0.001,
-  sigma_rate  = 0.001,
-  beta_y_mean = NULL,
-  beta_y_cov  = NULL
+    beta_x_mean = NULL,
+    beta_x_cov  = NULL,
+    sigma_shape = 0.001,
+    sigma_rate  = 0.001,
+    beta_y_mean = NULL,
+    beta_y_cov  = NULL
 ) {
   if (!is.null(sigma_shape) && (!is.numeric(sigma_shape) || length(sigma_shape)!=1L || sigma_shape<=0))
     stop("'sigma_shape' must be a positive scalar.", call. = FALSE)
   if (!is.null(sigma_rate) && (!is.numeric(sigma_rate) || length(sigma_rate)!=1L || sigma_rate<=0))
     stop("'sigma_rate' must be a positive scalar.", call. = FALSE)
+
+  mc <- match.call()
+  user_defined_sigma_prior <- ("sigma_shape" %in% names(mc)) || ("sigma_rate" %in% names(mc))
 
   structure(
     list(
@@ -116,21 +119,23 @@ prior <- function(
       beta_y_mean = beta_y_mean,
       beta_y_cov  = beta_y_cov
     ),
-    class = "prior"
+    class = "prior",
+    user_defined_sigma_prior = user_defined_sigma_prior
   )
 }
+
 
 #' @export
 print.prior <- function(x, digits = 3, ...) {
   cat("Prior")
-  
+
   # beta_x_mean
   if (is.null(x$beta_x_mean)) {
     cat("  beta_x_mean: diffuse (all zeros)\n")
   } else {
     cat("  beta_x_mean: ", paste(round(x$beta_x_mean, digits), collapse=" "), "\n", sep = "")
   }
-  
+
   # beta_x_cov
   if (is.null(x$beta_x_cov)) {
     cat("  beta_x_cov:  diffuse (large diagonal: 1e6)\n")
@@ -138,7 +143,7 @@ print.prior <- function(x, digits = 3, ...) {
     cat("  beta_x_cov:\n")
     print(round(x$beta_x_cov, digits))
   }
-  
+
   # sigma prior
   if (is.null(x$sigma_shape) || is.null(x$sigma_rate)) {
     cat("  sigma IG:    diffuse (shape=0.001, rate=0.001)\n")
@@ -146,14 +151,14 @@ print.prior <- function(x, digits = 3, ...) {
     cat("  sigma IG:    shape=", round(x$sigma_shape, digits),
         ", rate=", round(x$sigma_rate, digits), "\n", sep = "")
   }
-  
+
   # beta_y_mean
   if (is.null(x$beta_y_mean)) {
     cat("  beta_y_mean: diffuse (all zeros)\n")
   } else {
     cat("  beta_y_mean: ", paste(round(x$beta_y_mean, digits), collapse=" "), "\n", sep = "")
   }
-  
+
   # beta_y_cov
   if (is.null(x$beta_y_cov)) {
     cat("  beta_y_cov:  diffuse (large diagonal: 1e6)\n")
@@ -161,7 +166,7 @@ print.prior <- function(x, digits = 3, ...) {
     cat("  beta_y_cov:\n")
     print(round(x$beta_y_cov, digits))
   }
-  
+
   invisible(x)
 }
 

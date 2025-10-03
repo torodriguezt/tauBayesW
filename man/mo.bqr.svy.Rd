@@ -80,7 +80,7 @@ library(MASS)
 
 # Generate population data
 set.seed(123)
-N    <- 10000 
+N    <- 10000
 data <- mvrnorm(N,rep(0,3),matrix(c(4,0,2,0,1,1.5,2,1.5,9),3,3))
 x_p  <- as.matrix(data[,1])
 y_p  <- data[,2:3]+cbind(rep(0,N),x_p)
@@ -96,8 +96,8 @@ w   <- 1 / p_aux[s_ind]
 data_s<- data.frame(y1 = y_s[,1], y2 = y_s[,2],  x1 = x_s, w = w)
 
 # Basic usage with default priors when U and gamma_U are given
-fit1 <- mo.bqr.svy(cbind(y1, y2) ~ x1, weights = w, data = data_s, quantile = c(0.1, 0.2), 
- U = matrix(c(0,1,1/sqrt(2),1/sqrt(2)),2), 
+fit1 <- mo.bqr.svy(cbind(y1, y2) ~ x1, weights = w, data = data_s, quantile = c(0.1, 0.2),
+ U = matrix(c(0,1,1/sqrt(2),1/sqrt(2)),2),
  gamma_U = list(c(1,0),c(1/sqrt(2),-1/sqrt(2))))
 
 # Basic usage with default priors when n_dir is given

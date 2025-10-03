@@ -5,13 +5,77 @@
 if (!exists("%||%"))
   `%||%` <- function(a, b) if (is.null(a)) b else a
 
+.user_defined_sigma <- function(pr) {
+  if (is.null(pr)) return(FALSE)
+
+  # Si prior() moderno añadió atributo, úsalo
+  uds <- attr(pr, "user_defined_sigma_prior")
+  if (!is.null(uds)) return(isTRUE(uds))
+
+  # Sentinelas por defecto (los de prior() actual)
+  DEFAULT_SHAPE <- 0.001
+  DEFAULT_RATE  <- 0.001
+
+  # prior() clásico
+  if (inherits(pr, "prior")) {
+    has_shape <- !is.null(pr$sigma_shape)
+    has_rate  <- !is.null(pr$sigma_rate)
+    if (!has_shape && !has_rate) return(FALSE)
+    if (has_shape && has_rate &&
+        isTRUE(all(is.finite(c(pr$sigma_shape, pr$sigma_rate))))) {
+      # Si son exactamente los defaults, asumimos que el usuario NO los pasó
+      if (identical(pr$sigma_shape, DEFAULT_SHAPE) &&
+          identical(pr$sigma_rate,  DEFAULT_RATE)) {
+        return(FALSE)
+      } else {
+        return(TRUE)
+      }
+    }
+    return(TRUE)
+  }
+
+  # mo_bqr_prior (salida de as_mo_bqr_prior)
+  if (inherits(pr, "mo_bqr_prior")) {
+    has_shape <- !is.null(pr$sigma_shape)
+    has_rate  <- !is.null(pr$sigma_rate)
+    if (!has_shape && !has_rate) return(FALSE)
+    if (has_shape && has_rate &&
+        isTRUE(all(is.finite(c(pr$sigma_shape, pr$sigma_rate))))) {
+      if (identical(pr$sigma_shape, DEFAULT_SHAPE) &&
+          identical(pr$sigma_rate,  DEFAULT_RATE)) {
+        return(FALSE)
+      } else {
+        return(TRUE)
+      }
+    }
+    return(TRUE)
+  }
+
+  if (inherits(pr, "bqr_prior")) {
+    has_c0 <- !is.null(pr$c0)
+    has_C0 <- !is.null(pr$C0)
+    if (!has_c0 && !has_C0) return(FALSE)
+    if (has_c0 && has_C0 &&
+        isTRUE(all(is.finite(c(pr$c0, pr$C0))))) {
+      if (identical(pr$c0, DEFAULT_SHAPE) && identical(pr$C0, DEFAULT_RATE)) {
+        return(FALSE)
+      } else {
+        return(TRUE)
+      }
+    }
+    return(TRUE)
+  }
+
+  FALSE
+}
+
 # =====================================================
 #  MODEL FITTER (multiple-output/multivariate)
 # =====================================================
-    
+
 #' Multiple-Output Bayesian quantile regression for complex survey data
 #'
-#' mo.bqr.svy implements a Bayesian approach to multiple-output quantile regression 
+#' mo.bqr.svy implements a Bayesian approach to multiple-output quantile regression
 #' for complex survey data analysis. The method builds a quantile region based on
 #' a directional approach. To improve computational efficiency, an Expectation-Maximization (EM)
 #' algorithm is implemented instead of the usual Markov Chain Monte Carlo (MCMC).
@@ -22,14 +86,14 @@ if (!exists("%||%"))
 #' @param quantile numerical scalar or vector containing quantile(s) of interest (default=0.5).
 #' @param prior a \code{bqr_prior} object of class "prior". If omitted, a vague prior is assumed (see \code{\link{prior}}).
 #' @param U an optional \eqn{d \times K}-matrix of directions, where \eqn{d} indicates the response variable dimension
-#' and \eqn{K} indicates indicates the number of directions. 
+#' and \eqn{K} indicates indicates the number of directions.
 #' @param gamma_U an optional list with length equal to \eqn{K} for which each element corresponds to
 #' \eqn{d \times (d-1)}-matrix of ortoghonal basis for each row of \code{U}.
 #' @param n_dir numerical scalar corresponding to the number of directions (if \code{U} and \code{gamma_U} are not supplied).
 #' @param epsilon numerical scalar indicating the convergence tolerance for the EM algorithm (default = 1e-6).
 #' @param max_iter numerical scalar indicating maximum number of EM iterations (default = 1000).
 #' @param verbose logical flag indicating whether to print progress messages (default=FALSE).
-#' @param estimate_sigma logical flag; if \code{TRUE}, the scale parameter 
+#' @param estimate_sigma logical flag; if \code{TRUE}, the scale parameter
 #'   \eqn{\sigma^2} is estimated by EM. If \code{FALSE}, \eqn{\sigma^2} is fixed to 1 (default).
 #'
 #'
@@ -41,9 +105,9 @@ if (!exists("%||%"))
 #'   \item{prior}{List of priors used for each quantile}
 #'   \item{fit}{List of fitted results for each quantile, each containing one sub-list per direction}
 #'   \item{coefficients}{Coefficients organized by quantile}
-#'   \item{sigma}{List of scale parameters by quantile and direction. 
-#'                If \code{estimate_sigma = FALSE}, all entries are fixed at 1. 
-#'                If \code{estimate_sigma = TRUE}, each entry contains the 
+#'   \item{sigma}{List of scale parameters by quantile and direction.
+#'                If \code{estimate_sigma = FALSE}, all entries are fixed at 1.
+#'                If \code{estimate_sigma = TRUE}, each entry contains the
 #'                estimated value of \eqn{\sigma} (posterior mode from EM).}
 #'   \item{n_dir}{Number of directions}
 #'   \item{U}{Matrix of projection directions (\eqn{d \times K})}
@@ -51,7 +115,7 @@ if (!exists("%||%"))
 #'   \item{n_obs}{Number of observations}
 #'   \item{n_vars}{Number of covariates}
 #'   \item{response_dim}{Dimension of the response \eqn{d}}
-#'   \item{estimate_sigma}{Logical flag indicating whether the scale parameter 
+#'   \item{estimate_sigma}{Logical flag indicating whether the scale parameter
 #'                         \eqn{\sigma^2} was estimated (\code{TRUE}) or fixed at 1 (\code{FALSE}).}
 #'
 #' @examples
@@ -59,7 +123,7 @@ if (!exists("%||%"))
 #'
 #' # Generate population data
 #' set.seed(123)
-#' N    <- 10000 
+#' N    <- 10000
 #' data <- mvrnorm(N,rep(0,3),matrix(c(4,0,2,0,1,1.5,2,1.5,9),3,3))
 #' x_p  <- as.matrix(data[,1])
 #' y_p  <- data[,2:3]+cbind(rep(0,N),x_p)
@@ -75,8 +139,8 @@ if (!exists("%||%"))
 #' data_s<- data.frame(y1 = y_s[,1], y2 = y_s[,2],  x1 = x_s, w = w)
 #'
 #' # Basic usage with default priors when U and gamma_U are given
-#' fit1 <- mo.bqr.svy(cbind(y1, y2) ~ x1, weights = w, data = data_s, quantile = c(0.1, 0.2), 
-#'  U = matrix(c(0,1,1/sqrt(2),1/sqrt(2)),2), 
+#' fit1 <- mo.bqr.svy(cbind(y1, y2) ~ x1, weights = w, data = data_s, quantile = c(0.1, 0.2),
+#'  U = matrix(c(0,1,1/sqrt(2),1/sqrt(2)),2),
 #'  gamma_U = list(c(1,0),c(1/sqrt(2),-1/sqrt(2))))
 #'
 #' # Basic usage with default priors when n_dir is given
@@ -97,16 +161,16 @@ mo.bqr.svy <- function(formula,
                        max_iter = 1000,
                        verbose  = FALSE,
                        estimate_sigma = FALSE) {
-  
+
   algorithm <- "em"
   if (missing(data)) stop("'data' must be provided.")
-  
+
   # --- quantiles ---
   if (length(quantile) == 0) stop("'quantile' cannot be empty.")
   if (any(!is.finite(quantile))) stop("'quantile' must be numeric and finite.")
   if (any(quantile <= 0 | quantile >= 1)) stop("'quantile' must be in (0,1).")
   quantile <- sort(unique(quantile))
-  
+
   # --- model frame ---
   mf <- model.frame(formula, data)
   y  <- model.response(mf)
@@ -114,28 +178,28 @@ mo.bqr.svy <- function(formula,
   if (!is.matrix(y)) stop("'y' must be a numeric matrix or vector.")
   if (any(!is.finite(y))) stop("Response 'y' contains non-finite values.")
   n <- nrow(y); d <- ncol(y)
-  
+
   X  <- model.matrix(attr(mf, "terms"), mf)
   if (nrow(X) != n) stop("nrow(X) must match nrow(y).")
   p  <- ncol(X)
   coef_names <- colnames(X)
-  
+
   # --- weights ---
   wts <- if (is.null(weights)) rep(1, n) else as.numeric(weights)
   if (length(wts) != n)  stop("'weights' must have length n.")
   if (any(!is.finite(wts)) || any(wts <= 0)) stop("Invalid weights.")
   wts <- wts / mean(wts)
-  
+
   if (!requireNamespace("pracma", quietly = TRUE)) {
     stop("Package 'pracma' is required for nullspace calculation")
   }
-  
+
   # ---------- Build U and Gamma_list ----------
   if (!is.null(U)) {
     U <- as.matrix(U)
     if (nrow(U) != d) stop("U must have d rows.")
     K <- ncol(U)
-    
+
     # normalize U columns
     tol_u <- 1e-12
     for (k in seq_len(K)) {
@@ -147,11 +211,11 @@ mo.bqr.svy <- function(formula,
         U[, k] <- U[, k] / nk
       }
     }
-    
+
     if (!is.null(gamma_U)) {
       if (!is.list(gamma_U)) stop("'gamma_U' must be a list of K matrices.")
       if (length(gamma_U) != K) stop("length(gamma_U) must equal ncol(U) = K.")
-      
+
       Gamma_list <- vector("list", K)
       for (k in seq_len(K)) {
         if (d == 1) {
@@ -178,7 +242,7 @@ mo.bqr.svy <- function(formula,
           Gamma_list[[k]] <- Gk
         }
       }
-      
+
     } else {
       if (d == 1) {
         Gamma_list <- replicate(K, matrix(numeric(0), 1, 0), simplify = FALSE)
@@ -186,7 +250,7 @@ mo.bqr.svy <- function(formula,
         Gamma_list <- lapply(seq_len(K), function(k) pracma::nullspace(t(U[, k])))
       }
     }
-    
+
   } else {
     if (!is.null(gamma_U)) stop("If you provide 'gamma_U', you must also provide 'U'.")
     if (d == 1) {
@@ -203,7 +267,7 @@ mo.bqr.svy <- function(formula,
       }
     }
   }
-  
+
   # ---------- Unified prior ----------
   pri <- if (is.null(prior)) {
     as_mo_bqr_prior(prior(), p = p, d = d, names_x = coef_names, names_y = NULL)
@@ -214,42 +278,40 @@ mo.bqr.svy <- function(formula,
   } else {
     stop("'prior' must be NULL, a 'prior' object (see prior()), or a 'mo_bqr_prior' (legacy).", call. = FALSE)
   }
-  
-  # --- Warning only if sigma is NOT estimated and prior specified sigma params ---
-  user_defined_sigma_prior <- !is.null(pri$sigma_shape) && !is.na(pri$sigma_shape) &&
-    !is.null(pri$sigma_rate)  && !is.na(pri$sigma_rate)
-  if (!estimate_sigma && isTRUE(user_defined_sigma_prior)) {
-    warning("With estimate_sigma=FALSE 'sigma_shape' and 'sigma_rate' in prior will be ignored.",
-            call. = FALSE)
+
+  # --- WARNING: solo si el usuario PASÓ prior de sigma y NO se estima sigma
+  user_defined_sigma_prior <- .user_defined_sigma(prior)
+  if (isFALSE(estimate_sigma) && isTRUE(user_defined_sigma_prior)) {
+    warning("With estimate_sigma=FALSE, 'sigma_shape' and 'sigma_rate' in prior will be ignored.", call. = FALSE)
   }
-  
+
   # --- Backend 'fix_sigma' support?
   backend_supports_fix <- tryCatch({
     "fix_sigma" %in% names(formals(.bwqr_weighted_em_cpp_sep))
   }, error = function(e) FALSE)
-  
+
   results <- vector("list", length(quantile))
   names(results) <- paste0("tau=", formatC(quantile, digits = 3, format = "f"))
-  
+
   for (qi in seq_along(quantile)) {
     qtau <- quantile[qi]
     pr   <- pri
-    
+
     if (verbose) message(sprintf("Fitting tau = %.3f (d=%d, K=%d)", qtau, d, K))
-    
+
     direction_results <- vector("list", K)
     names(direction_results) <- paste0("dir_", seq_len(K))
-    
+
     for (k in seq_len(K)) {
       u_k <- U[, k]
       gamma_uk <- Gamma_list[[k]]
       r_k <- if (d > 1) ncol(gamma_uk) else 0
       p_ext <- p + r_k
-      
+
       # prior blocks
       beta_mean_k <- pr$beta_mean
       beta_cov_k  <- pr$beta_cov
-      
+
       if (r_k > 0) {
         if (is.null(pr$beta_star_mean)) {
           gamma_mean_k <- rep(0, r_k)
@@ -261,7 +323,7 @@ mo.bqr.svy <- function(formula,
           stop(sprintf("Length of prior$beta_star_mean (%d) must be 1 or r_k=%d.",
                        length(pr$beta_star_mean), r_k))
         }
-        
+
         if (is.null(pr$beta_star_cov)) {
           gamma_cov_k <- diag(1e6, r_k)
         } else if (is.numeric(pr$beta_star_cov) && length(pr$beta_star_cov) == 1L) {
@@ -278,15 +340,15 @@ mo.bqr.svy <- function(formula,
         gamma_mean_k <- numeric(0)
         gamma_cov_k  <- matrix(numeric(0), 0, 0)
       }
-      
+
       mu0_ext <- c(beta_mean_k, gamma_mean_k)
       sigma0_ext <- matrix(0, p_ext, p_ext)
       sigma0_ext[1:p, 1:p] <- beta_cov_k
       if (r_k > 0) sigma0_ext[(p+1):p_ext, (p+1):p_ext] <- gamma_cov_k
-      
+
       u_k_matrix     <- matrix(u_k, ncol = 1)
       gamma_k_matrix <- if (d > 1) gamma_uk else matrix(numeric(0), d, 0)
-      
+
       # --- Backend call: estimate sigma or fix to 1
       cpp_result <- if (isTRUE(estimate_sigma)) {
         .bwqr_weighted_em_cpp_sep(
@@ -322,7 +384,7 @@ mo.bqr.svy <- function(formula,
           fix_sigma = 1.0
         )
       } else {
-        # Fallback: concentrate prior at 1 (mode≈1) and force output to 1
+        # Fallback: prior ultra-concentrada en 1 y forzar salida sigma=1
         a0_use <- 1e9; b0_use <- a0_use + 1
         if (verbose) message("Backend without 'fix_sigma'; using highly concentrated prior at sigma^2≈1.")
         out <- .bwqr_weighted_em_cpp_sep(
@@ -343,13 +405,13 @@ mo.bqr.svy <- function(formula,
         if (!is.null(out$sigma)) out$sigma[] <- 1.0
         out
       }
-      
+
       beta_k  <- as.numeric(cpp_result$beta[1, ])
       sigma_k <- if (isTRUE(estimate_sigma)) as.numeric(cpp_result$sigma[1]) else 1.0
       covariate_names <- c(coef_names,
                            if (r_k > 0) paste0("gamma_", seq_len(r_k)) else character(0))
       names(beta_k) <- covariate_names
-      
+
       direction_results[[k]] <- list(
         beta        = beta_k,
         sigma       = sigma_k,
@@ -359,7 +421,7 @@ mo.bqr.svy <- function(formula,
         gamma_u     = gamma_uk
       )
     }
-    
+
     results[[qi]] <- list(
       directions  = direction_results,
       prior       = pri,
@@ -368,7 +430,7 @@ mo.bqr.svy <- function(formula,
       quantile    = qtau
     )
   }
-  
+
   # --- Coefficients: list per tau (matrix coef x directions) ---
   coefficients_list <- vector("list", length(quantile))
   names(coefficients_list) <- names(results)
@@ -384,7 +446,7 @@ mo.bqr.svy <- function(formula,
     }
     coefficients_list[[qi]] <- mat
   }
-  
+
   # --- Sigma: list per tau (numeric vector per directions) ---
   sigma_list <- vector("list", length(quantile))
   names(sigma_list) <- names(results)
@@ -397,7 +459,7 @@ mo.bqr.svy <- function(formula,
     names(vals) <- paste0("dir", seq_along(dir_list))
     sigma_list[[qi]] <- vals
   }
-  
+
   structure(list(
     call            = match.call(),
     formula         = formula,
@@ -406,7 +468,7 @@ mo.bqr.svy <- function(formula,
     prior           = pri,
     fit             = results,
     coefficients    = coefficients_list,
-    sigma           = sigma_list,       # <- NEW: easy sigma access per tau/dir
+    sigma           = sigma_list,
     n_dir           = K,
     U               = U,
     Gamma_list      = Gamma_list,
@@ -416,8 +478,6 @@ mo.bqr.svy <- function(formula,
     estimate_sigma  = isTRUE(estimate_sigma)
   ), class = "mo.bqr.svy")
 }
-
-
 
 #' @keywords internal
 plot.mo.bqr.svy <- function(x, ..., datafile = NULL, response = c("Y1","Y2"),

@@ -1,6 +1,50 @@
 if (!exists("%||%"))
   `%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
 
+.user_defined_sigma <- function(pr) {
+  if (is.null(pr)) return(FALSE)
+
+  uds <- attr(pr, "user_defined_sigma_prior")
+  if (!is.null(uds)) return(isTRUE(uds))
+
+  DEFAULT_SHAPE <- 0.001
+  DEFAULT_RATE  <- 0.001
+
+  if (inherits(pr, "prior")) {
+    has_shape <- !is.null(pr$sigma_shape)
+    has_rate  <- !is.null(pr$sigma_rate)
+
+    if (!has_shape && !has_rate) return(FALSE)
+    if (has_shape && has_rate &&
+        isTRUE(all(is.finite(c(pr$sigma_shape, pr$sigma_rate))))) {
+      if (identical(pr$sigma_shape, DEFAULT_SHAPE) &&
+          identical(pr$sigma_rate,  DEFAULT_RATE)) {
+        return(FALSE)
+      } else {
+        return(TRUE)
+      }
+    }
+    return(TRUE)
+  }
+
+  if (inherits(pr, "bqr_prior")) {
+    has_c0 <- !is.null(pr$c0)
+    has_C0 <- !is.null(pr$C0)
+    if (!has_c0 && !has_C0) return(FALSE)
+    if (has_c0 && has_C0 &&
+        isTRUE(all(is.finite(c(pr$c0, pr$C0))))) {
+      if (identical(pr$c0, DEFAULT_SHAPE) && identical(pr$C0, DEFAULT_RATE)) {
+        return(FALSE)
+      } else {
+        return(TRUE)
+      }
+    }
+    return(TRUE)
+  }
+
+  FALSE
+}
+
 # ==== MODEL FITTER ============================================================
 
 #' Bayesian quantile regression for complex survey data
@@ -107,8 +151,8 @@ bqr.svy <- function(formula,
   method <- match.arg(method)
   cl <- match.call()
 
-  ## --- Aviso sobre estimate_sigma SOLO cuando el usuario lo pasó explícitamente y no es 'ald'
-  if (method != "ald" && !missing(estimate_sigma) && isTRUE(estimate_sigma)) {
+  ## --- Aviso sobre estimate_sigma SOLO si el usuario lo pasó y el método no es 'ald'
+  if (method != "ald" && !missing(estimate_sigma)) {
     warning("'estimate_sigma' only applies to the 'ald' method and will be ignored", call. = FALSE)
   }
 
@@ -163,17 +207,8 @@ bqr.svy <- function(formula,
     stop("'prior' must be NULL, a 'prior' object (see prior()), or a 'bqr_prior' (legacy).", call. = FALSE)
   }
 
-  # --- Detectar si el usuario definió explícitamente la prior de sigma ---
-  user_defined_sigma_prior <- FALSE
-  if (!is.null(prior)) {
-    if (inherits(prior, "prior")) {
-      user_defined_sigma_prior <- !is.null(prior$sigma_shape) && !is.null(prior$sigma_rate) &&
-        all(is.finite(c(prior$sigma_shape, prior$sigma_rate)))
-    } else if (inherits(prior, "bqr_prior")) {
-      user_defined_sigma_prior <- !is.null(prior$c0) && !is.null(prior$C0) &&
-        all(is.finite(c(prior$c0, prior$C0)))
-    }
-  }
+  # --- Detectar si el usuario definió explícitamente la prior de sigma (NO confundir con defaults)
+  user_defined_sigma_prior <- .user_defined_sigma(prior)
 
   ## --- Avisos sobre prior de sigma SOLO cuando corresponde
   if (method %in% c("score", "approximate") && isTRUE(user_defined_sigma_prior)) {
@@ -182,7 +217,7 @@ bqr.svy <- function(formula,
       call. = FALSE
     )
   }
-  if (method == "ald" && isTRUE(user_defined_sigma_prior) && isFALSE(estimate_sigma)) {
+  if (method == "ald" && isFALSE(estimate_sigma) && isTRUE(user_defined_sigma_prior)) {
     warning("With method='ald' and estimate_sigma=FALSE, 'sigma_shape' and 'sigma_rate' in prior will be ignored.",
             call. = FALSE)
   }
